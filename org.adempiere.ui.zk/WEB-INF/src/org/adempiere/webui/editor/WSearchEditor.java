@@ -135,7 +135,8 @@ public class WSearchEditor extends WEditor implements ContextMenuListener, Value
 
 		init();
 		getComponent().setAttribute(ATTRIBUTE_IS_INFO_PANEL_OPEN, false);
-		multipleSelection = true;
+		//	multipleSelection = true;	// comment out by figo, need set to disable it
+		multipleSelection = false;
 	}
 
 

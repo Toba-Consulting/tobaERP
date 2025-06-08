@@ -2570,6 +2570,7 @@ public abstract class AbstractADWindowContent extends AbstractUIPart implements 
     @Override
     public void onFind()
     {
+    	/*
         if (adTabbox.getSelectedGridTab() == null)
             return;
 
@@ -2587,7 +2588,54 @@ public abstract class AbstractADWindowContent extends AbstractUIPart implements 
     				}
     			}
     		});        	
-        }
+        }*/
+    	
+    	// @Stephan TAOWI-2180
+    	final Callback<Boolean> callback = new Callback<Boolean>() {
+
+			@Override
+			public void onCallback(Boolean result) {
+				if (result) {
+					doOnFind();
+				}
+			}
+		};
+    	
+    	IADTabpanel dirtyTabpanel = adTabbox.getDirtyADTabpanel();
+    	
+    	if (!Env.isAutoCommit(ctx, curWindowNo) && dirtyTabpanel != null)
+		{
+			Dialog.ask(curWindowNo, "SaveChanges?", dirtyTabpanel.getGridTab().getCommitWarning(), new Callback<Boolean>() {
+
+				@Override
+				public void onCallback(Boolean result)
+				{
+					if (result)
+					{
+						if (adTabbox.getSelectedGridTab() == null)
+				            return;
+
+				        clearTitleRelatedContext();
+
+				        onSave(false, false, callback);
+					}
+					else
+					{
+						if (callback != null)
+			    			callback.onCallback(false);
+					}
+				}
+			});
+		}
+		else
+		{
+			if (adTabbox.getSelectedGridTab() == null)
+	            return;
+
+	        clearTitleRelatedContext();
+
+	        onSave(false, false, callback);
+	    }
     }
 
     /**
@@ -3383,13 +3431,17 @@ public abstract class AbstractADWindowContent extends AbstractUIPart implements 
      */
 	@Override
 	public void onReport() {
+		/*
 		if (!MRole.getDefault().isCanReport(adTabbox.getSelectedGridTab().getAD_Table_ID()))
 		{
 			Dialog.error(curWindowNo, "AccessCannotReport");
 			return;
 		}
+		*/
 
-		Callback<Boolean> callback = new Callback<Boolean>() {
+		// @Stephan TAOWI-2180
+    	IADTabpanel dirtyTabpanel = adTabbox.getDirtyADTabpanel();
+		final Callback<Boolean> callback = new Callback<Boolean>() {
 
 			@Override
 			public void onCallback(Boolean result) {
@@ -3400,7 +3452,45 @@ public abstract class AbstractADWindowContent extends AbstractUIPart implements 
 				}
 			}
 		};
-		onSave(false, true, callback);
+		
+		if (!Util.isEmpty(dirtyTabpanel.getGridTab().getCommitWarning()) ||
+    			!Env.isAutoCommit(ctx, curWindowNo))
+		{
+			Dialog.ask(curWindowNo, "SaveChanges?", dirtyTabpanel.getGridTab().getCommitWarning(), new Callback<Boolean>() {
+
+				@Override
+				public void onCallback(Boolean result)
+				{
+					if (result)
+					{
+						if (!MRole.getDefault().isCanReport(adTabbox.getSelectedGridTab().getAD_Table_ID()))
+						{
+							Dialog.error(curWindowNo, "AccessCannotReport");
+							return;
+						}
+
+						onSave(false, false, callback);
+					}
+					else
+					{
+						if (callback != null)
+			    			callback.onCallback(false);
+					}
+				}
+			});
+		}
+		else
+		{
+			if (!MRole.getDefault().isCanReport(adTabbox.getSelectedGridTab().getAD_Table_ID()))
+			{
+				Dialog.error(curWindowNo, "AccessCannotReport");
+				return;
+			}
+
+			onSave(false, false, callback);
+		}
+		
+		// onSave(false, false, callback);
 	}
 
 	/**

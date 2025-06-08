@@ -2656,6 +2656,13 @@ public class FindWindow extends Window implements EventListener<Event>, ValueCha
                         StringBuilder msglog = new StringBuilder(ColumnName).append("=").append(value);
                     	log.fine(msglog.toString());
                     }
+                    
+                    //  @Stephan fix search with account equals zero
+                    if(value instanceof Integer && (ColumnName.contains("Account") || ColumnName.contains("Acct"))){
+                    	if(((Integer) value).intValue() == 0)
+                    		continue;
+                    }
+                    //  @Stephan end
 
                     // globalqss - Carlos Ruiz - 20060711
                     // fix a bug with virtualColumn + isSelectionColumn not yielding results

@@ -1289,6 +1289,56 @@ public class WAcctViewer extends Window implements EventListener<Event>
 			lookupColumn = MColumn.getColumnName(Env.getCtx(), ase.getAD_Column_ID());
 			whereClause = "";
 		}
+		//	@Stephan TAOWI-1316
+		else if (keyColumn.equals("UserElement3_ID")) // KTU
+		{
+			MAcctSchemaElement ase = m_data.ASchema.getAcctSchemaElement(X_C_AcctSchema_Element.ELEMENTTYPE_UserColumn3);
+			lookupColumn = MColumn.getColumnName(Env.getCtx(), ase.getAD_Column_ID());
+			whereClause = "";
+		}
+		else if (keyColumn.equals("UserElement4_ID")) // KTU
+		{
+			MAcctSchemaElement ase = m_data.ASchema.getAcctSchemaElement(X_C_AcctSchema_Element.ELEMENTTYPE_UserColumn4);
+			lookupColumn = MColumn.getColumnName(Env.getCtx(), ase.getAD_Column_ID());
+			whereClause = "";
+		}
+		else if (keyColumn.equals("UserElement5_ID")) // KTU
+		{
+			MAcctSchemaElement ase = m_data.ASchema.getAcctSchemaElement(X_C_AcctSchema_Element.ELEMENTTYPE_UserColumn5);
+			lookupColumn = MColumn.getColumnName(Env.getCtx(), ase.getAD_Column_ID());
+			whereClause = "";
+		}
+		else if (keyColumn.equals("UserElement6_ID")) // KTU
+		{
+			MAcctSchemaElement ase = m_data.ASchema.getAcctSchemaElement(X_C_AcctSchema_Element.ELEMENTTYPE_UserColumn6);
+			lookupColumn = MColumn.getColumnName(Env.getCtx(), ase.getAD_Column_ID());
+			whereClause = "";
+		}
+		else if (keyColumn.equals("UserElement7_ID")) // KTU
+		{
+			MAcctSchemaElement ase = m_data.ASchema.getAcctSchemaElement(X_C_AcctSchema_Element.ELEMENTTYPE_UserColumn7);
+			lookupColumn = MColumn.getColumnName(Env.getCtx(), ase.getAD_Column_ID());
+			whereClause = "";
+		}
+		else if (keyColumn.equals("UserElement8_ID")) // KTU
+		{
+			MAcctSchemaElement ase = m_data.ASchema.getAcctSchemaElement(X_C_AcctSchema_Element.ELEMENTTYPE_UserColumn8);
+			lookupColumn = MColumn.getColumnName(Env.getCtx(), ase.getAD_Column_ID());
+			whereClause = "";
+		}
+		else if (keyColumn.equals("UserElement9_ID")) // KTU
+		{
+			MAcctSchemaElement ase = m_data.ASchema.getAcctSchemaElement(X_C_AcctSchema_Element.ELEMENTTYPE_UserColumn9);
+			lookupColumn = MColumn.getColumnName(Env.getCtx(), ase.getAD_Column_ID());
+			whereClause = "";
+		}
+		else if (keyColumn.equals("UserElement10_ID")) // KTU
+		{
+			MAcctSchemaElement ase = m_data.ASchema.getAcctSchemaElement(X_C_AcctSchema_Element.ELEMENTTYPE_UserColumn10);
+			lookupColumn = MColumn.getColumnName(Env.getCtx(), ase.getAD_Column_ID());
+			whereClause = "";
+		}
+		//	@Stephen end
 		else if (keyColumn.equals("M_Product_ID"))
 		{
 			whereClause = "";

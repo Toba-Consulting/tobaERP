@@ -30,6 +30,7 @@ import java.util.logging.Level;
 
 import org.adempiere.webui.ClientInfo;
 import org.adempiere.webui.LayoutUtils;
+import org.adempiere.webui.apps.AEnv;
 import org.adempiere.webui.component.Button;
 import org.adempiere.webui.component.Checkbox;
 import org.adempiere.webui.component.Column;
@@ -67,9 +68,12 @@ import org.compiere.util.Msg;
 import org.compiere.util.Trx;
 import org.compiere.util.TrxRunnable;
 import org.compiere.util.Util;
+import org.zkoss.zk.ui.Component;
 import org.zkoss.zk.ui.event.Event;
 import org.zkoss.zk.ui.event.EventListener;
+import org.zkoss.zk.ui.event.Events;
 import org.zkoss.zk.ui.util.Clients;
+import org.zkoss.zul.A;
 import org.zkoss.zul.Borderlayout;
 import org.zkoss.zul.Center;
 import org.zkoss.zul.Div;
@@ -134,10 +138,16 @@ public class WAllocation extends Allocation
 	/** Document date parameter */
 	private WDateEditor dateField = new WDateEditor();
 	/** Auto write off parameter */
-	private Checkbox autoWriteOff = new Checkbox();
+	//	@Stephan TAOWI-1520 hide swrite off
+	//	private Checkbox autoWriteOff = new Checkbox();
+	//	@Stephan end
 	private Label organizationLabel = new Label();
 	/** Organization parameter */
 	private WTableDirEditor organizationPick;
+	
+	private Label DescriptionLabel = new Label();
+	private Textbox DescriptionField = new Textbox();
+	
 	/** Number of column for {@link #parameterLayout} */
 	private int noOfColumn;
 	
@@ -182,9 +192,9 @@ public class WAllocation extends Allocation
 	private Button refreshButton = new Button();	
 	/** Charges. Part of {@link #allocationLayout}. */
 	private WTableDirEditor chargePick = null;
-	private Label DocTypeLabel = new Label();
+	//private Label DocTypeLabel = new Label();
 	/** Document types. Part of {@link #allocationLayout}. */
-	private WTableDirEditor DocTypePick = null;
+	//private WTableDirEditor DocTypePick = null;
 	private Label allocCurrencyLabel = new Label();
 	/** Status bar, bottom of {@link #allocationPanel} */
 	private Hlayout statusBar = new Hlayout();	
@@ -203,9 +213,14 @@ public class WAllocation extends Allocation
 		mainLayout.setStyle("min-height: 600px");
 		
 		dateLabel.setText(Msg.getMsg(Env.getCtx(), "Date"));
+		
+		//	@Stephan TAOWI-1520
+		/*
 		autoWriteOff.setSelected(false);
 		autoWriteOff.setText(Msg.getMsg(Env.getCtx(), "AutoWriteOff", true));
 		autoWriteOff.setTooltiptext(Msg.getMsg(Env.getCtx(), "AutoWriteOff", false));
+		*/
+		//	@Stephan end
 		//
 		parameterPanel.appendChild(parameterLayout);
 		allocationPanel.appendChild(allocationLayout);
@@ -216,8 +231,7 @@ public class WAllocation extends Allocation
 		invoicePanel.appendChild(invoiceLayout);
 		invoiceInfo.setText(".");
 		paymentInfo.setText(".");
-		chargeLabel.setText(" " + Msg.translate(Env.getCtx(), "C_Charge_ID"));
-		DocTypeLabel.setText(" " + Msg.translate(Env.getCtx(), "C_DocType_ID"));	
+		chargeLabel.setText(" " + Msg.translate(Env.getCtx(), "C_Charge_ID"));	
 		differenceLabel.setText(Msg.getMsg(Env.getCtx(), "Difference"));
 		differenceField.setText("0");
 		differenceField.setReadonly(true);
@@ -227,6 +241,10 @@ public class WAllocation extends Allocation
 		refreshButton.setLabel(Util.cleanAmp(Msg.getMsg(Env.getCtx(), "Refresh")));
 		refreshButton.addActionListener(this);
 		refreshButton.setAutodisable("self");
+		DescriptionLabel.setText(Msg.getMsg(Env.getCtx(), "Description"));
+		DescriptionLabel.setStyle("text-align: left");
+		DescriptionField.setText(Msg.getMsg(Env.getCtx(), ""));		
+		DescriptionField.setStyle("text-align: left");
 		currencyLabel.setText(Msg.translate(Env.getCtx(), "C_Currency_ID"));
 		multiCurrency.setText(Msg.getMsg(Env.getCtx(), "MultiCurrency"));
 		multiCurrency.addActionListener(this);
@@ -340,20 +358,21 @@ public class WAllocation extends Allocation
 		row.appendCellChild(bpartnerLabel.rightAlign());
 		ZKUpdateUtil.setHflex(bpartnerSearch.getComponent(), "true");
 		row.appendCellChild(bpartnerSearch.getComponent(),1);
-		bpartnerSearch.showMenu();
 		row.appendChild(dateLabel.rightAlign());
 		row.appendChild(dateField.getComponent());
 		
 		row.appendCellChild(organizationLabel.rightAlign());
 		ZKUpdateUtil.setHflex(organizationPick.getComponent(), "true");
 		row.appendCellChild(organizationPick.getComponent(),1);
-		organizationPick.showMenu();		
 		
 		row = rows.newRow();
 		row.appendCellChild(currencyLabel.rightAlign(),1);
 		ZKUpdateUtil.setHflex(currencyPick.getComponent(), "true");
-		row.appendCellChild(currencyPick.getComponent(),1);		
-		currencyPick.showMenu();
+		row.appendCellChild(currencyPick.getComponent(),1);
+		
+		row.appendCellChild(DescriptionLabel.rightAlign());
+		row.appendCellChild(DescriptionField);
+		DescriptionField.setHflex("true");
 		
 		Hbox cbox = new Hbox();
 		cbox.setWidth("100%");
@@ -362,8 +381,8 @@ public class WAllocation extends Allocation
 		else
 			cbox.setPack("end");
 		cbox.appendChild(multiCurrency);
-		cbox.appendChild(autoWriteOff);
-		row.appendCellChild(cbox, 2);		
+		//	cbox.appendChild(autoWriteOff);
+		//	row.appendCellChild(cbox, 2);		
 		if (noOfColumn < 6)		
 			LayoutUtils.compactTo(parameterLayout, noOfColumn);
 		else
@@ -410,11 +429,7 @@ public class WAllocation extends Allocation
 		row.appendCellChild(chargePick.getComponent());
 		if (maxWidth(SMALL_WIDTH-1))
 			row = rows.newRow();
-		row.appendCellChild(DocTypeLabel.rightAlign());
-		chargePick.showMenu();
-		ZKUpdateUtil.setHflex(DocTypePick.getComponent(), "true");
-		row.appendCellChild(DocTypePick.getComponent());
-		DocTypePick.showMenu();
+
 		if (maxWidth(SMALL_WIDTH-1))
 		{
 			row = rows.newRow();
@@ -507,13 +522,7 @@ public class WAllocation extends Allocation
 		chargePick = new WTableDirEditor("C_Charge_ID", false, false, true, lookupCharge);
 		chargePick.setValue(getC_Charge_ID());
 		chargePick.addValueChangeListener(this);
-		
-		//  Doc Type
-		AD_Column_ID = 212213;    //  C_AllocationLine.C_DocType_ID
-		MLookup lookupDocType = MLookupFactory.get (Env.getCtx(), form.getWindowNo(), 0, AD_Column_ID, DisplayType.TableDir);
-		DocTypePick = new WTableDirEditor("C_DocType_ID", false, false, true, lookupDocType);
-		DocTypePick.setValue(getC_DocType_ID());
-		DocTypePick.addValueChangeListener(this);			
+				
 	}   //  dynInit
 	
 	/**
@@ -568,7 +577,23 @@ public class WAllocation extends Allocation
 			allocateButton.setEnabled(true);
 			if (allocation != null) 
 			{
-				DocumentLink link = new DocumentLink(Msg.getElement(Env.getCtx(), MAllocationHdr.COLUMNNAME_C_AllocationHdr_ID) + ": " + allocation.getDocumentNo(), allocation.get_Table_ID(), allocation.get_ID());				
+				A link = new A(allocation.getDocumentNo());
+				link.setAttribute("Record_ID", allocation.get_ID());
+				link.setAttribute("AD_Table_ID", allocation.get_Table_ID());
+				link.addEventListener(Events.ON_CLICK, new EventListener<Event>() 
+						{
+					@Override
+					public void onEvent(Event event) throws Exception 
+					{
+						Component comp = event.getTarget();
+						Integer Record_ID = (Integer) comp.getAttribute("Record_ID");
+						Integer AD_Table_ID = (Integer) comp.getAttribute("AD_Table_ID");
+						if (Record_ID != null && Record_ID > 0 && AD_Table_ID != null && AD_Table_ID > 0)
+						{
+							AEnv.zoom(AD_Table_ID, Record_ID);
+						}
+					}
+				});
 				statusBar.appendChild(link);
 			}					
 		}
@@ -601,7 +626,10 @@ public class WAllocation extends Allocation
 			return;
 		
 		boolean isInvoice = (e.getModel().equals(invoiceTable.getModel()));
-		boolean isAutoWriteOff = autoWriteOff.isSelected();
+		//	@Stephan TAOWI-1520
+		//	boolean isAutoWriteOff = autoWriteOff.isSelected();
+		boolean isAutoWriteOff = false;
+		//	@Stephan end
 		
 		String msg = writeOff(row, col, isInvoice, paymentTable, invoiceTable, isAutoWriteOff);
 		
@@ -625,7 +653,7 @@ public class WAllocation extends Allocation
 		String name = e.getPropertyName();
 		Object value = e.getNewValue();
 		if (log.isLoggable(Level.CONFIG)) log.config(name + "=" + value);
-		if (value == null && (!name.equals("C_Charge_ID")||!name.equals("C_DocType_ID") ))
+		if (value == null && !name.equals("C_Charge_ID"))
 			return;
 		
 		// Organization
@@ -641,11 +669,6 @@ public class WAllocation extends Allocation
 			setC_Charge_ID(value!=null? ((Integer) value).intValue() : 0);
 			
 			setAllocateButton();
-		}
-
-		else if (name.equals("C_DocType_ID") )
-		{
-			setC_DocType_ID(value!=null? ((Integer) value).intValue() : 0);			
 		}
 
 		//  BPartner
@@ -775,7 +798,7 @@ public class WAllocation extends Allocation
 				public void run(String trxName)
 				{
 					statusBar.getChildren().clear();
-					allocation[0] = saveData(form.getWindowNo(), dateField.getValue(), paymentTable, invoiceTable, trxName);
+					allocation[0] = saveData(form.getWindowNo(), dateField.getValue(), paymentTable, invoiceTable, trxName, DescriptionField.getValue());
 					
 				}
 			});

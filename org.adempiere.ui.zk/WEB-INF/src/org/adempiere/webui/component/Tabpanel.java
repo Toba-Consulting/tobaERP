@@ -98,10 +98,11 @@ public class Tabpanel extends org.zkoss.zul.Tabpanel implements IdSpace, ISuppor
      * If {@link #onCloseHandler} is null, close linked tab.
      */
 	public void onClose() {
+		Tab tab = this.getLinkedTab();
 		if (onCloseHandler != null) {
 			onCloseHandler.onClose(this);
+			tab.close();
 		} else {
-			Tab tab = this.getLinkedTab();
 			if (tab != null)
 				tab.close();
 		}

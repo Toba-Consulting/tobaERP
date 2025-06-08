@@ -758,6 +758,7 @@ public class InfoProductPanel extends InfoPanel implements EventListener<Event>
 	{
 		//	Pick init
 		fillPicks(M_PriceList_ID);
+		/*	@tegar-Comment Out default value warehouse and pricelist
 		int M_PriceList_Version_ID = findPLV (M_PriceList_ID);
 		//	Set Warehouse
 		if (M_Warehouse_ID == 0)
@@ -767,6 +768,7 @@ public class InfoProductPanel extends InfoPanel implements EventListener<Event>
 		// 	Set PriceList Version
 		if (M_PriceList_Version_ID != 0)
 			setPriceListVersion (M_PriceList_Version_ID);
+		*/
 
 		//	Create Grid
 		String orderBy = null;
@@ -775,7 +777,7 @@ public class InfoProductPanel extends InfoPanel implements EventListener<Event>
 		if (M_Warehouse_ID != 0)
 		{
 			where.append(" AND p.IsSummary='N'");
-			orderBy = "QtyAvailable DESC";
+			//	orderBy = "QtyAvailable DESC";
 		}
 		//  dynamic Where Clause
 		if (p_whereClause != null && p_whereClause.length() > 0)

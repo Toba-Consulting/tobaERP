@@ -48,6 +48,7 @@ import org.compiere.model.MColumn;
 import org.compiere.model.MLookup;
 import org.compiere.model.MLookupFactory;
 import org.compiere.model.MPayment;
+import org.compiere.model.MPeriod;
 import org.compiere.model.SystemIDs;
 import org.compiere.util.CLogger;
 import org.compiere.util.DisplayType;
@@ -163,6 +164,7 @@ public class WCreateFromStatementUI extends CreateFromStatement implements Event
 		//  Set Default
 		int C_BankAccount_ID = Env.getContextAsInt(Env.getCtx(), p_WindowNo, "C_BankAccount_ID");
 		bankAccountField.setValue(Integer.valueOf(C_BankAccount_ID));
+		bankAccountField.setReadWrite(false); //@win lock bank account to use default at statement header
 		//  initial Loading
 		authorizationField = new WStringEditor ("authorization", false, false, true, 10, 30, null, null);
 		authorizationField.getComponent().addEventListener(Events.ON_CHANGE, this);
@@ -310,8 +312,14 @@ public class WCreateFromStatementUI extends CreateFromStatement implements Event
 	 */
 	protected void loadBankAccount()
 	{
+		//@win - restrict data by period
+		MPeriod period = MPeriod.get(Env.getCtx(), Env.getContextAsDate(Env.getCtx(), p_WindowNo, MBankStatement.COLUMNNAME_DateAcct), 
+				Env.getContextAsInt(Env.getCtx(), p_WindowNo, MBankStatement.COLUMNNAME_AD_Org_ID), null);
+				
+		//@win
+		
 		loadTableOIS(getBankAccountData((Integer)bankAccountField.getValue(), (Integer)bPartnerLookup.getValue(), 
-				documentNoField.getValue().toString(), dateFromField.getValue(), dateToField.getValue(),
+				documentNoField.getValue().toString(), period.getStartDate(), period.getEndDate(), dateFromField.getValue(), dateToField.getValue(),
 				amtFromField.getValue(), amtToField.getValue(), 
 				(Integer)documentTypeField.getValue(), (String)tenderTypeField.getValue(), authorizationField.getValue().toString()));
 	}

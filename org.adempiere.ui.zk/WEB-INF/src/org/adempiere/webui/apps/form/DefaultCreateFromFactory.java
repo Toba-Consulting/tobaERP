@@ -18,6 +18,7 @@ import org.compiere.grid.ICreateFromFactory;
 import org.compiere.model.GridTab;
 import org.compiere.model.I_C_BankStatement;
 import org.compiere.model.I_C_Invoice;
+import org.compiere.model.I_C_Order;
 import org.compiere.model.I_M_InOut;
 import org.compiere.model.I_M_PackageMPS;
 import org.compiere.model.I_M_RMA;
@@ -46,6 +47,8 @@ public class DefaultCreateFromFactory implements ICreateFromFactory
 			return new WCreateFromPackageShipmentUI(mTab);
 		else if (tableName.equals(I_C_DepositBatch.Table_Name))
 			return new WCreateFromDepositBatchUI(mTab);
+		else if (tableName.equals(I_C_Order.Table_Name))
+			return new WCreateFromOrderUI(mTab);
 		return null;
 	}
 

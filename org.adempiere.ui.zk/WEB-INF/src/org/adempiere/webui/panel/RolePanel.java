@@ -882,6 +882,13 @@ public class RolePanel extends Window implements EventListener<Event>, Deferrabl
 
 		// Elaine 2009/02/06 save preference to AD_Preference
 		UserPreference userPreference = SessionManager.getSessionApplication().getUserPreference();
+		
+		/*	#TODO: temporary added by figo
+		 * 	need to set value AD_User_ID for user preference
+		 */
+		userPreference.loadPreference(Env.getAD_User_ID(m_ctx));
+		// end figo
+		
 		if (lstItemLanguage != null && lstItemLanguage.getValue() != null)
 			userPreference.setProperty(UserPreference.P_LANGUAGE,  (String) lstItemLanguage.getValue());
 		else

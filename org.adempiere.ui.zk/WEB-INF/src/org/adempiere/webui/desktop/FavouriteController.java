@@ -72,7 +72,10 @@ public class FavouriteController
 		{
 			vTree = (MTreeFavorite) MTable.get(Env.getCtx(), MTreeFavorite.Table_ID).getPO(0, null);
 			MUser user = MUser.get(AD_User_ID);
-			vTree.set_ValueOfColumn(I_AD_Tree_Favorite.COLUMNNAME_AD_Client_ID, user.getAD_Client_ID());
+			
+			if (user.getAD_Client_ID() >= 0)
+				vTree.set_ValueNoCheck(I_AD_Tree_Favorite.COLUMNNAME_AD_Client_ID, user.getAD_Client_ID());
+			
 			vTree.setAD_Org_ID(user.getAD_Org_ID());
 			// Support for System user
 			vTree.set_ValueNoCheck(MTreeFavorite.COLUMNNAME_AD_User_ID, Integer.valueOf(AD_User_ID));

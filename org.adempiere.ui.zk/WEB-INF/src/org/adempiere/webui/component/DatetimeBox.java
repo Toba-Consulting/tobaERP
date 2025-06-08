@@ -19,6 +19,8 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.TimeZone;
 
+import org.compiere.model.MLanguage;
+import org.compiere.util.Env;
 import org.zkoss.zk.ui.event.EventListener;
 
 /**
@@ -43,6 +45,8 @@ public class DatetimeBox extends Panel {
 		dateBox = new Datebox();
 		dateBox.setCols(10);
 		timeBox = new Timebox();
+		if(!getTimePattern().isEmpty())
+			timeBox.setFormat(getTimePattern());
 		timeBox.setCols(10);
 		appendChild(dateBox);
 		appendChild(timeBox);
@@ -215,5 +219,23 @@ public class DatetimeBox extends Panel {
 	public void setValueInZonedDateTime(ZonedDateTime zdt) {
 		dateBox.setValueInZonedDateTime(zdt);
 		timeBox.setValueInZonedDateTime(zdt);
+	}
+	
+	/**
+	 * @return time pattern
+	 */
+	public String getTimePattern(){
+		
+		String lang = Env.getAD_Language(Env.getCtx());
+		MLanguage language = MLanguage.get(Env.getCtx(), lang);
+		lang = language.getTimePattern();
+		
+		if(lang == null)
+			lang = "";
+		
+		if(!lang.isEmpty())
+			return lang;
+		
+		return "";
 	}
 }

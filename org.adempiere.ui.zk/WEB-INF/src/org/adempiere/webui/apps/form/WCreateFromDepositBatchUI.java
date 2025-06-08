@@ -48,6 +48,7 @@ import org.compiere.model.MDepositBatchLine;
 import org.compiere.model.MLookup;
 import org.compiere.model.MLookupFactory;
 import org.compiere.model.MPayment;
+import org.compiere.model.MPeriod;
 import org.compiere.model.SystemIDs;
 import org.compiere.util.CLogger;
 import org.compiere.util.DisplayType;
@@ -293,8 +294,14 @@ public class WCreateFromDepositBatchUI extends CreateFromDepositBatch implements
 	 */
 	protected void loadBankAccount()
 	{
+		//@win - restrict data by period
+		MPeriod period = MPeriod.get(Env.getCtx(), Env.getContextAsDate(Env.getCtx(), p_WindowNo, MBankStatement.COLUMNNAME_DateAcct), 
+				Env.getContextAsInt(Env.getCtx(), p_WindowNo, MBankStatement.COLUMNNAME_AD_Org_ID), null);
+				
+		//@win
+		
 		loadTableOIS(getBankAccountData((Integer)bankAccountField.getValue(), (Integer)bPartnerLookup.getValue(), 
-				documentNoField.getValue().toString(), dateFromField.getValue(), dateToField.getValue(),
+				documentNoField.getValue().toString(), period.getStartDate(), period.getEndDate(), dateFromField.getValue(), dateToField.getValue(),
 				amtFromField.getValue(), amtToField.getValue(), 
 				(Integer)documentTypeField.getValue(), (String)tenderTypeField.getValue(), authorizationField.getValue().toString()));
 	}

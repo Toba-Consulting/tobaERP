@@ -103,6 +103,8 @@ public class WWFActivity extends ADForm implements EventListener<Event>
 
 	//
 	private Label lNode = new Label(Msg.translate(Env.getCtx(), "AD_WF_Node_ID"));
+	private Label lViewDocument = new Label(Msg.translate(Env.getCtx(), "ViewDocument"));
+	private Label lCommit = new Label(Msg.translate(Env.getCtx(), "Commit"));
 	private Textbox fNode = new Textbox();
 	private Label lDesctiption = new Label(Msg.translate(Env.getCtx(), "Description"));
 	private Textbox fDescription = new Textbox();
@@ -191,12 +193,12 @@ public class WWFActivity extends ADForm implements EventListener<Event>
 		Columns columns = new Columns();
 		grid.appendChild(columns);
 		Column column = new Column();
-		ZKUpdateUtil.setWidth(column, "30%");
+		ZKUpdateUtil.setWidth(column, "20%");
 		columns.appendChild(column);
 		column = new Column();
 		ZKUpdateUtil.setWidth(column, "70%");
 		columns.appendChild(column);
-
+		
 		Rows rows = new Rows();
 		grid.appendChild(rows);
 
@@ -277,6 +279,19 @@ public class WWFActivity extends ADForm implements EventListener<Event>
 		row.appendChild(div);
 		hbox = new Hbox();
 		hbox.appendChild(fForward.getComponent());
+		div = new Div();
+		div.setStyle("text-align: right;");
+		div.appendChild(lViewDocument);
+		row.appendChild(div);
+		row.appendChild(bZoom);
+		bZoom.addEventListener(Events.ON_CLICK, this);
+		
+		row = new Row();
+		rows.appendChild(row);
+		div = new Div();
+		div.setStyle("text-align: right;");
+		div.appendChild(lCommit);
+		row.appendChild(div);
 		hbox.appendChild(bOK);
 		hbox.appendChild(bRefresh);
 		row.appendChild(hbox);
@@ -293,7 +308,7 @@ public class WWFActivity extends ADForm implements EventListener<Event>
 		north.setSplittable(true);
 		ZKUpdateUtil.setVflex(listbox, "1");
 		ZKUpdateUtil.setHflex(listbox, "1");
-		ZKUpdateUtil.setHeight(north, "49%");
+		ZKUpdateUtil.setHeight(north, "25%");
 		layout.appendChild(north);
 		north.setStyle("background-color: transparent");
 		listbox.addEventListener(Events.ON_SELECT, this);

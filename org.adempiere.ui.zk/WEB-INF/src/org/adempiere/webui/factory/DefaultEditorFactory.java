@@ -28,6 +28,7 @@ import org.adempiere.webui.editor.WDatetimeEditor;
 import org.adempiere.webui.editor.WEditor;
 import org.adempiere.webui.editor.WFileDirectoryEditor;
 import org.adempiere.webui.editor.WFilenameEditor;
+import org.adempiere.webui.editor.WGoogleMapsEditor;
 import org.adempiere.webui.editor.WHtmlEditor;
 import org.adempiere.webui.editor.WImageEditor;
 import org.adempiere.webui.editor.WJsonEditor;
@@ -210,6 +211,10 @@ public class DefaultEditorFactory implements IEditorFactory {
         {
         	editor = new WAssignmentEditor(gridField, tableEditor, editorConfiguration);
         }
+        else if (displayType== DisplayType.Coordinates)
+        {
+			editor = new WGoogleMapsEditor(gridField);
+		} 
         else if (displayType == DisplayType.SingleSelectionGrid)
         {
         	editor = new WGridTabSingleSelectionEditor(gridField, tableEditor, editorConfiguration);

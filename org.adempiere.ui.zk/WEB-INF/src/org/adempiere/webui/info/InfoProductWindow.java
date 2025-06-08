@@ -561,6 +561,7 @@ public class InfoProductWindow extends InfoWindow {
 	 */
 	@Override
 	protected void initParameters() {
+		/*
 		int M_Warehouse_ID = Env.getContextAsInt(Env.getCtx(), p_WindowNo, "M_Warehouse_ID");
 
 		String usePriceList=Env.getContext(Env.getCtx(), p_WindowNo, Env.PREFIX_PREDEFINED_VARIABLE+"UsePriceListInProductInfo");
@@ -609,6 +610,7 @@ public class InfoProductWindow extends InfoWindow {
 				}
 			}
 		}
+		*/
 	}
 	
 	/**
@@ -1008,7 +1010,7 @@ public class InfoProductWindow extends InfoWindow {
 			String orderBy) {
 		if (Util.isEmpty(orderBy) && getSelectedWarehouseId() > 0)
 		{
-			orderBy = "QtyAvailable DESC";
+			//orderBy = "QtyAvailable DESC";
 		}
 		super.prepareTable(layout, from, where, orderBy);
 	}

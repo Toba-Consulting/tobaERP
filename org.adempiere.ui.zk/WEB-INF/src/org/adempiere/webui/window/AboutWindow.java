@@ -259,8 +259,8 @@ public class AboutWindow extends Window implements EventListener<Event> {
 				levelListBox.setTooltiptext("Set trace level. Warning: this will effect all session not just the current session");
 				levelLabel.setTooltiptext("Set trace level. Warning: this will effect all session not just the current session");
 
-				btnAdempiereLog = new Button("iDempiere Log");
-				btnAdempiereLog.setTooltiptext("Download iDempiere log file from server");
+				btnAdempiereLog = new Button("Trace Log"); 
+				btnAdempiereLog.setTooltiptext("Download Taowi log file from server"); 
 				LayoutUtils.addSclass("txt-btn", btnAdempiereLog);
 				btnAdempiereLog.addEventListener(Events.ON_CLICK, this);
 				hbox.appendChild(new Space());

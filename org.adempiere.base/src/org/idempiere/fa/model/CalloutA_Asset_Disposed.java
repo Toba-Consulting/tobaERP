@@ -30,7 +30,10 @@ import org.compiere.model.CalloutEngine;
 import org.compiere.model.GridField;
 import org.compiere.model.GridTab;
 import org.compiere.model.I_A_Asset_Disposed;
+import org.compiere.model.MAsset;
 import org.compiere.model.MAssetDisposed;
+import org.compiere.model.MDepreciationWorkfile;
+import org.compiere.model.Query;
 import org.compiere.util.Env;
 
 /**
@@ -44,6 +47,22 @@ public class CalloutA_Asset_Disposed extends CalloutEngine
 		MAssetDisposed.updateFromAsset(bean);
 		bean.setA_Disposal_Amt(bean.getA_Asset_Cost().subtract(bean.getA_Accumulated_Depr()));
 		//
+		//@phie set qtyDisposed from a_qty_current on asset balance
+		Integer A_Asset_ID = (Integer)mTab.getValue(MAssetDisposed.COLUMNNAME_A_Asset_ID);
+		if(A_Asset_ID==null)
+		{
+			mTab.setValue("QtyDisposed", Env.ZERO);
+			return "";
+		}
+		
+		MAsset asset = new MAsset(ctx, A_Asset_ID, null);
+		String whereClause="A_Asset_ID = ?";
+		int A_Depreciation_Workfile_ID = new Query(ctx, MDepreciationWorkfile.Table_Name, whereClause, asset.get_TrxName())
+											.setParameters(new Object[]{A_Asset_ID})
+											.firstId();
+		MDepreciationWorkfile assetwk = new MDepreciationWorkfile(ctx, A_Depreciation_Workfile_ID, null);		
+		mTab.setValue("QtyDisposed", assetwk.getA_QTY_Current());
+		//end phie
 		return "";
 	}
 

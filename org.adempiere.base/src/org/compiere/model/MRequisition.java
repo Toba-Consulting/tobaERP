@@ -27,6 +27,7 @@ import java.util.logging.Level;
 
 import org.adempiere.exceptions.AdempiereException;
 import org.compiere.process.DocAction;
+import org.compiere.process.DocOptions;
 import org.compiere.process.DocumentEngine;
 import org.compiere.util.DB;
 import org.compiere.util.Env;
@@ -48,7 +49,7 @@ import org.compiere.util.Util;
  *  @author Teo Sarca, www.arhipac.ro
  *  		<li>FR [ 2744682 ] Requisition: improve error reporting
  */
-public class MRequisition extends X_M_Requisition implements DocAction
+public class MRequisition extends X_M_Requisition implements DocAction, DocOptions
 {
 	/**
 	 * generated serial id
@@ -202,16 +203,29 @@ public class MRequisition extends X_M_Requisition implements DocAction
 	@Override
 	protected boolean beforeSave (boolean newRecord)
 	{
+		/* @win price list not mandatory 
 		if (getM_PriceList_ID() == 0)
 			setM_PriceList_ID();
+		*/
 		return true;
 	}	//	beforeSave
 	
 	@Override
 	protected boolean beforeDelete() {
+		
+		if(isProcessed())
+			return false;
+		
 		for (MRequisitionLine line : getLines()) {
 			line.deleteEx(true);
 		}
+		
+		String sql2 = "DELETE FROM M_MatchQuotation WHERE M_Requisition_ID="+get_ID();
+		DB.executeUpdate(sql2, get_TrxName());
+		
+		String sql3 = "DELETE FROM M_MatchRequest WHERE M_Requisition_ID="+get_ID();
+		DB.executeUpdate(sql3, get_TrxName());
+		
 		return true;
 	}
 
@@ -271,7 +285,8 @@ public class MRequisition extends X_M_Requisition implements DocAction
 		
 		//	Invalid
 		if (getAD_User_ID() == 0 
-			|| getM_PriceList_ID() == 0
+			//@win price list not mandatory 
+			//	|| getM_PriceList_ID() == 0
 			|| getM_Warehouse_ID() == 0)
 		{
 			return DocAction.STATUS_Invalid;
@@ -286,7 +301,11 @@ public class MRequisition extends X_M_Requisition implements DocAction
 		MPeriod.testPeriodOpen(getCtx(), getDateDoc(), MDocType.DOCBASETYPE_PurchaseRequisition, getAD_Org_ID());
 		
 		//	Add up Amounts
-		int precision = MPriceList.getStandardPrecision(getCtx(), getM_PriceList_ID());
+		//@win price list not mandatory
+		//int precision = MPriceList.getStandardPrecision(getCtx(), getM_PriceList_ID());
+			
+		int precision = MCurrency.getStdPrecision(getCtx(), getC_Currency_ID());
+		//
 		BigDecimal totalLines = Env.ZERO;
 		for (int i = 0; i < lines.length; i++)
 		{
@@ -412,6 +431,8 @@ public class MRequisition extends X_M_Requisition implements DocAction
 		
 		if (!closeIt())
 			return false;
+		
+		MFactAcct.deleteEx(MRequisition.Table_ID, get_ID(), get_TrxName()); 
 		
 		// After Void
 		m_processMsg = ModelValidationEngine.get().fireDocValidate(this,ModelValidator.TIMING_AFTER_VOID);
@@ -590,8 +611,11 @@ public class MRequisition extends X_M_Requisition implements DocAction
 	@Override
 	public int getC_Currency_ID()
 	{
+		/*//@win price list not mandatory 
 		MPriceList pl = MPriceList.get(getCtx(), getM_PriceList_ID(), get_TrxName());
 		return pl.getC_Currency_ID();
+		*/
+		return super.getC_Currency_ID(); 
 	}
 
 	/**
@@ -624,5 +648,43 @@ public class MRequisition extends X_M_Requisition implements DocAction
 			|| DOCSTATUS_Closed.equals(ds)
 			|| DOCSTATUS_Reversed.equals(ds);
 	}	//	isComplete
+	
+	@Override
+	public int customizeValidActions(String docStatus, Object processing,
+			String orderType, String isSOTrx, int AD_Table_ID,
+			String[] docAction, String[] options, int index) {
+		
+		for (int i = 0; i < options.length; i++) {
+			options[i] = null;
+		}
+
+		index = 0;
+
+		if (docStatus.equals(DocAction.STATUS_Drafted)) {
+			options[index++] = DocAction.ACTION_Complete;
+			options[index++] = DocAction.ACTION_Void;
+		} else if (docStatus.equals(DocAction.STATUS_InProgress)) {
+			options[index++] = DocAction.ACTION_Complete;
+			options[index++] = DocAction.ACTION_Void;
+		} else if (docStatus.equals(DocAction.STATUS_Completed)) {
+			options[index++] = DocAction.ACTION_Void;
+
+		} else if (docStatus.equals(DocAction.STATUS_Invalid)) {
+			options[index++] = DocAction.ACTION_Complete;
+			options[index++] = DocAction.ACTION_Void;
+		}
+
+		return index;
+	}
+	
+	public boolean hasMatchingRequisitionPO() {
+
+		final String whereClause = I_M_MatchPR.COLUMNNAME_M_Requisition_ID + "=?";
+		boolean match = new Query(getCtx(),X_M_MatchPR.Table_Name, whereClause, get_TrxName())
+				.setParameters(get_ID())
+				.match();
+
+		return match;
+	}
 	
 }	//	MRequisition

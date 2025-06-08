@@ -658,4 +658,104 @@ public class X_C_RfQResponse extends PO implements I_C_RfQResponse, I_Persistent
 			 return 0;
 		return ii.intValue();
 	}
+	
+	public org.compiere.model.I_C_PaymentTerm getC_PaymentTerm() throws RuntimeException
+    {
+		return (org.compiere.model.I_C_PaymentTerm)MTable.get(getCtx(), org.compiere.model.I_C_PaymentTerm.Table_Name)
+			.getPO(getC_PaymentTerm_ID(), get_TrxName());	}
+
+	/** Set Payment Term.
+		@param C_PaymentTerm_ID 
+		The terms of Payment (timing, discount)
+	  */
+	public void setC_PaymentTerm_ID (int C_PaymentTerm_ID)
+	{
+		if (C_PaymentTerm_ID < 1) 
+			set_Value (COLUMNNAME_C_PaymentTerm_ID, null);
+		else 
+			set_Value (COLUMNNAME_C_PaymentTerm_ID, Integer.valueOf(C_PaymentTerm_ID));
+	}
+
+	/** Get Payment Term.
+		@return The terms of Payment (timing, discount)
+	  */
+	public int getC_PaymentTerm_ID () 
+	{
+		Integer ii = (Integer)get_Value(COLUMNNAME_C_PaymentTerm_ID);
+		if (ii == null)
+			 return 0;
+		return ii.intValue();
+	}
+	
+	/** Set Date Valid.
+		@param DateValid Date Valid	  */
+	public void setDateValid (Timestamp DateValid)
+	{
+		set_Value (COLUMNNAME_DateValid, DateValid);
+	}
+	
+	/** Get Date Valid.
+		@return Date Valid	  */
+	public Timestamp getDateValid () 
+	{
+		return (Timestamp)get_Value(COLUMNNAME_DateValid);
+	}
+	
+	/** Set Internal.
+		@param IsInternal 
+		Internal Organization
+	  */
+	public void setIsInternal (boolean IsInternal)
+	{
+		set_Value (COLUMNNAME_IsInternal, Boolean.valueOf(IsInternal));
+	}
+	
+	/** Get Internal.
+		@return Internal Organization
+	  */
+	public boolean isInternal () 
+	{
+		Object oo = get_Value(COLUMNNAME_IsInternal);
+		if (oo != null) 
+		{
+			 if (oo instanceof Boolean) 
+				 return ((Boolean)oo).booleanValue(); 
+			return "Y".equals(oo);
+		}
+		return false;
+	}
+	
+	/** PaymentRule AD_Reference_ID=195 */
+	public static final int PAYMENTRULE_AD_Reference_ID=195;
+	/** Cash = B */
+	public static final String PAYMENTRULE_Cash = "B";
+	/** Credit Card = K */
+	public static final String PAYMENTRULE_CreditCard = "K";
+	/** Direct Deposit = T */
+	public static final String PAYMENTRULE_DirectDeposit = "T";
+	/** Check = S */
+	public static final String PAYMENTRULE_Check = "S";
+	/** On Credit = P */
+	public static final String PAYMENTRULE_OnCredit = "P";
+	/** Direct Debit = D */
+	public static final String PAYMENTRULE_DirectDebit = "D";
+	/** Mixed POS Payment = M */
+	public static final String PAYMENTRULE_MixedPOSPayment = "M";
+	/** Set Payment Rule.
+		@param PaymentRule 
+		How you pay the invoice
+	  */
+	public void setPaymentRule (String PaymentRule)
+	{
+
+		set_Value (COLUMNNAME_PaymentRule, PaymentRule);
+	}
+
+	/** Get Payment Rule.
+		@return How you pay the invoice
+	  */
+	public String getPaymentRule () 
+	{
+		return (String)get_Value(COLUMNNAME_PaymentRule);
+	}
 }

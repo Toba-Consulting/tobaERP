@@ -448,6 +448,12 @@ public class X_C_BankStatement extends PO implements I_C_BankStatement, I_Persis
 	public static final String DOCSTATUS_WaitingConfirmation = "WC";
 	/** Waiting Payment = WP */
 	public static final String DOCSTATUS_WaitingPayment = "WP";
+	/** Request Approval = RA */
+	public static final String DOCSTATUS_RequestApproval = "RA";
+	/** Feedback = FD */
+	public static final String DOCSTATUS_Feedback = "FD";
+	/** Reject = RJ */
+	public static final String DOCSTATUS_Reject = "RJ";
 	/** Set Document Status.
 		@param DocStatus The current status of the document
 	*/

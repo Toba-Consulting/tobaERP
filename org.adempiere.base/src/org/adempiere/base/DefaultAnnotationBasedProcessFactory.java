@@ -44,7 +44,7 @@ public final class DefaultAnnotationBasedProcessFactory extends AnnotationBasedP
 		return new String[] {"org.adempiere.process","org.compiere.impexp","org.compiere.print","org.compiere.process",
 				"org.compiere.report","org.compiere.sla","org.compiere.wf","org.eevolution.process",
 				"org.globalqss.process","org.idempiere.broadcast.process","org.idempiere.fa.process",
-				"org.idempiere.process"};
+				"org.idempiere.process", "org.taowi.process"};
 	}
 
 }

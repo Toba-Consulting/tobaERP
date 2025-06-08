@@ -49,7 +49,7 @@ public class MatchInvReverse extends SvrProcess {
 		if (inv.get_ID() != p_M_MatchInv_ID)
 			throw new AdempiereException("@NotFound@ @M_MatchInv_ID@ " + p_M_MatchInv_ID);
 		
-		if (inv.isProcessed())
+		if (inv.isPosted())
 		{		
 			Timestamp reversalDate = Env.getContextAsDate(getCtx(), Env.DATE);
 			if (reversalDate == null) {

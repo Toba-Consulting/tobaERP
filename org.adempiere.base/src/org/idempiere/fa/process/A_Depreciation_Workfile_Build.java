@@ -40,7 +40,7 @@ public class A_Depreciation_Workfile_Build extends SvrProcess
 	
 	@Override
 	protected void prepare() {
-		A_Depreciation_Workfile_ID = getRecord_ID();
+		
 		ProcessInfoParameter[] para = getParameter();
 		for (int i = 0; i < para.length; i++)
 		{
@@ -59,6 +59,8 @@ public class A_Depreciation_Workfile_Build extends SvrProcess
 	
 	@Override
 	protected String doIt() throws Exception {
+		
+		A_Depreciation_Workfile_ID = getRecord_ID();
 		int cnt_all = 0;
 		if (A_Depreciation_Workfile_ID > 0) {
 			MDepreciationWorkfile wk = new MDepreciationWorkfile(getCtx(), A_Depreciation_Workfile_ID, get_TrxName());

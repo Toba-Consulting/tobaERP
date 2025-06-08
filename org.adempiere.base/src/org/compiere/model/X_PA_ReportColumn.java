@@ -609,6 +609,22 @@ public class X_PA_ReportColumn extends PO implements I_PA_ReportColumn, I_Persis
 	public static final String ELEMENTTYPE_UserColumn1 = "X1";
 	/** User Column 2 = X2 */
 	public static final String ELEMENTTYPE_UserColumn2 = "X2";
+	/** User Column 3 = X3 */
+	public static final String ELEMENTTYPE_UserColumn3 = "X3";
+	/** User Column 4 = X4 */
+	public static final String ELEMENTTYPE_UserColumn4 = "X4";
+	/** User Column 5 = X5 */
+	public static final String ELEMENTTYPE_UserColumn5 = "X5";
+	/** User Column 6 = X6 */
+	public static final String ELEMENTTYPE_UserColumn6 = "X6";
+	/** User Column 7 = X7 */
+	public static final String ELEMENTTYPE_UserColumn7 = "X7";
+	/** User Column 8 = X8 */
+	public static final String ELEMENTTYPE_UserColumn8 = "X8";
+	/** User Column 9 = X9 */
+	public static final String ELEMENTTYPE_UserColumn9 = "X9";
+	/** User Column 10 = X10 */
+	public static final String ELEMENTTYPE_UserColumn10 = "X10";
 	/** Set Type.
 		@param ElementType Element Type (account or user defined)
 	*/
@@ -1469,6 +1485,190 @@ public class X_PA_ReportColumn extends PO implements I_PA_ReportColumn, I_Persis
 	public int getUserElement2_ID()
 	{
 		Integer ii = (Integer)get_Value(COLUMNNAME_UserElement2_ID);
+		if (ii == null)
+			 return 0;
+		return ii.intValue();
+	}
+	
+	/** Set User Column 3.
+		@param UserElement3_ID 
+		User defined accounting Element
+	  */
+	public void setUserElement3_ID (int UserElement3_ID)
+	{
+		if (UserElement3_ID < 1) 
+			set_Value (COLUMNNAME_UserElement3_ID, null);
+		else 
+			set_Value (COLUMNNAME_UserElement3_ID, Integer.valueOf(UserElement3_ID));
+	}
+	
+	/** Get User Column 3.
+		@return User defined accounting Element
+	  */
+	public int getUserElement3_ID () 
+	{
+		Integer ii = (Integer)get_Value(COLUMNNAME_UserElement3_ID);
+		if (ii == null)
+			 return 0;
+		return ii.intValue();
+	}
+	
+	/** Set User Column 4.
+		@param UserElement4_ID 
+		User defined accounting Element
+	  */
+	public void setUserElement4_ID (int UserElement4_ID)
+	{
+		if (UserElement4_ID < 1) 
+			set_Value (COLUMNNAME_UserElement4_ID, null);
+		else 
+			set_Value (COLUMNNAME_UserElement4_ID, Integer.valueOf(UserElement4_ID));
+	}
+	
+	/** Get User Column 4.
+		@return User defined accounting Element
+	  */
+	public int getUserElement4_ID () 
+	{
+		Integer ii = (Integer)get_Value(COLUMNNAME_UserElement4_ID);
+		if (ii == null)
+			 return 0;
+		return ii.intValue();
+	}
+	
+	/** Set User Column 5.
+		@param UserElement5_ID 
+		User defined accounting Element
+	  */
+	public void setUserElement5_ID (int UserElement5_ID)
+	{
+		if (UserElement5_ID < 1) 
+			set_Value (COLUMNNAME_UserElement5_ID, null);
+		else 
+			set_Value (COLUMNNAME_UserElement5_ID, Integer.valueOf(UserElement5_ID));
+	}
+	
+	/** Get User Column 5.
+		@return User defined accounting Element
+	  */
+	public int getUserElement5_ID () 
+	{
+		Integer ii = (Integer)get_Value(COLUMNNAME_UserElement5_ID);
+		if (ii == null)
+			 return 0;
+		return ii.intValue();
+	}
+	
+	/** Set User Column 6.
+		@param UserElement6_ID 
+		User defined accounting Element
+	  */
+	public void setUserElement6_ID (int UserElement6_ID)
+	{
+		if (UserElement6_ID < 1) 
+			set_Value (COLUMNNAME_UserElement6_ID, null);
+		else 
+			set_Value (COLUMNNAME_UserElement6_ID, Integer.valueOf(UserElement6_ID));
+	}
+	
+	/** Get User Column 6.
+		@return User defined accounting Element
+	  */
+	public int getUserElement6_ID () 
+	{
+		Integer ii = (Integer)get_Value(COLUMNNAME_UserElement6_ID);
+		if (ii == null)
+			 return 0;
+		return ii.intValue();
+	}
+	
+	/** Set User Column 7.
+		@param UserElement7_ID 
+		User defined accounting Element
+	  */
+	public void setUserElement7_ID (int UserElement7_ID)
+	{
+		if (UserElement7_ID < 1) 
+			set_Value (COLUMNNAME_UserElement7_ID, null);
+		else 
+			set_Value (COLUMNNAME_UserElement7_ID, Integer.valueOf(UserElement7_ID));
+	}
+	
+	/** Get User Column 7.
+		@return User defined accounting Element
+	  */
+	public int getUserElement7_ID () 
+	{
+		Integer ii = (Integer)get_Value(COLUMNNAME_UserElement7_ID);
+		if (ii == null)
+			 return 0;
+		return ii.intValue();
+	}
+	
+	/** Set User Column 8.
+		@param UserElement8_ID 
+		User defined accounting Element
+	  */
+	public void setUserElement8_ID (int UserElement8_ID)
+	{
+		if (UserElement8_ID < 1) 
+			set_Value (COLUMNNAME_UserElement8_ID, null);
+		else 
+			set_Value (COLUMNNAME_UserElement8_ID, Integer.valueOf(UserElement8_ID));
+	}
+	
+	/** Get User Column 8.
+		@return User defined accounting Element
+	  */
+	public int getUserElement8_ID () 
+	{
+		Integer ii = (Integer)get_Value(COLUMNNAME_UserElement8_ID);
+		if (ii == null)
+			 return 0;
+		return ii.intValue();
+	}
+	
+	/** Set User Column 9.
+		@param UserElement9_ID 
+		User defined accounting Element
+	  */
+	public void setUserElement9_ID (int UserElement9_ID)
+	{
+		if (UserElement9_ID < 1) 
+			set_Value (COLUMNNAME_UserElement9_ID, null);
+		else 
+			set_Value (COLUMNNAME_UserElement9_ID, Integer.valueOf(UserElement9_ID));
+	}
+	
+	/** Get User Column 9.
+		@return User defined accounting Element
+	  */
+	public int getUserElement9_ID () 
+	{
+		Integer ii = (Integer)get_Value(COLUMNNAME_UserElement9_ID);
+		if (ii == null)
+			 return 0;
+		return ii.intValue();
+	}
+	
+	/** Set User Column 10.
+		@param UserElement10_ID 
+		User defined accounting Element
+	  */
+	public void setUserElement10_ID (int UserElement10_ID)
+	{
+		if (UserElement10_ID < 1) 
+			set_Value (COLUMNNAME_UserElement10_ID, null);
+		else 
+			set_Value (COLUMNNAME_UserElement10_ID, Integer.valueOf(UserElement10_ID));
+	}
+	
+	/** Get User Column 10.
+		@return User defined accounting Element
+	  */
+	public int getUserElement10_ID () 
+	{
+		Integer ii = (Integer)get_Value(COLUMNNAME_UserElement10_ID);
 		if (ii == null)
 			 return 0;
 		return ii.intValue();

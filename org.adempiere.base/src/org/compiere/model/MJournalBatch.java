@@ -728,9 +728,12 @@ public class MJournalBatch extends X_GL_JournalBatch implements DocAction
 		MJournalBatch reverse = new MJournalBatch (this);
 		reverse.setC_Period_ID(0);
 		Timestamp reversalDate = Env.getContextAsDate(getCtx(), Env.DATE);
-		if (reversalDate == null) {
+		/*
+		 * comment out by figo - no need to check null value
+		 * if (reversalDate == null) {
+		 
 			reversalDate = new Timestamp(System.currentTimeMillis());
-		}
+		}*/
 		reverse.setDateDoc(reversalDate);
 		reverse.setDateAcct(reversalDate);
 		//	Reverse indicator

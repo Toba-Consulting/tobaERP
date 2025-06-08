@@ -30,6 +30,8 @@ import org.compiere.util.Util;
 import org.idempiere.cache.ImmutableIntPOCache;
 import org.idempiere.cache.ImmutablePOSupport;
 import org.idempiere.cache.IntPOCopyCache;
+import org.taowi.model.MBPGInvAcctByCurrency;
+import org.taowi.model.MInvAcctByCurrency;
 
 /**
  *	Business Partner Group Model 
@@ -325,8 +327,42 @@ public class MBPGroup extends X_C_BP_Group implements ImmutablePOSupport
 	@Override
 	protected boolean afterSave (boolean newRecord, boolean success)
 	{
-		if (newRecord && success)
-			return insert_Accounting("C_BP_Group_Acct", "C_AcctSchema_Default", null);
+		//	@David
+		//	if (newRecord && success)
+		//		return insert_Accounting("C_BP_Group_Acct", "C_AcctSchema_Default", null);
+		if (newRecord && success){
+			insert_Accounting("C_BP_Group_Acct", "C_AcctSchema_Default", null);
+			
+			String sqlWhereAcctSchemaIDs="EXISTS(SELECT 1 FROM C_InvAcctByCurrency WHERE C_InvAcctByCurrency.C_AcctSchema_ID=C_AcctSchema.C_AcctSchema_ID)";
+			int [] C_AcctSchema_IDs = new Query(getCtx(), MAcctSchema.Table_Name, sqlWhereAcctSchemaIDs, get_TrxName()).setOnlyActiveRecords(true).getIDs();
+			for (int C_AcctSchema_ID : C_AcctSchema_IDs) {
+				
+				String sqlWhereCurrencyIDs="EXISTS(SELECT 1 FROM C_InvAcctByCurrency WHERE C_AcctSchema_ID="+C_AcctSchema_ID+
+						" AND C_InvAcctByCurrency.C_Currency_ID=C_Currency.C_Currency_ID)";
+				int [] C_Currency_IDs = new Query(getCtx(), MCurrency.Table_Name, sqlWhereCurrencyIDs, get_TrxName()).setOnlyActiveRecords(true).getIDs();
+				
+				for (int C_Currency_ID : C_Currency_IDs) {
+					
+					String sqlWhereCurAcct="C_AcctSchema_ID="+C_AcctSchema_ID+" AND C_Currency_ID="+C_Currency_ID;
+					int curAcct_ID = new Query(getCtx(), MInvAcctByCurrency.Table_Name, sqlWhereCurAcct, get_TrxName()).setOnlyActiveRecords(true).firstId();;
+					MInvAcctByCurrency curAcct = new MInvAcctByCurrency(getCtx(), curAcct_ID, get_TrxName());
+				
+					MBPGInvAcctByCurrency bpgAcctCur = new MBPGInvAcctByCurrency(getCtx(), 0, get_TrxName());
+					bpgAcctCur.setC_BP_Group_ID(getC_BP_Group_ID());
+					bpgAcctCur.setC_AcctSchema_ID(C_AcctSchema_ID);
+					bpgAcctCur.setC_Currency_ID(C_Currency_ID);
+					bpgAcctCur.setAD_Org_ID(0);
+					bpgAcctCur.setC_Receivable_Acct(curAcct.getC_Receivable_Acct());
+					bpgAcctCur.setUnEarnedRevenue_Acct(curAcct.getUnEarnedRevenue_Acct());
+					bpgAcctCur.setV_Liability_Acct(curAcct.getV_Liability_Acct());
+					bpgAcctCur.setNotInvoicedReceipts_Acct(curAcct.getNotInvoicedReceipts_Acct());
+					bpgAcctCur.setC_Prepayment_Acct(curAcct.getC_Prepayment_Acct());
+					bpgAcctCur.setV_Prepayment_Acct(curAcct.getV_Prepayment_Acct());
+					bpgAcctCur.saveEx();
+				}
+			}
+		}
+		
 		return success;
 	}	//	afterSave
 

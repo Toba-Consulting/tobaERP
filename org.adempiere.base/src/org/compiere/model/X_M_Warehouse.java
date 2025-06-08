@@ -383,4 +383,25 @@ public class X_M_Warehouse extends PO implements I_M_Warehouse, I_Persistent
 	{
 		return (String)get_Value(COLUMNNAME_Value);
 	}
+	
+	/** Set Use Zoning?.
+		@param IsUseWHZoning Use Zoning?	  */
+	public void setIsUseWHZoning (boolean IsUseWHZoning)
+	{
+		set_Value (COLUMNNAME_IsUseWHZoning, Boolean.valueOf(IsUseWHZoning));
+	}
+	
+	/** Get Use Zoning?.
+		@return Use Zoning?	  */
+	public boolean isUseWHZoning () 
+	{
+		Object oo = get_Value(COLUMNNAME_IsUseWHZoning);
+		if (oo != null) 
+		{
+			 if (oo instanceof Boolean) 
+				 return ((Boolean)oo).booleanValue(); 
+			return "Y".equals(oo);
+		}
+		return false;
+	}
 }

@@ -21,6 +21,7 @@ import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.util.logging.Level;
 
+import org.compiere.model.MBankAccount;
 import org.compiere.model.MBankTransfer;
 import org.compiere.model.MPayment;
 import org.compiere.model.MProcessPara;
@@ -45,7 +46,7 @@ public class BankTransfer extends SvrProcess
 	private String 		p_DocumentNo= "";				// Document No
 	private String 		p_Description= "";				// Description
 	private int 		p_C_BPartner_ID = 0;   			// Business Partner to be used as bridge
-	private int			p_C_Currency_ID = 0;			// Payment Currency
+	// private int			p_C_Currency_ID = 0;		// Payment Currency
 	private int 		p_C_ConversionType_ID = 0;		// Payment Conversion Type
 	private int			p_C_Charge_ID = 0;				// Charge to be used as bridge
 
@@ -55,8 +56,9 @@ public class BankTransfer extends SvrProcess
 	private Timestamp	p_StatementDate = null;  		// Date Statement
 	private Timestamp	p_DateAcct = null;  			// Date Account
 	private int         p_AD_Org_ID = 0;
-	private boolean		p_IsCreateBankTransferDoc = false;		// Create bank transfer document?
+	//	private boolean		p_IsCreateBankTransferDoc = false;		// Create bank transfer document?
 	private int         m_created = 0;
+	private BigDecimal	p_ConversionRate = Env.ZERO;	//Rate From - To @TommyAng
 
 	/**
 	 *  Prepare - e.g., get Parameters.
@@ -74,8 +76,14 @@ public class BankTransfer extends SvrProcess
 				p_To_C_BankAccount_ID = para[i].getParameterAsInt();
 			else if (name.equals("C_BPartner_ID"))
 				p_C_BPartner_ID = para[i].getParameterAsInt();
+			
+			//@TommyAng
+			/*
 			else if (name.equals("C_Currency_ID"))
 				p_C_Currency_ID = para[i].getParameterAsInt();
+			*/
+			// end @TommyAng
+			
 			else if (name.equals("C_ConversionType_ID"))
 				p_C_ConversionType_ID = para[i].getParameterAsInt();
 			else if (name.equals("C_Charge_ID"))
@@ -92,8 +100,12 @@ public class BankTransfer extends SvrProcess
 				p_DateAcct = (Timestamp)para[i].getParameter();
 			else if (name.equals("AD_Org_ID"))
 				p_AD_Org_ID = para[i].getParameterAsInt();
+			/*
 			else if (name.equals("IsCreateBankTransferDoc"))
 				p_IsCreateBankTransferDoc = para[i].getParameterAsBoolean();
+			*/
+			else if (name.equals("ConversionRate"))
+				p_ConversionRate = para[i].getParameterAsBigDecimal();
 			else
 				MProcessPara.validateUnknownParameter(getProcessInfo().getAD_Process_ID(), para[i]);
 		}
@@ -110,7 +122,7 @@ public class BankTransfer extends SvrProcess
 		if (log.isLoggable(Level.INFO)) log.info("From Bank="+p_From_C_BankAccount_ID+" - To Bank="+p_To_C_BankAccount_ID
 				+ " - C_BPartner_ID="+p_C_BPartner_ID+"- C_Charge_ID= "+p_C_Charge_ID+" - Amount="+p_Amount+" - DocumentNo="+p_DocumentNo
 				+ " - Description="+p_Description+ " - Statement Date="+p_StatementDate+
-				" - Date Account="+p_DateAcct+ " - Create Bank Transfer Doc="+p_IsCreateBankTransferDoc);
+				" - Date Account="+p_DateAcct);
 
 		if (p_To_C_BankAccount_ID == 0 || p_From_C_BankAccount_ID == 0)
 			throw new AdempiereUserError (Msg.parseTranslation(getCtx(), "@FillMandatory@: @To_C_BankAccount_ID@, @From_C_BankAccount_ID@"));
@@ -121,8 +133,12 @@ public class BankTransfer extends SvrProcess
 		if (p_C_BPartner_ID == 0)
 			throw new AdempiereUserError (Msg.parseTranslation(getCtx(), "@FillMandatory@ @C_BPartner_ID@"));
 		
+		//@TommyAng
+		/*
 		if (p_C_Currency_ID == 0)
 			throw new AdempiereUserError (Msg.parseTranslation(getCtx(), "@FillMandatory@ @C_Currency_ID@"));
+		*/
+		//end @TommyAng
 		
 		if (p_C_Charge_ID == 0)
 			throw new AdempiereUserError (Msg.parseTranslation(getCtx(), "@FillMandatory@ @C_Charge_ID@"));
@@ -133,6 +149,9 @@ public class BankTransfer extends SvrProcess
 		if (p_AD_Org_ID == 0)
 			throw new AdempiereUserError (Msg.parseTranslation(getCtx(), "@FillMandatory@ @AD_Org_ID@"));
 
+		if (p_ConversionRate == Env.ZERO)
+			throw new AdempiereUserError(Msg.parseTranslation(getCtx(), "@FillMandatory@ @ConversionRate"));
+		
 		//	Login Date
 		if (p_StatementDate == null)
 			p_StatementDate = Env.getContextAsDate(getCtx(), Env.DATE);
@@ -142,10 +161,14 @@ public class BankTransfer extends SvrProcess
 		if (p_DateAcct == null)
 			p_DateAcct = p_StatementDate;
 
+		/*	TAOWI-Upgrade
+		 * 	comment out by figo - use existing bank transfer method
 		if (p_IsCreateBankTransferDoc)
 			generateBankTransferDoc();
 		else
 			generateBankTransfer();
+		*/
+		generateBankTransfer();
 		return "@Created@ = " + m_created;
 	}	//	doIt
 	
@@ -155,8 +178,11 @@ public class BankTransfer extends SvrProcess
 	 */
 	private void generateBankTransfer()
 	{
+		MBankAccount mBankFrom = new MBankAccount(getCtx(),p_From_C_BankAccount_ID, get_TrxName());
+		MBankAccount mBankTo = new MBankAccount(getCtx(),p_To_C_BankAccount_ID, get_TrxName());
+		
 		MPayment paymentBankFrom = new MPayment(getCtx(), 0 ,  get_TrxName());
-		paymentBankFrom.setC_BankAccount_ID(p_From_C_BankAccount_ID);
+		paymentBankFrom.setC_BankAccount_ID(mBankFrom.getC_BankAccount_ID());
 		paymentBankFrom.setAD_Org_ID(p_AD_Org_ID);
 		if (!Util.isEmpty(p_DocumentNo, true))
 			paymentBankFrom.setDocumentNo(p_DocumentNo);
@@ -165,7 +191,8 @@ public class BankTransfer extends SvrProcess
 		paymentBankFrom.setTenderType(MPayment.TENDERTYPE_DirectDeposit);
 		paymentBankFrom.setDescription(p_Description);
 		paymentBankFrom.setC_BPartner_ID (p_C_BPartner_ID);
-		paymentBankFrom.setC_Currency_ID(p_C_Currency_ID);
+		paymentBankFrom.setC_Currency_ID (mBankFrom.getC_Currency_ID()); //@TommyAng
+		//paymentBankFrom.setC_Currency_ID(p_C_Currency_ID); //@TommyAng
 		if (p_C_ConversionType_ID > 0)
 			paymentBankFrom.setC_ConversionType_ID(p_C_ConversionType_ID);	
 		paymentBankFrom.setPayAmt(p_Amount);
@@ -184,7 +211,7 @@ public class BankTransfer extends SvrProcess
 		m_created++;
 
 		MPayment paymentBankTo = new MPayment(getCtx(), 0 ,  get_TrxName());
-		paymentBankTo.setC_BankAccount_ID(p_To_C_BankAccount_ID);
+		paymentBankTo.setC_BankAccount_ID(mBankTo.getC_BankAccount_ID());
 		paymentBankTo.setAD_Org_ID(p_AD_Org_ID);
 		if (!Util.isEmpty(p_DocumentNo, true))
 			paymentBankTo.setDocumentNo(p_DocumentNo);
@@ -193,10 +220,13 @@ public class BankTransfer extends SvrProcess
 		paymentBankTo.setTenderType(MPayment.TENDERTYPE_DirectDeposit);
 		paymentBankTo.setDescription(p_Description);
 		paymentBankTo.setC_BPartner_ID (p_C_BPartner_ID);
-		paymentBankTo.setC_Currency_ID(p_C_Currency_ID);
+		//	paymentBankTo.setC_Currency_ID(p_C_Currency_ID);	//@TommyAng
+		paymentBankTo.setC_Currency_ID(mBankTo.getC_Currency_ID()); //@TommyAng
 		if (p_C_ConversionType_ID > 0)
 			paymentBankTo.setC_ConversionType_ID(p_C_ConversionType_ID);	
-		paymentBankTo.setPayAmt(p_Amount);
+		
+		//	paymentBankTo.setPayAmt(p_Amount);	//@TommyAng
+		paymentBankTo.setPayAmt(p_ConversionRate.multiply(p_Amount)); //@TommyAng
 		paymentBankTo.setOverUnderAmt(Env.ZERO);
 		paymentBankTo.setC_DocType_ID(true);
 		paymentBankTo.setC_Charge_ID(p_C_Charge_ID);
@@ -217,6 +247,9 @@ public class BankTransfer extends SvrProcess
 	 * @throws Exception 
 	 */
 	private void generateBankTransferDoc() throws Exception {
+		/*
+		 * 	TAOWI-Upgrade
+		 * 	comment out by figo - use existing bank transfer method
 		MBankTransfer bt = new MBankTransfer(getCtx(), 0, get_TrxName());
 		bt.setAD_Org_ID(p_AD_Org_ID);
 		bt.setDescription(p_Description);
@@ -261,6 +294,7 @@ public class BankTransfer extends SvrProcess
 					MPayment.Table_ID, payment.getC_Payment_ID());
 			m_created++;
 		}
+		*/
 	}  //  generateBankTransfer
 
 }	//	BankTransfer

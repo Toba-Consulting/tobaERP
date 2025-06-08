@@ -857,4 +857,85 @@ public class X_M_Inventory extends PO implements I_M_Inventory, I_Persistent
 			 return 0;
 		return ii.intValue();
 	}
+	
+	public org.compiere.model.I_C_Charge getC_Charge() throws RuntimeException
+    {
+		return (org.compiere.model.I_C_Charge)MTable.get(getCtx(), org.compiere.model.I_C_Charge.Table_Name)
+			.getPO(getC_Charge_ID(), get_TrxName());	}
+	
+	/** Set Charge.
+	@param C_Charge_ID 
+		Additional document charges
+	  */
+	public void setC_Charge_ID (int C_Charge_ID)
+	{
+		if (C_Charge_ID < 1) 
+			set_ValueNoCheck (COLUMNNAME_C_Charge_ID, null);
+		else 
+			set_ValueNoCheck (COLUMNNAME_C_Charge_ID, Integer.valueOf(C_Charge_ID));
+	}
+	
+	/** Get Charge.
+	@return Additional document charges
+	  */
+	public int getC_Charge_ID () 
+	{
+		Integer ii = (Integer)get_Value(COLUMNNAME_C_Charge_ID);
+		if (ii == null)
+			 return 0;
+		return ii.intValue();
+	}
+	
+	public org.compiere.model.I_M_Locator getM_Locator() throws RuntimeException
+    {
+		return (org.compiere.model.I_M_Locator)MTable.get(getCtx(), org.compiere.model.I_M_Locator.Table_Name)
+			.getPO(getM_Locator_ID(), get_TrxName());	}
+
+	/** Set Locator.
+		@param M_Locator_ID 
+		Warehouse Locator
+	  */
+	public void setM_Locator_ID (int M_Locator_ID)
+	{
+		if (M_Locator_ID < 1) 
+			set_ValueNoCheck (COLUMNNAME_M_Locator_ID, null);
+		else 
+			set_ValueNoCheck (COLUMNNAME_M_Locator_ID, Integer.valueOf(M_Locator_ID));
+	}
+
+	/** Get Locator.
+		@return Warehouse Locator
+	  */
+	public int getM_Locator_ID () 
+	{
+		Integer ii = (Integer)get_Value(COLUMNNAME_M_Locator_ID);
+		if (ii == null)
+			 return 0;
+		return ii.intValue();
+	}
+	
+	public I_M_WarehouseZone getM_WarehouseZone() throws RuntimeException
+    {
+		return (I_M_WarehouseZone)MTable.get(getCtx(), I_M_WarehouseZone.Table_Name)
+			.getPO(getM_WarehouseZone_ID(), get_TrxName());	}
+
+	/** Set Warehouse Zone.
+		@param M_WarehouseZone_ID Warehouse Zone	  */
+	public void setM_WarehouseZone_ID (int M_WarehouseZone_ID)
+	{
+		if (M_WarehouseZone_ID < 1) 
+			set_Value (COLUMNNAME_M_WarehouseZone_ID, null);
+		else 
+			set_Value (COLUMNNAME_M_WarehouseZone_ID, Integer.valueOf(M_WarehouseZone_ID));
+	}
+
+	/** Get Warehouse Zone.
+		@return Warehouse Zone	  */
+	public int getM_WarehouseZone_ID () 
+	{
+		Integer ii = (Integer)get_Value(COLUMNNAME_M_WarehouseZone_ID);
+		if (ii == null)
+			 return 0;
+		return ii.intValue();
+	}
 }

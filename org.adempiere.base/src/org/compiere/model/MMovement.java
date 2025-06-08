@@ -20,6 +20,7 @@ import java.io.File;
 import java.math.BigDecimal;
 import java.sql.ResultSet;
 import java.sql.Timestamp;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 import java.util.logging.Level;
@@ -27,6 +28,7 @@ import java.util.logging.Level;
 import org.adempiere.exceptions.NegativeInventoryDisallowedException;
 import org.adempiere.exceptions.PeriodClosedException;
 import org.compiere.process.DocAction;
+import org.compiere.process.DocOptions;
 import org.compiere.process.DocumentEngine;
 import org.compiere.util.CLogger;
 import org.compiere.util.DB;
@@ -50,7 +52,7 @@ import org.compiere.util.Util;
  *  		<li>FR [ 2214883 ] Remove SQL code and Replace for Query
  *  @version $Id: MMovement.java,v 1.3 2006/07/30 00:51:03 jjanke Exp $
  */
-public class MMovement extends X_M_Movement implements DocAction
+public class MMovement extends X_M_Movement implements DocAction, DocOptions 
 {
 	/**
 	 * generated serial id
@@ -893,6 +895,51 @@ public class MMovement extends X_M_Movement implements DocAction
 		reversal.setReversal(true);
 		//	Reverse Line Qty
 		MMovementLine[] oLines = getLines(true);
+		//	@phie
+		ArrayList<MStorageOnHandTemp> onHandTemp = new ArrayList<MStorageOnHandTemp>();
+		boolean skip = false;
+		BigDecimal sumQtyOnhand=Env.ZERO;
+		//Create temporary on hand
+		for(int j=0 ; j<oLines.length;j++){
+			//get storage on hand and store to onhand temp, for the first line
+			if(j==0){
+				//In movement case, get on hand from LocatorTo (Locator to be reduced)
+				MStorageOnHand[] onhand = MStorageOnHand.getAll(getCtx(), oLines[j].getM_Product_ID(), 
+						oLines[j].getM_LocatorTo_ID(), get_TrxName());
+				
+				for(int n=0;n<onhand.length;n++) {
+					MStorageOnHandTemp temp = new MStorageOnHandTemp(onhand[n].getQtyOnHand(), onhand[n].getDateMaterialPolicy(), 
+							onhand[n].getM_Product_ID(), onhand[n].getM_Locator_ID());
+					onHandTemp.add(temp);
+				}
+			}
+			else {
+				skip = false;
+				//check the next line, if both product and locator same with one of the previous line then skip
+				//compare locator to and product
+				for(int k=0;k<j;k++) {
+					if(oLines[j].getM_Product_ID() == oLines[k].getM_Product_ID() 
+							&& oLines[j].getM_LocatorTo_ID() == oLines[k].getM_LocatorTo_ID()){
+						skip = true;
+						break;
+					}
+				}
+				
+				//if this line has a different product and locator with all of the previous line then get storage on hand and store to onhand temp
+				if(!skip){
+					//In movement case, get on hand from LocatorTo (Locator to be reduced)
+					MStorageOnHand[] onhand = MStorageOnHand.getAll(getCtx(), oLines[j].getM_Product_ID(), 
+							oLines[j].getM_LocatorTo_ID(), get_TrxName());
+					
+					for(int n=0;n<onhand.length;n++) {
+						MStorageOnHandTemp temp = new MStorageOnHandTemp(onhand[n].getQtyOnHand(), onhand[n].getDateMaterialPolicy(), 
+								onhand[n].getM_Product_ID(), onhand[n].getM_Locator_ID());
+						onHandTemp.add(temp);
+					}
+				}
+			}
+		}//end phie
+		
 		for (int i = 0; i < oLines.length; i++)
 		{
 			MMovementLine oLine = oLines[i];
@@ -914,18 +961,79 @@ public class MMovement extends X_M_Movement implements DocAction
 			}
 			
 			//We need to copy MA
-			if (rLine.getM_AttributeSetInstance_ID() == 0)
+			//@phie TAOWI-2676
+			if(rLine.getM_AttributeSetInstance_ID() == 0)
 			{
-				MMovementLineMA mas[] = MMovementLineMA.get(getCtx(),
-						oLine.getM_MovementLine_ID(), get_TrxName());
-				for (int j = 0; j < mas.length; j++)
+				BigDecimal qtyToBeReversed = oLines[i].getMovementQty();
+				//sum qty onhand
+				for (int a = 0; a < onHandTemp.size(); a++)
 				{
-					MMovementLineMA ma = new MMovementLineMA (rLine, 
-							mas[j].getM_AttributeSetInstance_ID(),
-							mas[j].getMovementQty().negate(),mas[j].getDateMaterialPolicy(),true);
-					ma.saveEx();
+					MStorageOnHandTemp onhand=onHandTemp.get(a);
+					boolean pair = (rLine.getM_Product_ID() == onhand.getM_Product_ID() && 
+							rLine.getM_LocatorTo_ID() == onhand.getM_Locator_ID()) ? true : false;
+					if(pair)
+						sumQtyOnhand = sumQtyOnhand.add(onhand.getQtyOnHand());
 				}
-			}
+				
+				if(sumQtyOnhand.compareTo(qtyToBeReversed)>=0)
+				{
+					BigDecimal residual = qtyToBeReversed;
+					BigDecimal prevResidual;
+					for (int a = 0; a < onHandTemp.size(); a++)
+					{
+						MStorageOnHandTemp onhand=onHandTemp.get(a);
+						
+						//compare this on hand locator with this line locator To
+						boolean pair = (rLine.getM_Product_ID() == onhand.getM_Product_ID() && 
+								rLine.getM_LocatorTo_ID() == onhand.getM_Locator_ID()) ? true : false;
+						if(!pair)
+							continue;
+						
+						if(onhand.getQtyOnHand().compareTo(Env.ZERO) <= 0)
+							continue;
+						
+						prevResidual = residual;
+						residual = residual.subtract(onhand.getQtyOnHand());
+						
+						if(residual.compareTo(Env.ZERO)==0)
+						{
+							MMovementLineMA ma = new MMovementLineMA (rLine, 0, onhand.getQtyOnHand().negate(), onhand.getDatematerialpolicy(),true);
+							ma.saveEx();
+							onhand.setQtyOnHand(Env.ZERO);
+							break;
+						}
+						else if(residual.compareTo(Env.ZERO)<0)
+						{
+							MMovementLineMA ma = new MMovementLineMA (rLine, 0, prevResidual.negate(), onhand.getDatematerialpolicy(),true);
+							ma.saveEx();
+							onhand.setQtyOnHand(onhand.getQtyOnHand().subtract(prevResidual));
+							break;
+						}
+						else if(residual.compareTo(Env.ZERO)>0)
+						{
+							MMovementLineMA ma = new MMovementLineMA (rLine, 0, onhand.getQtyOnHand().negate(), onhand.getDatematerialpolicy(),true);
+							ma.saveEx();
+							onhand.setQtyOnHand(Env.ZERO);
+						}
+					}
+				}
+				else
+				{
+					//We need to copy MA (ori code)
+					if (rLine.getM_AttributeSetInstance_ID() == 0)
+					{
+						MMovementLineMA mas[] = MMovementLineMA.get(getCtx(),
+								oLine.getM_MovementLine_ID(), get_TrxName());
+						for (int j = 0; j < mas.length; j++)
+						{
+							MMovementLineMA ma = new MMovementLineMA (rLine, 
+									mas[j].getM_AttributeSetInstance_ID(),
+									mas[j].getMovementQty().negate(),mas[j].getDateMaterialPolicy(),true);
+							ma.saveEx();
+						}
+					}
+				}				
+			}// end phie
 			
 		}
 		//
@@ -1078,6 +1186,90 @@ public class MMovement extends X_M_Movement implements DocAction
 			|| DOCSTATUS_Closed.equals(ds)
 			|| DOCSTATUS_Reversed.equals(ds);
 	}	//	isComplete
+	
+	@Override 
+	protected boolean beforeDelete() { 
+		if(isProcessed()) 
+			return false; 
+		 
+		for (MMovementLine line : getLines(false)) { 
+			line.deleteEx(true); 
+		} 
+		 
+		try { 
+			DB.executeUpdate("DELETE FROM M_MatchMovement WHERE M_MovementLine_ID=" + get_ID(), get_TrxName()); 
+		} catch (Exception e) { 
+			log.saveError("DeleteError", "Cannot Delete Match Movement records"); 
+			e.printStackTrace(); 
+		} 
+		try { 
+			DB.executeUpdate("DELETE FROM M_MatchRequest WHERE M_MovementLine_ID=" + get_ID(), get_TrxName()); 
+		} catch (Exception e) { 
+			log.saveError("DeleteError", "Cannot Delete Match Request records"); 
+			e.printStackTrace(); 
+		} 
+ 
+		return true; 
+		 
+	} 
+	 
+	public boolean hasMatchInventoryMovement() { 
+ 
+		final String whereClause = I_M_MatchMovement.COLUMNNAME_M_Movement_ID + "=? AND " + I_M_MatchMovement.COLUMNNAME_TrxType + "=?"; 
+		ArrayList<Object> params = new ArrayList<Object>(); 
+		params.add(get_ID()); 
+		params.add("MIN"); 
+		 
+		boolean match = new Query(getCtx(),I_M_MatchMovement.Table_Name, whereClause, get_TrxName()) 
+				.setParameters(params) 
+				.setOnlyActiveRecords(true) 
+				.match(); 
+ 
+		return match; 
+	} 
+ 
+	public boolean hasMatchDDOrderFromMovement() { 
+ 
+		final String whereClause = I_M_MatchMovement.COLUMNNAME_M_Movement_ID + "=? AND " + I_M_MatchMovement.COLUMNNAME_TrxType + "=?"; 
+		ArrayList<Object> params = new ArrayList<Object>(); 
+		params.add(get_ID()); 
+		params.add("MDD"); 
+		 
+		boolean match = new Query(getCtx(),I_M_MatchMovement.Table_Name, whereClause, get_TrxName()) 
+				.setParameters(params) 
+				.setOnlyActiveRecords(true) 
+				.match(); 
+ 
+		return match; 
+	} 
+	 
+	@Override 
+	public int customizeValidActions(String docStatus, Object processing, 
+			String orderType, String isSOTrx, int AD_Table_ID, 
+			String[] docAction, String[] options, int index) { 
+		 
+		for (int i = 0; i < options.length; i++) { 
+			options[i] = null; 
+		} 
+ 
+		index = 0; 
+ 
+		if (docStatus.equals(DocAction.STATUS_Drafted)) { 
+			options[index++] = DocAction.ACTION_Complete; 
+			options[index++] = DocAction.ACTION_Void; 
+		} else if (docStatus.equals(DocAction.STATUS_InProgress)) { 
+			options[index++] = DocAction.ACTION_Complete; 
+			options[index++] = DocAction.ACTION_Void; 
+		} else if (docStatus.equals(DocAction.STATUS_Completed)) { 
+			options[index++] = DocAction.ACTION_Reverse_Accrual; 
+			options[index++] = DocAction.ACTION_Reverse_Correct; 
+		} else if (docStatus.equals(DocAction.STATUS_Invalid)) { 
+			options[index++] = DocAction.ACTION_Complete; 
+			options[index++] = DocAction.ACTION_Void; 
+		} 
+		 
+		return index; 
+	}
 	
 }	//	MMovement
 

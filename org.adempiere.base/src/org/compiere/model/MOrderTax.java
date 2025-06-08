@@ -281,7 +281,7 @@ public class MOrderTax extends X_C_OrderTax
 	private int getPrecision ()
 	{
 		if (m_precision == null)
-			return 2;
+			return getC_Order().getC_Currency().getStdPrecision();
 		return m_precision.intValue();
 	}	//	getPrecision
 

@@ -20,7 +20,9 @@ import java.util.Properties;
 
 import org.adempiere.exceptions.AdempiereException;
 import org.compiere.process.DocAction;
+import org.compiere.process.DocOptions;
 import org.compiere.process.DocumentEngine;
+import org.compiere.util.DB;
 import org.compiere.util.Env;
 import org.compiere.util.Util;
 import org.idempiere.fa.exceptions.AssetAlreadyDepreciatedException;
@@ -30,8 +32,8 @@ import org.idempiere.fa.exceptions.AssetAlreadyDepreciatedException;
  * @author www.arhipac.ro
  *
  */
-public class MAssetTransfer extends X_A_Asset_Transfer
-implements DocAction
+public class MAssetTransfer extends X_A_AssetTransfer
+implements DocAction, DocOptions
 {
 	/**
 	 * generated serial id 
@@ -46,9 +48,9 @@ implements DocAction
      * @param A_Asset_Transfer_UU  UUID key
      * @param trxName Transaction
      */
-    public MAssetTransfer(Properties ctx, String A_Asset_Transfer_UU, String trxName) {
-        super(ctx, A_Asset_Transfer_UU, trxName);
-		if (Util.isEmpty(A_Asset_Transfer_UU))
+    public MAssetTransfer(Properties ctx, String A_AssetTransfer_UU, String trxName) {
+        super(ctx, A_AssetTransfer_UU, trxName);
+		if (Util.isEmpty(A_AssetTransfer_UU))
 			setInitialDefaults();
     }
 
@@ -57,10 +59,10 @@ implements DocAction
      * @param X_A_Asset_Transfer_ID
      * @param trxName
      */
-	public MAssetTransfer (Properties ctx, int X_A_Asset_Transfer_ID, String trxName)
+	public MAssetTransfer (Properties ctx, int X_A_AssetTransfer_ID, String trxName)
     {
-		super (ctx,X_A_Asset_Transfer_ID, trxName);
-		if (X_A_Asset_Transfer_ID == 0)
+		super (ctx,X_A_AssetTransfer_ID, trxName);
+		if (X_A_AssetTransfer_ID == 0)
 			setInitialDefaults();
 	}
 
@@ -83,26 +85,6 @@ implements DocAction
 		super (ctx, rs, trxName);
 	}
 	
-	@Override
-	protected boolean beforeSave(boolean newRecord)
-	{
-		setC_Period_ID();
-		return true;
-	}
-	
-	/**
-	 * Set C_Period_ID value from DateAcct
-	 */
-	public void setC_Period_ID() 
-	{
-		MPeriod period = MPeriod.get(getCtx(), getDateAcct(), getAD_Org_ID(), get_TrxName());
-		if (period == null)
-		{
-			throw new AdempiereException("@NotFound@ @C_Period_ID@");
-		}
-		setC_Period_ID(period.get_ID());
-	}
-
 	@Override
 	public boolean approveIt() {
 		return false;
@@ -168,44 +150,26 @@ implements DocAction
 		// test if period is open
 		MPeriod.testPeriodOpen(getCtx(), getDateAcct(), MDocType.DOCBASETYPE_GLJournal, getAD_Org_ID());
 		
-		MDepreciationWorkfile assetwk = MDepreciationWorkfile.get(getCtx(), getA_Asset_ID(), getPostingType());
+		MDepreciationWorkfile assetwk = MDepreciationWorkfile.get(getCtx(), getA_Asset_ID(), MAssetAcct.POSTINGTYPE_Actual);
 		if (assetwk.isDepreciated(getDateAcct()))
 		{
 			throw new AssetAlreadyDepreciatedException();
 		}
-				
-		// Check if the accounts have changed in the meantime
-		MAssetAcct assetAcct = MAssetAcct.forA_Asset_ID(getCtx(),  getC_AcctSchema_ID(), getA_Asset_ID(), getPostingType(), getDateAcct(), get_TrxName());
-		if (assetAcct.getA_Asset_Acct() != getA_Asset_Acct()
-				|| assetAcct.getA_Accumdepreciation_Acct() != getA_Accumdepreciation_Acct()
-				|| assetAcct.getA_Depreciation_Acct() != getA_Depreciation_Acct()
-				|| assetAcct.getA_Disposal_Revenue_Acct() != getA_Disposal_Revenue_Acct()
-				|| assetAcct.getA_Disposal_Loss_Acct() != getA_Disposal_Loss_Acct()
-				)
-		{
-			throw new AdempiereException("The accounts have been changed");  
+		
+		if (getNew_Asset_Group_ID() <= 0) {
+			throw new AdempiereException("New Asset Group is missing");
 		}
-		//Check that at least one account is changed
-		{
-		MAssetAcct acct = MAssetAcct.forA_Asset_ID(getCtx(), getC_AcctSchema_ID(),  getA_Asset_ID(), getPostingType(), getDateAcct(), get_TrxName());
-		if (acct.getA_Asset_Acct() == getA_Asset_New_Acct()
-				&& acct.getA_Accumdepreciation_Acct() == getA_Accumdepreciation_New_Acct()
-				&& acct.getA_Depreciation_Acct() == getA_Depreciation_New_Acct()
-				&& acct.getA_Disposal_Revenue_Acct() == getA_Disposal_Revenue_New_Acct()
-				&& acct.getA_Disposal_Loss_Acct() == getA_Disposal_Loss_New_Acct()
-				)
-		{
-			throw new AdempiereException("An account has been changed"); 
-		}
-		}
+		
+		/*
 		//doc check if the date is equal to its accounting for the expense table
 		if (assetwk.getDateAcct().equals(getDateAcct()))
 		{
 			throw new AdempiereException("Last day of month. Accounts will be changed next month");  
 		}
+		*/
 			
 		//check if they are unprocessed records
-		MDepreciationExp.checkExistsNotProcessedEntries(getCtx(), getA_Asset_ID(), getDateAcct(), getPostingType(), get_TrxName());
+		MDepreciationExp.checkExistsNotProcessedEntries(getCtx(), getA_Asset_ID(), getDateAcct(), MAssetAcct.POSTINGTYPE_Actual, get_TrxName());
 		
 		m_processMsg = ModelValidationEngine.get().fireDocValidate(this, ModelValidator.TIMING_AFTER_PREPARE);
 		if (m_processMsg != null)
@@ -233,19 +197,37 @@ implements DocAction
 		if (m_processMsg != null)
 			return DocAction.STATUS_Invalid;
 
+		String sqlGetAcctSchema_ID = "SELECT C_AcctSchema_ID FROM C_AcctSchema WHERE AD_Client_ID = " + getAD_Client_ID();
+		int C_AcctSchema_ID = DB.getSQLValue(get_TrxName(), sqlGetAcctSchema_ID);
+		
+		MAssetGroupAcct newAssetGroupAcct = MAssetGroupAcct.forA_Asset_Group_ID(getCtx(), getNew_Asset_Group_ID(), MAssetGroupAcct.POSTINGTYPE_Actual, C_AcctSchema_ID);
 		
 		// create new MAssetAcct
-		MAssetAcct assetAcctPrev = MAssetAcct.forA_Asset_ID(getCtx(),  getC_AcctSchema_ID(), getA_Asset_ID(), getPostingType(), getDateAcct(), get_TrxName());
+		MAssetAcct assetAcctPrev = MAssetAcct.forA_Asset_ID(getCtx(), C_AcctSchema_ID, getA_Asset_ID(), MAssetAcct.POSTINGTYPE_Actual, getDateAcct(), get_TrxName());
 		MAssetAcct assetAcct = new MAssetAcct(getCtx(), 0, get_TrxName());
 		PO.copyValues(assetAcctPrev, assetAcct);
-		assetAcct.setA_Asset_Acct(getA_Asset_New_Acct());
-		assetAcct.setA_Accumdepreciation_Acct(getA_Accumdepreciation_New_Acct());
+		assetAcct.setA_Asset_Acct(newAssetGroupAcct.getA_Asset_Acct());
+		assetAcct.setA_Accumdepreciation_Acct(newAssetGroupAcct.getA_Accumdepreciation_Acct());
+		assetAcct.setA_Depreciation_Acct(newAssetGroupAcct.getA_Depreciation_Acct());
+		assetAcct.setA_Disposal_Loss_Acct(newAssetGroupAcct.getA_Disposal_Loss_Acct());
+		assetAcct.setA_Disposal_Revenue_Acct(newAssetGroupAcct.getA_Disposal_Revenue_Acct());
+		//assetAcct.setA_Disposal_Gain_Acct(newAssetGroupAcct.getA_Disposal_Gain_Acct());
+		assetAcct.setPostingType(MAssetAcct.POSTINGTYPE_Actual);
+		assetAcct.setA_Depreciation_ID(newAssetGroupAcct.getA_Depreciation_ID());
 		assetAcct.setValidFrom(getDateAcct());
 		assetAcct.saveEx();
 		
-		@SuppressWarnings("unused")
-		MDepreciationWorkfile wk = MDepreciationWorkfile.get(getCtx(), getA_Asset_ID(), getPostingType(), get_TrxName());
-
+		assetAcctPrev.setIsActive(false);
+		assetAcctPrev.saveEx();
+		
+		String sql = "UPDATE A_Depreciation_Exp SET A_Account_Number_Acct=" + newAssetGroupAcct.getA_Asset_Acct() + ","
+				+ " DR_Account_ID=" + newAssetGroupAcct.getA_Asset_Acct() + ","
+				+ " CR_Account_ID=" + newAssetGroupAcct.getA_Accumdepreciation_Acct() 
+				+ " WHERE A_Asset_ID=?"
+				+ " AND Processed='N'";
+		
+		DB.executeUpdate(sql, getA_Asset_ID(), get_TrxName());
+		
 		//	User Validation
 		String valid = ModelValidationEngine.get().fireDocValidate(this, ModelValidator.TIMING_AFTER_COMPLETE);
 		if (valid != null)
@@ -254,6 +236,28 @@ implements DocAction
 			return DocAction.STATUS_Invalid;
 		}
 
+		MAsset asset = new MAsset(getCtx(), getA_Asset_ID(), get_TrxName());
+		asset.setA_Asset_Group_ID(getNew_Asset_Group_ID());
+		// @Stephan set org
+		asset.setAD_Org_ID(get_ValueAsInt("AD_OrgTo_ID"));
+		asset.saveEx();
+		
+		for (MDepreciationWorkfile wk : asset.getWorkfile(getA_Asset_ID())) {
+			wk.setAD_Org_ID(asset.getAD_Org_ID());
+			wk.saveEx();
+		}
+		
+		for (MAssetAcct assetacct : asset.getAssetAcct(getA_Asset_ID())) {
+			assetacct.setAD_Org_ID(asset.getAD_Org_ID());
+			assetacct.saveEx();
+		}
+		
+		for (MDepreciationExp depExp : asset.getDepExp(getA_Asset_ID())) {
+			depExp.setAD_Org_ID(asset.getAD_Org_ID());
+			depExp.saveEx();
+		}
+		// @Stephan end
+		
 		setProcessed(true);
 		setDocAction(DOCACTION_Close);
 		return DocAction.STATUS_Completed;
@@ -298,7 +302,27 @@ implements DocAction
 
 	@Override
 	public String getDocumentNo() {
-		// TODO Auto-generated method stub
 		return null;
+	}
+	
+	@Override
+	public int customizeValidActions(String docStatus, Object processing,
+			String orderType, String isSOTrx, int AD_Table_ID,
+			String[] docAction, String[] options, int index) {
+		index = 0;
+		if (docStatus.equals(DocAction.STATUS_Drafted)) {
+			options[index++] = DocAction.ACTION_Complete;
+			options[index++] = DocAction.ACTION_Void;
+
+		} else if (docStatus.equals(DocAction.STATUS_InProgress)) {
+			options[index++] = DocAction.ACTION_Complete;
+			options[index++] = DocAction.ACTION_Void;
+
+		} else if (docStatus.equals(DocAction.STATUS_Invalid)) {
+			options[index++] = DocAction.ACTION_Complete;
+			options[index++] = DocAction.ACTION_Void;
+		}	
+		return index;
+
 	}
 }	//	MAssetTransfer

@@ -666,4 +666,99 @@ public class MPackage extends X_M_Package
 		return st;
 	}
 	
+	public static MPackage create (MMovement movement, MShipper shipper, Timestamp shipDate) 
+	{ 
+		MPackage retValue = createPackage (movement, shipper, shipDate); 
+		 
+		MPackageMPS packageMPS = new MPackageMPS(movement.getCtx(), 0, movement.get_TrxName()); 
+		packageMPS.setSeqNo(10); 
+		packageMPS.setM_Package_ID(retValue.getM_Package_ID());		 
+		packageMPS.saveEx(); 
+		 
+		MClientInfo ci = MClientInfo.get(movement.getCtx(), movement.getAD_Client_ID(), movement.get_TrxName()); 
+		 
+		//	Lines 
+		MMovementLine[] lines = movement.getLines(false); 
+		for (int i = 0; i < lines.length; i++) 
+		{ 
+			MMovementLine moveLine = lines[i]; 
+			if(moveLine.getM_Product_ID() > 0 && moveLine.getM_Product_ID() != ci.getM_ProductFreight_ID()) 
+			{ 
+				MProduct product = new MProduct(movement.getCtx(), moveLine.getM_Product_ID(), movement.get_TrxName()); 
+				if(product.isBOM() && product.isVerified() && product.isPickListPrintDetails()) 
+				{ 
+					MProductBOM[] bomLines = MProductBOM.getBOMLines(product); 
+					for(MProductBOM bomLine : bomLines) 
+					{ 
+						MPackageLine pLine = new MPackageLine(retValue); 
+					    pLine.setMovementLine(moveLine); 
+						pLine.setM_Product_ID(bomLine.getM_ProductBOM_ID()); 
+						pLine.setQty(moveLine.getQtyEntered().multiply(bomLine.getBOMQty())); 
+						pLine.setM_PackageMPS_ID(packageMPS.getM_PackageMPS_ID()); 
+						pLine.saveEx(); 
+					} 
+				} 
+				else 
+				{ 
+					MPackageLine pLine = new MPackageLine (retValue); 
+					pLine.setMovementLine(moveLine); 
+					pLine.setM_Product_ID(moveLine.getM_Product_ID()); 
+					pLine.setM_PackageMPS_ID(packageMPS.getM_PackageMPS_ID()); 
+					pLine.saveEx(); 
+				} 
+			} 
+		}	//	lines 
+		 
+		retValue.setBoxCount(1); 
+		retValue.save(); 
+		 
+		return retValue; 
+	}	//	create 
+	
+	public static MPackage createPackage (MMovement movement, MShipper shipper, Timestamp shipDate) 
+	{ 
+		MPackage retValue = new MPackage (movement, shipper); 
+		if (shipDate != null) 
+			retValue.setShipDate(shipDate); 
+		retValue.setBoxCount(0); 
+		retValue.saveEx(); 
+		 
+		return retValue; 
+	} 
+	
+	public MPackage (MMovement movement, MShipper shipper) 
+	{ 
+		this (movement.getCtx(), 0, movement.get_TrxName()); 
+		setClientOrg(movement); 
+		//setM_InOut_ID(movement.getM_InOut_ID()); 
+		setM_Shipper_ID(shipper.getM_Shipper_ID()); 
+		 
+		String orderNo = DB.getSQLValueString(get_TrxName(), "SELECT DocumentNo FROM DD_Order WHERE M_MovementTo_ID=?", movement.get_ID()); 
+		 
+		StringBuilder msg = new StringBuilder(); 
+		msg.append("Notification for outbound move #" + movement.getDocumentNo()); 
+		msg.append(" / inter-WH Movement #" + orderNo); 
+		setNotificationMessage(msg.toString()); 
+		 
+		setC_Currency_ID(movement.getC_Currency_ID()); 
+		 
+		String whereClause = "M_Shipper_ID = " + shipper.getM_Shipper_ID() + " AND IsDefault='Y' AND IsActive='Y'"; 
+		int[] ids = MShipperLabels.getAllIDs(MShipperLabels.Table_Name, whereClause, movement.get_TrxName()); 
+		if (ids.length > 0) 
+			setM_ShipperLabels_ID(ids[0]); 
+ 
+		ids = MShipperPackaging.getAllIDs(MShipperPackaging.Table_Name, whereClause, movement.get_TrxName()); 
+		if (ids.length > 0) 
+			setM_ShipperPackaging_ID(ids[0]); 
+ 
+		ids = MShipperPickupTypes.getAllIDs(MShipperPickupTypes.Table_Name, whereClause, movement.get_TrxName()); 
+		if (ids.length > 0) 
+			setM_ShipperPickupTypes_ID(ids[0]); 
+		 
+		setIsResidential(shipper.isResidential()); 
+		setIsSaturdayDelivery(shipper.isSaturdayDelivery()); 
+		setTrackingInfo(shipper.getTrackingURL()); 
+ 
+	}	//	MPackage
+	
 }	//	MPackage

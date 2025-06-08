@@ -338,4 +338,29 @@ public class X_M_Locator extends PO implements I_M_Locator, I_Persistent
 	{
 		return (String)get_Value(COLUMNNAME_Z);
 	}
+	
+	public I_M_WarehouseZone getM_WarehouseZone() throws RuntimeException
+    {
+		return (I_M_WarehouseZone)MTable.get(getCtx(), I_M_WarehouseZone.Table_Name)
+			.getPO(getM_WarehouseZone_ID(), get_TrxName());	}
+
+	/** Set Warehouse Zone.
+		@param M_WarehouseZone_ID Warehouse Zone	  */
+	public void setM_WarehouseZone_ID (int M_WarehouseZone_ID)
+	{
+		if (M_WarehouseZone_ID < 1) 
+			set_ValueNoCheck (COLUMNNAME_M_WarehouseZone_ID, null);
+		else 
+			set_ValueNoCheck (COLUMNNAME_M_WarehouseZone_ID, Integer.valueOf(M_WarehouseZone_ID));
+	}
+
+	/** Get Warehouse Zone.
+		@return Warehouse Zone	  */
+	public int getM_WarehouseZone_ID () 
+	{
+		Integer ii = (Integer)get_Value(COLUMNNAME_M_WarehouseZone_ID);
+		if (ii == null)
+			 return 0;
+		return ii.intValue();
+	}
 }

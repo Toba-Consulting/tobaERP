@@ -517,6 +517,7 @@ public class MJournal extends X_GL_Journal implements DocAction
 				return DocAction.STATUS_Invalid;
 			}
 			
+			/*//@win only check doc control for actual posting type
 			// Michael Judd (mjudd) BUG: [ 2678088 ] Allow posting to system accounts for non-actual postings
 			if (line.isDocControlled() && 
 					( getPostingType().equals(POSTINGTYPE_Actual) ||
@@ -524,6 +525,9 @@ public class MJournal extends X_GL_Journal implements DocAction
 					  getPostingType().equals(POSTINGTYPE_Reservation)
 					 )
 				 )
+			*/
+			if (line.isDocControlled() && getPostingType().equals(POSTINGTYPE_Actual)) 
+				// end @win only check doc control for actual posting type
 			{
 				m_processMsg = "@DocControlledError@ - @Line@=" + line.getLine()
 					+ " - " + line.getAccountElementValue();
@@ -903,9 +907,11 @@ public class MJournal extends X_GL_Journal implements DocAction
 		MJournal reverse = new MJournal (this);
 		reverse.setGL_JournalBatch_ID(GL_JournalBatch_ID);
 		Timestamp reversalDate = Env.getContextAsDate(getCtx(), Env.DATE);
-		if (reversalDate == null) {
+		/*
+		 * comment out by figo - no need to check null value
+		 * if (reversalDate == null) {
 			reversalDate = new Timestamp(System.currentTimeMillis());
-		}
+		}*/
 		reverse.setDateDoc(reversalDate);
 		reverse.set_ValueNoCheck ("C_Period_ID", null);		//	reset
 		reverse.setDateAcct(reversalDate);

@@ -171,12 +171,14 @@ public class Doc_BankStatement extends Doc
 			DocLine_Bank line = (DocLine_Bank)p_lines[i];
 			int C_BPartner_ID = line.getC_BPartner_ID();
 
+			int acctType = Doc.ACCTTYPE_BankInTransit;
+			
 			// Avoid usage of clearing accounts
 			// If both accounts BankAsset and BankInTransit are equal
 			// then remove the posting
 
 			MAccount acct_bank_asset =  getAccount(Doc.ACCTTYPE_BankAsset, as);
-			MAccount acct_bank_in_transit = getAccount(Doc.ACCTTYPE_BankInTransit, as);
+			MAccount acct_bank_in_transit = getAccount(acctType, as);
 
 			// don't validate interorg on banks for this - normally banks are balanced by orgs
 			if ((!as.isPostIfClearingEqual()) && acct_bank_asset.equals(acct_bank_in_transit)) {
@@ -209,10 +211,12 @@ public class Doc_BankStatement extends Doc
 					fl.setAD_Org_ID(AD_Org_ID);
 				if (fl != null && C_BPartner_ID != 0)
 					fl.setC_BPartner_ID(C_BPartner_ID);
+				
+				fl.setDateAcct(line.getDateAcct()); //@win - set date acct from statement line
 
 				//  BankInTransit   DR      CR              (Payment)
 				fl = fact.createLine(line,
-					getAccount(Doc.ACCTTYPE_BankInTransit, as),
+					getAccount(acctType, as),
 					line.getC_Currency_ID(), line.getTrxAmt().negate());
 				if (fl != null)
 				{
@@ -223,6 +227,7 @@ public class Doc_BankStatement extends Doc
 					else
 						fl.setAD_Org_ID(line.getAD_Org_ID(true)); // from payment
 				}
+				fl.setDateAcct(line.getDateAcct()); //@win - set date acct from statement line 
 
 			}
 			// End Avoid usage of clearing accounts

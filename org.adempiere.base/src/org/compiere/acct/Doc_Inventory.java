@@ -130,7 +130,7 @@ public class Doc_Inventory extends Doc
 
 			BigDecimal qtyDiff = Env.ZERO;
 			BigDecimal amtDiff = Env.ZERO;
-			if (MDocType.DOCSUBTYPEINV_InternalUseInventory.equals(docSubTypeInv))
+			if (MDocType.DOCSUBTYPEINV_InternalUseInventory.equals(docSubTypeInv) || MDocType.DOCSUBTYPEINV_MiscReceipt.equals(docSubTypeInv))
 				qtyDiff = line.getQtyInternalUse().negate();
 			else if (MDocType.DOCSUBTYPEINV_PhysicalInventory.equals(docSubTypeInv))
 				qtyDiff = line.getQtyCount().subtract(line.getQtyBook());
@@ -250,47 +250,70 @@ public class Doc_Inventory extends Doc
 			{
 				if (!isReversal(line))
 				{
-					product = line.getProduct();
-					if (MAcctSchema.COSTINGLEVEL_BatchLot.equals(product.getCostingLevel(as)) ) 
-					{
-						if (line.getM_AttributeSetInstance_ID() == 0 ) 
-						{
-							MInventoryLine invLine = (MInventoryLine) line.getPO();
-							MInventoryLineMA mas[] = MInventoryLineMA.get(getCtx(), invLine.get_ID(), getTrxName());
-							if (mas != null && mas.length > 0 )
-							{
-								costs  = BigDecimal.ZERO;
-								for (int j = 0; j < mas.length; j++)
-								{
-									MInventoryLineMA ma = mas[j];
-									BigDecimal QtyMA = ma.getMovementQty();
-									ProductCost pc = line.getProductCost();
-									pc.setQty(QtyMA.negate());
-									pc.setM_M_AttributeSetInstance_ID(ma.getM_AttributeSetInstance_ID());
-									BigDecimal maCosts = line.getProductCosts(as, line.getAD_Org_ID(), true, "M_InventoryLine_ID=?");
-									costMap.put(line.get_ID()+ "_"+ ma.getM_AttributeSetInstance_ID(), maCosts);
-
-									costs = costs.add(maCosts);
-								}						
-							}
-						} 
-						else
-						{
-							costs = line.getProductCosts(as, line.getAD_Org_ID(), true, "M_InventoryLine_ID=?");
-						}
-					} 
-					else
-					{
-						// MZ Goodwill
-						// if Physical Inventory CostDetail is exist then get Cost from Cost Detail
-						costs = line.getProductCosts(as, line.getAD_Org_ID(), true, "M_InventoryLine_ID=?");
-						// end MZ	
-					}					
+					// MZ Goodwill
+					// if Physical Inventory CostDetail is exist then get Cost from Cost Detail
+					//costs = line.getProductCosts(as, line.getAD_Org_ID(), true, "M_InventoryLine_ID=?");
+					// end MZ
+					/*
 					if (costs == null || costs.signum() == 0)
 					{
 						p_Error = "No Costs for " + line.getProduct().getName();
 						return null;
+					}*/
+					MInventoryLine inventoryLine = (MInventoryLine) line.getPO();
+					product = line.getProduct(); 
+					if (MAcctSchema.COSTINGLEVEL_BatchLot.equals(product.getCostingLevel(as)) )  
+					{ 
+						if (line.getM_AttributeSetInstance_ID() == 0 )  
+						{ 
+							MInventoryLine invLine = (MInventoryLine) line.getPO(); 
+							MInventoryLineMA mas[] = MInventoryLineMA.get(getCtx(), invLine.get_ID(), getTrxName()); 
+							if (mas != null && mas.length > 0 ) 
+							{ 
+								costs  = BigDecimal.ZERO; 
+								for (int j = 0; j < mas.length; j++) 
+								{ 
+									MInventoryLineMA ma = mas[j]; 
+									BigDecimal QtyMA = ma.getMovementQty(); 
+									ProductCost pc = line.getProductCost(); 
+									pc.setQty(QtyMA.negate()); 
+									pc.setM_M_AttributeSetInstance_ID(ma.getM_AttributeSetInstance_ID()); 
+									BigDecimal maCosts = line.getProductCosts(as, line.getAD_Org_ID(), true, "M_InventoryLine_ID=?"); 
+									costMap.put(line.get_ID()+ "_"+ ma.getM_AttributeSetInstance_ID(), maCosts); 
+ 
+									costs = costs.add(maCosts); 
+								}						 
+							} 
+						}  
+						else 
+						{ 
+							costs = line.getProductCosts(as, line.getAD_Org_ID(), true, "M_InventoryLine_ID=?"); 
+						} 
+					}  
+					
+					//  @Stephan TAOWI-430
+					if(inventoryLine.get_ValueAsBoolean("IsUnitCost")) {
+						costs = (BigDecimal) inventoryLine.get_Value("UnitCost");
+						costs = costs.multiply(inventoryLine.getQtyEntered());
 					}
+					else {
+						costs = line.getProductCosts(as, line.getAD_Org_ID(), true, "M_InventoryLine_ID=?");
+					}
+					
+					if (!inventoryLine.get_ValueAsBoolean("IsUnitCost") && (costs == null || costs.signum() == 0))
+					{
+						p_Error = "No Costs for " + line.getProduct().getName();
+						return null;
+					}
+					
+					BigDecimal costDetailAmt = costs;
+					if (costAdjustment && getC_Currency_ID() > 0 && getC_Currency_ID() != as.getC_Currency_ID())
+					{
+						costDetailAmt = MConversionRate.convert (getCtx(),
+								costDetailAmt, getC_Currency_ID(), as.getC_Currency_ID(),
+								getDateAcct(), 0, getAD_Client_ID(), getAD_Org_ID());
+					}
+					//  end
 				}
 				else
 				{
@@ -368,7 +391,14 @@ public class Doc_Inventory extends Doc
 
 			if (doPosting || costAdjustment)
 			{
-				product = line.getProduct();
+				//  @Stephan TAOWI-430
+				//  use qty for cost detail
+				MInventoryLine inventoryLine = (MInventoryLine) line.getPO();
+				if(inventoryLine.get_ValueAsBoolean("IsUnitCost")){
+					costs = (BigDecimal) inventoryLine.get_Value("UnitCost");
+					costs = costs.multiply(line.getQty());
+				}
+				
 				BigDecimal costDetailAmt = costAdjustment ? adjustmentDiff : costs;
 				if (costAdjustment && getC_Currency_ID() > 0 && getC_Currency_ID() != as.getC_Currency_ID()) 
 				{
@@ -376,53 +406,52 @@ public class Doc_Inventory extends Doc
 							costDetailAmt, getC_Currency_ID(), as.getC_Currency_ID(),
 							getDateAcct(), 0, getAD_Client_ID(), getAD_Org_ID(), true);
 				}
-				if (MAcctSchema.COSTINGLEVEL_BatchLot.equals(product.getCostingLevel(as)) ) 
-				{
-					if (line.getM_AttributeSetInstance_ID() == 0 ) 
-					{
-						MInventoryLine invLine = (MInventoryLine) line.getPO();
-						MInventoryLineMA mas[] = MInventoryLineMA.get(getCtx(), invLine.get_ID(), getTrxName());
-						if (mas != null && mas.length > 0 )
-						{
-							costs  = BigDecimal.ZERO;
-							for (int j = 0; j < mas.length; j++)
-							{
-								MInventoryLineMA ma = mas[j];				
-								BigDecimal maCost = costMap.get(line.get_ID()+ "_"+ ma.getM_AttributeSetInstance_ID());		
-								BigDecimal qty = ma.getMovementQty();
-								if (qty.signum() != line.getQty().signum())
-									qty = qty.negate();
-								if (maCost.signum() != costDetailAmt.signum())
-									maCost = maCost.negate();
-								if (!MCostDetail.createInventory(as, line.getAD_Org_ID(),
-										line.getM_Product_ID(), ma.getM_AttributeSetInstance_ID(),
-										line.get_ID(), 0,
-										maCost, qty,
-										line.getDescription(), getTrxName()))
-								{
-									p_Error = "Failed to create cost detail record";
-									return null;
-								}
-							}						
-						}
+				//	@stephan
+				if(isReversal(line))
+					costDetailAmt = costDetailAmt.negate();
+				//	end
+				//	Cost Detail
+				if (MAcctSchema.COSTINGLEVEL_BatchLot.equals(product.getCostingLevel(as)) )  
+				{ 
+					if (line.getM_AttributeSetInstance_ID() == 0 )  
+					{ 
+						MInventoryLine invLine = (MInventoryLine) line.getPO(); 
+						MInventoryLineMA mas[] = MInventoryLineMA.get(getCtx(), invLine.get_ID(), getTrxName()); 
+						if (mas != null && mas.length > 0 ) 
+						{ 
+							costs  = BigDecimal.ZERO; 
+							for (int j = 0; j < mas.length; j++) 
+							{ 
+								MInventoryLineMA ma = mas[j];				 
+								BigDecimal maCost = costMap.get(line.get_ID()+ "_"+ ma.getM_AttributeSetInstance_ID());		 
+ 
+								if (!MCostDetail.createInventory(as, line.getAD_Org_ID(), 
+										line.getM_Product_ID(), ma.getM_AttributeSetInstance_ID(), 
+										line.get_ID(), 0, 
+										maCost, ma.getMovementQty().negate(), 
+										line.getDescription(), getTrxName())) 
+								{ 
+									p_Error = "Failed to create cost detail record"; 
+									return null; 
+								} 
+							}						 
+						} 
+					}  
+					else 
+					{ 
+						if (!MCostDetail.createInventory(as, line.getAD_Org_ID(), 
+								line.getM_Product_ID(), line.getM_AttributeSetInstance_ID(), 
+								line.get_ID(), 0, 
+								costDetailAmt, line.getQty(), 
+								line.getDescription(), getTrxName())) 
+						{ 
+							p_Error = "Failed to create cost detail record"; 
+							return null; 
+						} 
 					} 
-					else
-					{
-						BigDecimal amt = costDetailAmt;
-						if (!MCostDetail.createInventory(as, line.getAD_Org_ID(),
-								line.getM_Product_ID(), line.getM_AttributeSetInstance_ID(),
-								line.get_ID(), 0,
-								amt, line.getQty(),
-								line.getDescription(), getTrxName()))
-						{
-							p_Error = "Failed to create cost detail record";
-							return null;
-						}
-					}
-				} 
-				else
-				{
-					//	Cost Detail
+				}  
+				else 
+				{ 
 					BigDecimal amt = costDetailAmt;
 					if (!MCostDetail.createInventory(as, line.getAD_Org_ID(),
 						line.getM_Product_ID(), line.getM_AttributeSetInstance_ID(),

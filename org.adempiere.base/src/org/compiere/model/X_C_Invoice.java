@@ -1286,28 +1286,6 @@ public class X_C_Invoice extends PO implements I_C_Invoice, I_Persistent
 		return false;
 	}
 
-	/** Set Is Fixed Asset Invoice.
-		@param IsFixedAssetInvoice Is Fixed Asset Invoice
-	*/
-	public void setIsFixedAssetInvoice (boolean IsFixedAssetInvoice)
-	{
-		set_Value (COLUMNNAME_IsFixedAssetInvoice, Boolean.valueOf(IsFixedAssetInvoice));
-	}
-
-	/** Get Is Fixed Asset Invoice.
-		@return Is Fixed Asset Invoice	  */
-	public boolean isFixedAssetInvoice()
-	{
-		Object oo = get_Value(COLUMNNAME_IsFixedAssetInvoice);
-		if (oo != null)
-		{
-			 if (oo instanceof Boolean)
-				 return ((Boolean)oo).booleanValue();
-			return "Y".equals(oo);
-		}
-		return false;
-	}
-
 	/** Set In Dispute.
 		@param IsInDispute Document is in dispute
 	*/
@@ -1907,5 +1885,206 @@ public class X_C_Invoice extends PO implements I_C_Invoice, I_Persistent
 		if (ii == null)
 			 return 0;
 		return ii.intValue();
+	}
+	
+	/** Set Create Asset.
+		@param A_CreateAsset Create Asset	  */
+	public void setA_CreateAsset (boolean A_CreateAsset)
+	{
+		set_Value (COLUMNNAME_A_CreateAsset, Boolean.valueOf(A_CreateAsset));
+	}
+	
+	/** Get Create Asset.
+		@return Create Asset	  */
+	public boolean isA_CreateAsset () 
+	{
+		Object oo = get_Value(COLUMNNAME_A_CreateAsset);
+		if (oo != null) 
+		{
+			 if (oo instanceof Boolean) 
+				 return ((Boolean)oo).booleanValue(); 
+			return "Y".equals(oo);
+		}
+		return false;
+	}
+	
+	/** Set Processed.
+		@param A_Processed Processed	  */
+	public void setA_Processed (boolean A_Processed)
+	{
+		set_Value (COLUMNNAME_A_Processed, Boolean.valueOf(A_Processed));
+	}
+	
+	/** Get Processed.
+		@return Processed	  */
+	public boolean isA_Processed () 
+	{
+		Object oo = get_Value(COLUMNNAME_A_Processed);
+		if (oo != null) 
+		{
+			 if (oo instanceof Boolean) 
+				 return ((Boolean)oo).booleanValue(); 
+			return "Y".equals(oo);
+		}
+		return false;
+	}
+	
+	public org.compiere.model.I_C_Tax getC_Tax() throws RuntimeException
+	{
+		return (org.compiere.model.I_C_Tax)MTable.get(getCtx(), org.compiere.model.I_C_Tax.Table_Name)
+			.getPO(getC_Tax_ID(), get_TrxName());	}
+	
+	/** Set Tax.
+		@param C_Tax_ID 
+		Tax identifier
+	  */
+	public void setC_Tax_ID (int C_Tax_ID)
+	{
+		if (C_Tax_ID < 1) 
+			set_ValueNoCheck (COLUMNNAME_C_Tax_ID, null);
+		else 
+			set_ValueNoCheck (COLUMNNAME_C_Tax_ID, Integer.valueOf(C_Tax_ID));
+	}
+	
+	/** Get Tax.
+		@return Tax identifier
+	  */
+	public int getC_Tax_ID () 
+	{
+		Integer ii = (Integer)get_Value(COLUMNNAME_C_Tax_ID);
+		if (ii == null)
+			 return 0;
+		return ii.intValue();
+	}
+	
+	/** Set Down Payment Amt.
+		@param DownPaymentAmt Down Payment Amt	  */
+	public void setDownPaymentAmt (BigDecimal DownPaymentAmt)
+	{
+		set_Value (COLUMNNAME_DownPaymentAmt, DownPaymentAmt);
+	}
+	
+	/** Get Down Payment Amt.
+		@return Down Payment Amt	  */
+	public BigDecimal getDownPaymentAmt () 
+	{
+		BigDecimal bd = (BigDecimal)get_Value(COLUMNNAME_DownPaymentAmt);
+		if (bd == null)
+			 return Env.ZERO;
+		return bd;
+	}
+	
+	/** Set Generate Withholding.
+		@param GenerateWithholding Generate Withholding	  */
+	public void setGenerateWithholding (String GenerateWithholding)
+	{
+		set_Value (COLUMNNAME_GenerateWithholding, GenerateWithholding);
+	}
+	
+	/** Get Generate Withholding.
+		@return Generate Withholding	  */
+	public String getGenerateWithholding () 
+	{
+		return (String)get_Value(COLUMNNAME_GenerateWithholding);
+	}
+	
+	/** Set Down Payment Invoice ?.
+		@param IsDownPaymentInvoice Down Payment Invoice ?	  */
+	public void setIsDownPaymentInvoice (boolean IsDownPaymentInvoice)
+	{
+		set_Value (COLUMNNAME_IsDownPaymentInvoice, Boolean.valueOf(IsDownPaymentInvoice));
+	}
+	
+	/** Get Down Payment Invoice ?.
+		@return Down Payment Invoice ?	  */
+	public boolean isDownPaymentInvoice () 
+	{
+		Object oo = get_Value(COLUMNNAME_IsDownPaymentInvoice);
+		if (oo != null) 
+		{
+			 if (oo instanceof Boolean) 
+				 return ((Boolean)oo).booleanValue(); 
+			return "Y".equals(oo);
+		}
+		return false;
+	}
+	
+	/** Set Invoice DP Applied.
+		@param IsInvoiceDPApplied Invoice DP Applied	  */
+	public void setIsInvoiceDPApplied (boolean IsInvoiceDPApplied)
+	{
+		set_Value (COLUMNNAME_IsInvoiceDPApplied, Boolean.valueOf(IsInvoiceDPApplied));
+	}
+	
+	/** Get Invoice DP Applied.
+		@return Invoice DP Applied	  */
+	public boolean isInvoiceDPApplied () 
+	{
+		Object oo = get_Value(COLUMNNAME_IsInvoiceDPApplied);
+		if (oo != null) 
+		{
+			 if (oo instanceof Boolean) 
+				 return ((Boolean)oo).booleanValue(); 
+			return "Y".equals(oo);
+		}
+		return false;
+	}
+	
+	/** Set Track As Asset.
+		@param IsTrackAsAsset Track As Asset	  */
+	public void setIsTrackAsAsset (boolean IsTrackAsAsset)
+	{
+		set_Value (COLUMNNAME_IsTrackAsAsset, Boolean.valueOf(IsTrackAsAsset));
+	}
+	
+	/** Get Track As Asset.
+		@return Track As Asset	  */
+	public boolean isTrackAsAsset () 
+	{
+		Object oo = get_Value(COLUMNNAME_IsTrackAsAsset);
+		if (oo != null) 
+		{
+			 if (oo instanceof Boolean) 
+				 return ((Boolean)oo).booleanValue(); 
+			return "Y".equals(oo);
+		}
+		return false;
+	}
+	
+	/** Set Tax Amount.
+		@param TaxAmt 
+		Tax Amount for a document
+	  */
+	public void setTaxAmt (BigDecimal TaxAmt)
+	{
+		set_Value (COLUMNNAME_TaxAmt, TaxAmt);
+	}
+	
+	/** Get Tax Amount.
+		@return Tax Amount for a document
+	  */
+	public BigDecimal getTaxAmt () 
+	{
+		BigDecimal bd = (BigDecimal)get_Value(COLUMNNAME_TaxAmt);
+		if (bd == null)
+			 return Env.ZERO;
+		return bd;
+	}
+	
+	/** Set Withholding Amount.
+		@param WithholdingAmt Withholding Amount	  */
+	public void setWithholdingAmt (BigDecimal WithholdingAmt)
+	{
+		set_Value (COLUMNNAME_WithholdingAmt, WithholdingAmt);
+	}
+	
+	/** Get Withholding Amount.
+		@return Withholding Amount	  */
+	public BigDecimal getWithholdingAmt () 
+	{
+		BigDecimal bd = (BigDecimal)get_Value(COLUMNNAME_WithholdingAmt);
+		if (bd == null)
+			 return Env.ZERO;
+		return bd;
 	}
 }

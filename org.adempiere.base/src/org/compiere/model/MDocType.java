@@ -74,6 +74,40 @@ public class MDocType extends X_C_DocType implements ImmutablePOSupport
 		return list.toArray(new MDocType[list.size()]);
 	}	//	getOfDocBaseType
 	
+	/** 
+	 * 	Get Client First Document Type with DocBaseType 
+	 *	@param ctx context 
+	 *	@param DocBaseType base document type 
+	 *	@return array of doc types 
+	 */ 
+	static public MDocType getFirstOfDocBaseType (Properties ctx, String DocBaseType) 
+	{ 
+		final String whereClause  = "AD_Client_ID=? AND DocBaseType=?"; 
+		MDocType docType = new Query(ctx, Table_Name, whereClause, null) 
+									.setParameters(Env.getAD_Client_ID(ctx), DocBaseType) 
+									.setOnlyActiveRecords(true) 
+									.setOrderBy("IsDefault DESC, C_DocType_ID") 
+									.first(); 
+		return docType; 
+	}	//	getFirstOfDocBaseType 
+	 
+	/** 
+	 * 	Get Client First ID Document Type with DocBaseType 
+	 *	@param ctx context 
+	 *	@param DocBaseType base document type 
+	 *	@return array of doc types 
+	 */ 
+	static public int getFirstIDOfDocBaseType (Properties ctx, String DocBaseType) 
+	{ 
+		final String whereClause  = "AD_Client_ID=? AND DocBaseType=?"; 
+		int docTypeID = new Query(ctx, Table_Name, whereClause, null) 
+									.setParameters(Env.getAD_Client_ID(ctx), DocBaseType) 
+									.setOnlyActiveRecords(true) 
+									.setOrderBy("IsDefault DESC, C_DocType_ID") 
+									.firstId(); 
+		return docTypeID; 
+	}	//	getFirstIDOfDocBaseType 
+	
 	/**
 	 * 	Get Client Document Types
 	 *	@param ctx context

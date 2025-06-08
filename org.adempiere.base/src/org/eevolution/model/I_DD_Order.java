@@ -853,4 +853,46 @@ public interface I_DD_Order
 	  * Weight of a product
 	  */
 	public BigDecimal getWeight();
+	
+	/** Column name M_MovementIn_ID */
+    public static final String COLUMNNAME_M_MovementIn_ID = "M_MovementIn_ID";
+
+	/** Set Inbound Move	  */
+	public void setM_MovementIn_ID (int M_MovementIn_ID);
+
+	/** Get Inbound Move	  */
+	public int getM_MovementIn_ID();
+
+	public org.compiere.model.I_M_Movement getM_MovementIn() throws RuntimeException;
+
+    /** Column name M_MovementTo_ID */
+    public static final String COLUMNNAME_M_MovementTo_ID = "M_MovementTo_ID";
+
+	/** Set Outbound Move	  */
+	public void setM_MovementTo_ID (int M_MovementTo_ID);
+
+	/** Get Outbound Move	  */
+	public int getM_MovementTo_ID();
+
+	public org.compiere.model.I_M_Movement getM_MovementTo() throws RuntimeException;
+	
+    /** Column name M_WarehouseTo_ID */
+    public static final String COLUMNNAME_M_WarehouseTo_ID = "M_WarehouseTo_ID";
+
+	/** Set Warehouse To	  */
+	public void setM_WarehouseTo_ID (int M_WarehouseTo_ID);
+
+	/** Get Warehouse To	  */
+	public int getM_WarehouseTo_ID();
+
+	public org.compiere.model.I_M_Warehouse getM_WarehouseTo() throws RuntimeException;
+
+    /** Column name M_WarehouseZone_ID */
+    public static final String COLUMNNAME_M_WarehouseZone_ID = "M_WarehouseZone_ID";
+
+	/** Set Warehouse Zone	  */
+	public void setM_WarehouseZone_ID (int M_WarehouseZone_ID);
+
+	/** Get Warehouse Zone	  */
+	public int getM_WarehouseZone_ID();
 }

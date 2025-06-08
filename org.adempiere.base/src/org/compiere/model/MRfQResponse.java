@@ -139,6 +139,21 @@ public class MRfQResponse extends X_C_RfQResponse
 		setC_RfQ_ID(rfq.getC_RfQ_ID());
 		setC_Currency_ID (rfq.getC_Currency_ID());
 		setName (rfq.getName());
+		setDateInvited(new Timestamp(System.currentTimeMillis()));
+		setDateResponse(rfq.getDateResponse());
+		setDateWorkStart(rfq.getDateWorkStart());
+		setDateWorkComplete(rfq.getDateWorkComplete());
+		setDeliveryDays(rfq.getDeliveryDays());
+		setIsInternal(subscriber.isInternal());
+		
+		// set orgTrx and Project
+		if(rfq.get_ValueAsInt("AD_OrgTrx_ID") > 0){
+			set_ValueOfColumn("AD_OrgTrx_ID", rfq.get_ValueAsInt("AD_OrgTrx_ID"));
+		}
+		if(rfq.getC_Project_ID() > 0){
+			set_ValueOfColumn("C_Project_ID", rfq.getC_Project_ID());
+		}
+		
 		m_rfq = rfq;
 		//	Subscriber info
 		setC_BPartner_ID (C_BPartner_ID);
@@ -147,21 +162,60 @@ public class MRfQResponse extends X_C_RfQResponse
 		
 		//	Create Lines
 		MRfQLine[] lines = rfq.getLines();
-		for (int i = 0; i < lines.length; i++)
+		//	@Stephan Generate Line Number
+		int LineNo = 0;
+		//
+		
+		for (MRfQLine line : lines)
 		{
-			if (!lines[i].isActive())
+			if (!line.isActive())
 				continue;
 			
 			//	Product on "Only" list
 			if (subscriber != null 
-				&& !subscriber.isIncluded(lines[i].getM_Product_ID() ))
+				&& !subscriber.isIncluded(line.getM_Product_ID() ))
 				continue;
 			//
 			if (get_ID() == 0)	//	save Response
 				saveEx();
 
-			@SuppressWarnings("unused")
-			MRfQResponseLine line = new MRfQResponseLine (this, lines[i]);
+			MRfQResponseLine respLine = new MRfQResponseLine (this, line);
+			respLine.setM_Product_ID(line.getM_Product_ID());
+			respLine.setIsDescription(line.isDescription());
+			respLine.setC_Charge_ID(line.getC_Charge_ID());
+			respLine.setDescription(line.getDescription());
+			respLine.setQty(line.getQty());
+			respLine.setPriceActual(Env.ZERO);
+			respLine.setPriceStd(Env.ZERO);
+			//respLine.setFaktorKondisi(Env.ZERO);
+			if (line.getM_Product_Category_ID() > 0) {
+				respLine.setM_Product_Category_ID(line.getM_Product_Category_ID());
+				MProductCategory productCategory = MProductCategory.get(getCtx(), line.getM_Product_Category_ID());
+				if (productCategory.get_Value("FaktorKondisi") != null) {
+					BigDecimal faktorKondisi = (BigDecimal) productCategory.get_Value("FaktorKondisi");
+					respLine.setFaktorKondisi(faktorKondisi);
+				} else {
+					respLine.setFaktorKondisi(Env.ZERO);
+				}
+			}
+			if (line.getProduct()!=null) {
+				respLine.setProduct(line.getProduct());
+			}
+			if (line.getSize()!=null) {
+				respLine.setSize(line.getSize());
+			}
+			respLine.setC_UOM_ID(line.getC_UOM_ID());
+			respLine.setDescription(line.getDescription());
+			respLine.setHelp(line.getHelp());
+			respLine.setDateWorkStart(line.getDateWorkStart());
+			respLine.setDateWorkComplete(line.getDateWorkComplete());
+			respLine.setDeliveryDays(line.getDeliveryDays());
+			//@Stephan
+			respLine.setLineNo(LineNo+=10);
+			if(line.get_ValueAsInt("AD_OrgTrx_ID") > 0){
+				respLine.set_ValueOfColumn("AD_OrgTrx_ID", line.get_ValueAsInt("AD_OrgTrx_ID"));
+			}
+			//end here
 			//	line is not saved (dumped) if there are no Qtys 
 		}
 	}	//	MRfQResponse
@@ -251,7 +305,7 @@ public class MRfQResponse extends X_C_RfQResponse
 	 * 	Send RfQ
 	 *	@return true if RfQ is sent via email.
 	 */
-	public boolean sendRfQ()
+	public boolean sendRfQ(MMailText mailText)
 	{
 		MUser to = MUser.get(getCtx(), getAD_User_ID());
 		if (to.get_ID() == 0 || to.getEMail() == null || to.getEMail().length() == 0)
@@ -260,16 +314,25 @@ public class MRfQResponse extends X_C_RfQResponse
 			return false;
 		}
 		MClient client = MClient.get(getCtx());
-		//
-		String message = getDescription();
-		if (message == null || message.length() == 0)
-			message = getHelp();
-		else if (getHelp() != null)
-			message += "\n" + getHelp();
-		if (message == null)
-			message = getName();
-		//
-		EMail email = client.createEMail(to.getEMail(), "RfQ: " + getName(), message);
+		mailText.setBPartner(getC_BPartner_ID());
+		
+		StringBuilder message = new StringBuilder(mailText.getMailText(true));
+		EMail email = client.createEMail(to.getEMail(), mailText.getMailHeader(), message.toString());
+		if (mailText.isHtml())
+			email.setMessageHTML(mailText.getMailHeader(), message.toString());
+		else
+		{
+			email.setSubject (mailText.getMailHeader());
+			email.setMessageText (message.toString());
+		}
+		if (!email.isValid() && !email.isValid(true))
+		{
+			log.warning("NOT VALID - " + email);
+			to.setIsActive(false);
+			to.addDescription("Invalid EMail");
+			to.saveEx();
+			return Boolean.FALSE;
+		}
 		email.addAttachment(createPDF());
 		if (EMail.SENT_OK.equals(email.send()))
 		{
@@ -296,10 +359,18 @@ public class MRfQResponse extends X_C_RfQResponse
 	 */
 	public File createPDF (File file)
 	{
-		ReportEngine re = ReportEngine.get (getCtx(), ReportEngine.RFQ, getC_RfQResponse_ID(),get_TrxName());
-		if (re == null)
-			return null;
-		MPrintFormat format = re.getPrintFormat();
+		MPrintFormat format = null;
+		ReportEngine re = null;
+		
+		if (getC_RfQ().getC_RfQ_Topic().getAD_PrintFormat() != null) {
+			format = (MPrintFormat) getC_RfQ().getC_RfQ_Topic().getAD_PrintFormat();
+		} else {
+			re = ReportEngine.get (getCtx(), ReportEngine.RFQ, getC_RfQResponse_ID());
+			if (re == null)
+				return null;
+			
+			format = re.getPrintFormat();
+		}
 		// We have a Jasper Print Format
 		// ==============================
 		if(format.getJasperProcess_ID() > 0)	

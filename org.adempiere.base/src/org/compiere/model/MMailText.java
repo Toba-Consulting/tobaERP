@@ -23,6 +23,7 @@ import java.util.logging.Level;
 
 import org.compiere.util.CCache;
 import org.compiere.util.DB;
+import org.compiere.util.EMail;
 import org.compiere.util.Env;
 import org.compiere.util.Util;
 
@@ -448,6 +449,50 @@ public class MMailText extends X_R_MailText
 	public MUser getUser()
 	{
 		return m_user;
+	}
+	
+	/**
+	 * 	Send Individual Mail
+	 *	@param Name user name
+	 *	@param AD_User_ID user
+	 *	@param unsubscribe unsubscribe message
+	 *	@return true if mail has been sent
+	 */
+	public Boolean sendMail (MClient client, MUser from, MUser to, StringBuilder unsubscribe)
+	{
+		//
+		setUser(to.getAD_User_ID());		//	parse context
+		StringBuilder message = new StringBuilder(getMailText(true));
+		//	Unsubscribe
+		if (unsubscribe != null)
+			message.append(unsubscribe);
+		//
+		EMail email = client.createEMail(from, to, getMailHeader(), message.toString());
+		if (isHtml())
+			email.setMessageHTML(getMailHeader(), message.toString());
+		else
+		{
+			email.setSubject (getMailHeader());
+			email.setMessageText (message.toString());
+		}
+		if (!email.isValid() && !email.isValid(true))
+		{
+			log.warning("NOT VALID - " + email);
+			to.setIsActive(false);
+			to.addDescription("Invalid EMail");
+			to.saveEx();
+			return Boolean.FALSE;
+		}
+		boolean OK = EMail.SENT_OK.equals(email.send());
+		new MUserMail(this, to.getAD_User_ID(), email).saveEx();
+		//
+		if (OK) {
+			if (log.isLoggable(Level.FINE)) log.fine(to.getEMail());
+		} else {
+			log.warning("FAILURE - " + to.getEMail());
+		}
+
+		return Boolean.TRUE;
 	}
 
 }	//	MMailText

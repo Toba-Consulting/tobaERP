@@ -110,6 +110,24 @@ public class MReportSource extends X_PA_ReportSource
 			return "UserElement1_ID="+getUserElement1_ID(); // Not Tree
 		else if (MReportSource.ELEMENTTYPE_UserColumn2.equals(et))
 			return "UserElement2_ID="+getUserElement2_ID(); // Not Tree
+		//	@Stephan TAOWI-1316
+		else if (MReportColumn.ELEMENTTYPE_UserColumn3.equals(et))
+			return "UserElement3_ID="+getUserElement3_ID();
+		else if (MReportColumn.ELEMENTTYPE_UserColumn4.equals(et))
+			return "UserElement4_ID="+getUserElement4_ID();
+		else if (MReportColumn.ELEMENTTYPE_UserColumn5.equals(et))
+			return "UserElement5_ID="+getUserElement5_ID();
+		else if (MReportColumn.ELEMENTTYPE_UserColumn6.equals(et))
+			return "UserElement6_ID="+getUserElement6_ID();
+		else if (MReportColumn.ELEMENTTYPE_UserColumn7.equals(et))
+			return "UserElement7_ID="+getUserElement7_ID();
+		else if (MReportColumn.ELEMENTTYPE_UserColumn8.equals(et))
+			return "UserElement8_ID="+getUserElement8_ID();
+		else if (MReportColumn.ELEMENTTYPE_UserColumn9.equals(et))
+			return "UserElement9_ID="+getUserElement9_ID();
+		else if (MReportColumn.ELEMENTTYPE_UserColumn10.equals(et))
+			return "UserElement10_ID="+getUserElement10_ID();
+		//	@Stephan end
 		// Financial Report Source with Type Combination
 		else if (MReportSource.ELEMENTTYPE_Combination.equals(et))
 			return getWhereCombination(PA_Hierarchy_ID);

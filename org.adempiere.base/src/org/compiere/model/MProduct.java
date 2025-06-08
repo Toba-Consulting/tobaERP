@@ -869,6 +869,7 @@ public class MProduct extends X_M_Product implements ImmutablePOSupport
 			MAccount.updateValueDescription(getCtx(), "M_Product_ID=" + getM_Product_ID(), get_TrxName());
 		
 		//	Name/Description Change in Asset	MAsset.setValueNameDescription
+		/* Commented by @win.. update on product shouldn't directly update asset 
 		if (!newRecord && (is_ValueChanged("Name") || is_ValueChanged("Description")))
 		{
 			String sql = "UPDATE A_Asset a "
@@ -881,6 +882,7 @@ public class MProduct extends X_M_Product implements ImmutablePOSupport
 			int no = DB.executeUpdate(sql, get_TrxName());
 			if (log.isLoggable(Level.FINE)) log.fine("Asset Description updated #" + no);
 		}
+		*/
 		
 		//	New - Acct, Tree, Old Costing
 		if (newRecord)

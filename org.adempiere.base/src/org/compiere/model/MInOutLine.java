@@ -561,6 +561,20 @@ public class MInOutLine extends X_M_InOutLine
 	protected boolean beforeSave (boolean newRecord)
 	{
 		if (log.isLoggable(Level.FINE)) log.fine("");
+		
+		if (newRecord && getM_RMALine_ID() > 0){ 
+			int flag = 0; 
+			MInOut inout= new MInOut(getCtx(),getM_InOut_ID(),null); 
+			MInOutLine inoutLines[] = inout.getLines(); 
+			for (MInOutLine inoutLine : inoutLines) { 
+				if(getM_RMALine_ID() == inoutLine.getM_RMALine_ID()){ 
+					 
+					log.saveError("Error", Msg.translate(getCtx(), "RMALine has been converted")); 
+					return false; 
+				} 
+			} 
+		}
+		
 		if (newRecord && getParent().isProcessed()) {
 			log.saveError("ParentComplete", Msg.translate(getCtx(), "M_InOut_ID"));
 			return false;
@@ -638,11 +652,34 @@ public class MInOutLine extends X_M_InOutLine
 			if (C_UOM_ID > 0)
 				setC_UOM_ID (C_UOM_ID);
 		}
+		
+		//@win - recalculate multi uom on 
+		if (newRecord || is_ValueChanged(COLUMNNAME_C_UOM_ID) || 
+				is_ValueChanged(COLUMNNAME_M_Product_ID) || is_ValueChanged(COLUMNNAME_QtyEntered)) {
+			BigDecimal qtyEntered = getQtyEntered();
+			int p_C_UOM_ID = getC_UOM_ID();
+			BigDecimal qtyEntered1 = qtyEntered.setScale(MUOM.getPrecision(getCtx(), p_C_UOM_ID), RoundingMode.HALF_UP);
+			if (qtyEntered.compareTo(qtyEntered1) != 0)
+			{
+				qtyEntered = qtyEntered1;
+				setQtyEntered(qtyEntered);
+			}
+			BigDecimal movementQty = MUOMConversion.convertProductFrom (getCtx(), getM_Product_ID(),
+				p_C_UOM_ID, qtyEntered);
+			if (movementQty == null)
+				movementQty = qtyEntered;
+			if (getMovementQty().compareTo(movementQty) != 0)
+				setMovementQty(movementQty);
+		}
+		//end @win - recalculate multi uom
+		
+		/* commented out by @win
 		//	Qty Precision
 		if (newRecord || is_ValueChanged("QtyEntered"))
 			setQtyEntered(getQtyEntered());
 		if (newRecord || is_ValueChanged("MovementQty"))
 			setMovementQty(getMovementQty());
+		*/
 
 		//	Order/RMA Line
 		if (getC_OrderLine_ID() == 0 && getM_RMALine_ID() == 0)

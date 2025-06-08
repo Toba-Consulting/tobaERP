@@ -298,4 +298,35 @@ public interface I_M_RequisitionLine
 	  * User who updated this records
 	  */
 	public int getUpdatedBy();
+	
+	/** Column name IsTrackAsAsset */
+    public static final String COLUMNNAME_IsTrackAsAsset = "IsTrackAsAsset";
+
+	/** Set Track As Asset	  */
+	public void setIsTrackAsAsset (boolean IsTrackAsAsset);
+
+	/** Get Track As Asset	  */
+	public boolean isTrackAsAsset();
+	
+	/** Column name QtyOrdered */
+    public static final String COLUMNNAME_QtyOrdered = "QtyOrdered";
+
+	/** Set Ordered Quantity.
+	  * Ordered Quantity
+	  */
+	public void setQtyOrdered (BigDecimal QtyOrdered);
+
+	/** Get Ordered Quantity.
+	  * Ordered Quantity
+	  */
+	public BigDecimal getQtyOrdered();
+
+    /** Column name QtyRequired */
+    public static final String COLUMNNAME_QtyRequired = "QtyRequired";
+
+	/** Set Required Qty	  */
+	public void setQtyRequired (BigDecimal QtyRequired);
+
+	/** Get Required Qty	  */
+	public BigDecimal getQtyRequired();
 }

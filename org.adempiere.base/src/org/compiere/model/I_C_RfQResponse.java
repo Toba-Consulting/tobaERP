@@ -418,4 +418,54 @@ public interface I_C_RfQResponse
 	  * User who updated this records
 	  */
 	public int getUpdatedBy();
+	
+	/** Column name C_PaymentTerm_ID */
+    public static final String COLUMNNAME_C_PaymentTerm_ID = "C_PaymentTerm_ID";
+
+	/** Set Payment Term.
+	  * The terms of Payment (timing, discount)
+	  */
+	public void setC_PaymentTerm_ID (int C_PaymentTerm_ID);
+
+	/** Get Payment Term.
+	  * The terms of Payment (timing, discount)
+	  */
+	public int getC_PaymentTerm_ID();
+
+	public org.compiere.model.I_C_PaymentTerm getC_PaymentTerm() throws RuntimeException;
+
+	/** Column name DateValid */
+    public static final String COLUMNNAME_DateValid = "DateValid";
+
+	/** Set Date Valid	  */
+	public void setDateValid (Timestamp DateValid);
+
+	/** Get Date Valid	  */
+	public Timestamp getDateValid();
+	
+	/** Column name IsInternal */
+    public static final String COLUMNNAME_IsInternal = "IsInternal";
+
+	/** Set Internal.
+	  * Internal Organization
+	  */
+	public void setIsInternal (boolean IsInternal);
+
+	/** Get Internal.
+	  * Internal Organization
+	  */
+	public boolean isInternal();
+	
+	/** Column name PaymentRule */
+    public static final String COLUMNNAME_PaymentRule = "PaymentRule";
+
+	/** Set Payment Rule.
+	  * How you pay the invoice
+	  */
+	public void setPaymentRule (String PaymentRule);
+
+	/** Get Payment Rule.
+	  * How you pay the invoice
+	  */
+	public String getPaymentRule();
 }

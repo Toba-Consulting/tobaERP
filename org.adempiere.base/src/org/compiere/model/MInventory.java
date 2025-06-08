@@ -20,6 +20,7 @@ import java.io.File;
 import java.math.BigDecimal;
 import java.sql.ResultSet;
 import java.sql.Timestamp;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
@@ -28,6 +29,7 @@ import java.util.logging.Level;
 import org.adempiere.exceptions.NegativeInventoryDisallowedException;
 import org.adempiere.exceptions.PeriodClosedException;
 import org.compiere.process.DocAction;
+import org.compiere.process.DocOptions;
 import org.compiere.process.DocumentEngine;
 import org.compiere.util.CLogger;
 import org.compiere.util.DB;
@@ -49,7 +51,7 @@ import org.compiere.util.Util;
  * 			<li>BF [ 1745154 ] Cost in Reversing Material Related Docs
  *  @see https://sourceforge.net/p/adempiere/feature-requests/412/
  */
-public class MInventory extends X_M_Inventory implements DocAction
+public class MInventory extends X_M_Inventory implements DocAction, DocOptions 
 {
 	/**
 	 * generated serial id 
@@ -522,7 +524,7 @@ public class MInventory extends X_M_Inventory implements DocAction
 			try
 			{
 				BigDecimal qtyDiff = Env.ZERO;
-				if (MDocType.DOCSUBTYPEINV_InternalUseInventory.equals(docSubTypeInv))
+				if (MDocType.DOCSUBTYPEINV_InternalUseInventory.equals(docSubTypeInv) || MDocType.DOCSUBTYPEINV_MiscReceipt.equals(docSubTypeInv))
 					qtyDiff = line.getQtyInternalUse().negate();
 				else if (MDocType.DOCSUBTYPEINV_PhysicalInventory.equals(docSubTypeInv))
 					qtyDiff = line.getQtyCount().subtract(line.getQtyBook());
@@ -1079,6 +1081,55 @@ public class MInventory extends X_M_Inventory implements DocAction
 
 		//	Reverse Line Qty
 		MInventoryLine[] oLines = getLines(true);
+		MDocType doctype = MDocType.get(getCtx(), getC_DocType_ID());
+		String docSubTypeInv = doctype.getDocSubTypeInv();
+		
+		ArrayList<MStorageOnHandTemp> onHandTemp = new ArrayList<MStorageOnHandTemp>();
+		boolean skip = false;
+		BigDecimal sumQtyOnhand=Env.ZERO;
+		//@phie
+		if(MDocType.DOCSUBTYPEINV_PhysicalInventory.equals(docSubTypeInv) 
+				|| MDocType.DOCSUBTYPEINV_MiscReceipt.equals(docSubTypeInv))
+		{
+			//Create temporary on hand
+			for(int j=0 ; j<oLines.length;j++){
+				//get storage on hand and store to onhand temp, for the first line
+	            if(j==0){
+	            	MStorageOnHand[] onhand = MStorageOnHand.getAll(getCtx(), oLines[j].getM_Product_ID(), 
+	            			oLines[j].getM_Locator_ID(), get_TrxName());
+	            	
+	            	for(int n=0;n<onhand.length;n++){
+	            		MStorageOnHandTemp temp = new MStorageOnHandTemp(onhand[n].getQtyOnHand(), onhand[n].getDateMaterialPolicy(), 
+	            				onhand[n].getM_Product_ID(), onhand[n].getM_Locator_ID());
+	            		onHandTemp.add(temp);
+	            	}
+	            }
+	            else{
+	            	skip = false;
+	            	//check the next line, if both product and locator same with one of the previous line then skip
+	                for(int k=0;k<j;k++){
+	                    if(oLines[j].getM_Product_ID() == oLines[k].getM_Product_ID() 
+	                    		&& oLines[j].getM_Locator_ID() == oLines[k].getM_Locator_ID()){
+	                    	skip = true;
+	                        break;
+	                    }
+	                }
+	                
+	                //if this line has a different product and locator with all of the previous line then get storage on hand and store to onhand temp
+	                if(!skip){
+	                	MStorageOnHand[] onhand = MStorageOnHand.getAll(getCtx(), oLines[j].getM_Product_ID(), 
+	                			oLines[j].getM_Locator_ID(), get_TrxName());
+		            	
+		                for(int n=0;n<onhand.length;n++){
+		            		MStorageOnHandTemp temp = new MStorageOnHandTemp(onhand[n].getQtyOnHand(), onhand[n].getDateMaterialPolicy(), 
+		            				onhand[n].getM_Product_ID(), onhand[n].getM_Locator_ID());
+		            		onHandTemp.add(temp);
+		            	}
+	                } 
+	            }
+	        }
+		}//end phie
+		
 		for (int i = 0; i < oLines.length; i++)
 		{
 			MInventoryLine oLine = oLines[i];
@@ -1099,18 +1150,103 @@ public class MInventory extends X_M_Inventory implements DocAction
 			rLine.saveEx();
 
 			//We need to copy MA
+			//create MA
+			//@phie TAOWI-2676
 			if (rLine.getM_AttributeSetInstance_ID() == 0)
 			{
-				MInventoryLineMA mas[] = MInventoryLineMA.get(getCtx(),
-						oLines[i].getM_InventoryLine_ID(), get_TrxName());
-				for (int j = 0; j < mas.length; j++)
+				if(MDocType.DOCSUBTYPEINV_PhysicalInventory.equals(docSubTypeInv) || MDocType.DOCSUBTYPEINV_MiscReceipt.equals(docSubTypeInv))
 				{
-					MInventoryLineMA ma = new MInventoryLineMA (rLine, 
-							mas[j].getM_AttributeSetInstance_ID(),
-							mas[j].getMovementQty().negate(),mas[j].getDateMaterialPolicy(),true);
-					ma.saveEx();
+					sumQtyOnhand = Env.ZERO;
+					BigDecimal qtyToBeReversed = MDocType.DOCSUBTYPEINV_MiscReceipt.equals(docSubTypeInv) 
+							? oLines[i].getQtyMiscReceipt() 
+							: oLines[i].getQtyCount().subtract(oLines[i].getQtyBook());
+					
+					//sumqty onhand
+					for (int a = 0; a < onHandTemp.size(); a++)
+					{
+						MStorageOnHandTemp onhand=onHandTemp.get(a);
+						boolean pair = (rLine.getM_Product_ID() == onhand.getM_Product_ID() && 
+								rLine.getM_Locator_ID() == onhand.getM_Locator_ID()) ? true : false;
+						if(pair)
+							sumQtyOnhand = sumQtyOnhand.add(onhand.getQtyOnHand());
+					}
+							
+							
+					/*
+						if can be reversed, qty will be reduced from anywhere (different datematerialpolicy) 
+						Note : 
+							inventorylineMA record the detail with the same datematerialpolicy 
+							qtyMovement will be : (-) for created
+					 							  (+) for reversed
+					*/
+					
+					if(sumQtyOnhand.compareTo(qtyToBeReversed)>=0)
+					{
+						BigDecimal residual = qtyToBeReversed;
+						BigDecimal prevResidual;
+						for (int a = 0; a < onHandTemp.size(); a++)
+						{
+							MStorageOnHandTemp onhand=onHandTemp.get(a);
+							
+							boolean pair = (rLine.getM_Product_ID() == onhand.getM_Product_ID() && 
+									rLine.getM_Locator_ID() == onhand.getM_Locator_ID()) ? true : false;
+							if(!pair)
+								continue;
+							
+							if(onhand.getQtyOnHand().compareTo(Env.ZERO) <= 0)
+								continue;
+							
+							prevResidual = residual;
+							residual = residual.subtract(onhand.getQtyOnHand());
+							if(residual.compareTo(Env.ZERO)==0)
+							{
+								MInventoryLineMA ma = new MInventoryLineMA (rLine, 0, onhand.getQtyOnHand(),onhand.getDatematerialpolicy(),true);
+								ma.saveEx();
+								onhand.setQtyOnHand(Env.ZERO);
+								break;
+							}
+							else if(residual.compareTo(Env.ZERO)<0)
+							{
+								MInventoryLineMA ma = new MInventoryLineMA (rLine, 0, prevResidual,onhand.getDatematerialpolicy(),true);
+								ma.saveEx();
+								onhand.setQtyOnHand(onhand.getQtyOnHand().subtract(prevResidual));
+								break;
+							}
+							else if(residual.compareTo(Env.ZERO)>0)
+							{
+								MInventoryLineMA ma = new MInventoryLineMA (rLine, 0, onhand.getQtyOnHand(),onhand.getDatematerialpolicy(),true);
+								ma.saveEx();
+								onhand.setQtyOnHand(Env.ZERO);
+							}
+						}	
+					}
+					else
+					{
+						MInventoryLineMA mas[] = MInventoryLineMA.get(getCtx(),
+								oLines[i].getM_InventoryLine_ID(), get_TrxName());
+						for (int j = 0; j < mas.length; j++)
+						{
+							MInventoryLineMA ma = new MInventoryLineMA (rLine, 
+									mas[j].getM_AttributeSetInstance_ID(),
+									mas[j].getMovementQty().negate(),mas[j].getDateMaterialPolicy(),true);
+							ma.saveEx();
+						}
+					}
 				}
-			}
+				else
+				{
+					//We need to copy MA (ori code)
+					MInventoryLineMA mas[] = MInventoryLineMA.get(getCtx(),
+							oLines[i].getM_InventoryLine_ID(), get_TrxName());
+					for (int j = 0; j < mas.length; j++)
+					{
+						MInventoryLineMA ma = new MInventoryLineMA (rLine, 
+								mas[j].getM_AttributeSetInstance_ID(),
+								mas[j].getMovementQty().negate(),mas[j].getDateMaterialPolicy(),true);
+						ma.saveEx();
+					}
+				}
+			}//end phie
 		}
 		//
 		if (!reversal.processIt(DocAction.ACTION_Complete))
@@ -1253,5 +1389,47 @@ public class MInventory extends X_M_Inventory implements DocAction
 			|| DOCSTATUS_Closed.equals(ds)
 			|| DOCSTATUS_Reversed.equals(ds);
 	}	//	isComplete
+	
+	public boolean hasMatchMovementInventory() {
+
+		final String whereClause = I_M_MatchMovement.COLUMNNAME_M_Inventory_ID + "=? AND " + I_M_MatchMovement.COLUMNNAME_TrxType + "=?";
+		ArrayList<Object> params = new ArrayList<Object>();
+		params.add(get_ID());
+		params.add("INM");
+		
+		boolean match = new Query(getCtx(),I_M_MatchMovement.Table_Name, whereClause, get_TrxName())
+				.setParameters(params)
+				.setOnlyActiveRecords(true)
+				.match();
+
+		return match;
+	}
+
+	@Override
+	public int customizeValidActions(String docStatus, Object processing,
+			String orderType, String isSOTrx, int AD_Table_ID,
+			String[] docAction, String[] options, int index) {
+		for (int i = 0; i < options.length; i++) {
+			options[i] = null;
+		}
+
+		index = 0;
+
+		if (docStatus.equals(DocAction.STATUS_Drafted)) {
+			options[index++] = DocAction.ACTION_Complete;
+			options[index++] = DocAction.ACTION_Void;
+		} else if (docStatus.equals(DocAction.STATUS_InProgress)) {
+			options[index++] = DocAction.ACTION_Complete;
+			options[index++] = DocAction.ACTION_Void;
+		} else if (docStatus.equals(DocAction.STATUS_Completed)) {
+			options[index++] = DocAction.ACTION_Reverse_Accrual;
+			options[index++] = DocAction.ACTION_Reverse_Correct;
+		} else if (docStatus.equals(DocAction.STATUS_Invalid)) {
+			options[index++] = DocAction.ACTION_Complete;
+			options[index++] = DocAction.ACTION_Void;
+		}
+
+		return index;
+	}
 
 }	//	MInventory

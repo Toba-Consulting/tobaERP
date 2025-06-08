@@ -940,7 +940,8 @@ public final class MSetup
 	private int createGLCategory (String Name, String CategoryType, boolean isDefault)
 	{
 		MGLCategory cat = new MGLCategory (m_ctx, 0, m_trx.getTrxName());
-		cat.setAD_Org_ID(0);
+		//	cat.setAD_Org_ID(0);
+		cat.setClientOrg(m_client); //added by @win - TCS
 		cat.setName(Name);
 		cat.setCategoryType(CategoryType);
 		cat.setIsDefault(isDefault);
@@ -975,6 +976,7 @@ public final class MSetup
 		if (StartNo != 0)
 		{
 			sequence = new MSequence(m_ctx, getAD_Client_ID(), Name, StartNo, m_trx.getTrxName());
+			sequence.setAD_Org_ID(0); //added by @win - TCS
 			if (!sequence.save())
 			{
 				log.log(Level.SEVERE, "Sequence NOT created - " + Name);
@@ -983,6 +985,7 @@ public final class MSetup
 		}
 		
 		MDocType dt = new MDocType (m_ctx, DocBaseType, Name, m_trx.getTrxName());
+		dt.setClientOrg(m_client); //added by @win - TCS 
 		if (PrintName != null && PrintName.length() > 0)
 			dt.setPrintName(PrintName);	//	Defaults to Name
 		if (DocSubTypeSO != null)
@@ -1041,7 +1044,7 @@ public final class MSetup
 	{
 		if (m_as == null)
 		{
-			log.severe ("No AcctountingSChema");
+			log.severe ("No AccountingSchema");
 			m_trx.rollback();
 			m_trx.close();
 			return false;
@@ -1166,7 +1169,8 @@ public final class MSetup
 		 */
 		//  Create BP Group
 		MBPGroup bpg = new MBPGroup (m_ctx, 0, m_trx.getTrxName());
-		bpg.setAD_Org_ID(0);
+		//	bpg.setAD_Org_ID(0);
+		bpg.setClientOrg(m_client); //added by @win - TCS 
 		bpg.setValue(defaultName);
 		bpg.setName(defaultName);
 		bpg.setIsDefault(true);
@@ -1177,7 +1181,8 @@ public final class MSetup
 
 		//	Create BPartner
 		MBPartner bp = new MBPartner (m_ctx, 0, m_trx.getTrxName());
-		bp.setAD_Org_ID(0);
+		//	bp.setAD_Org_ID(0);
+		bp.setClientOrg(m_client); //added by @win - TCS 
 		bp.setValue(defaultName);
 		bp.setName(defaultName);
 		bp.setBPGroup(bpg);
@@ -1190,6 +1195,7 @@ public final class MSetup
 		bpLoc.setAD_Org_ID(0);
 		bpLoc.saveEx();
 		MBPartnerLocation bpl = new MBPartnerLocation(bp);
+		bpl.setClientOrg(m_client); //added by @win - TCS 
 		bpl.setC_Location_ID(bpLoc.getC_Location_ID());
 		if (!bpl.save())
 			log.log(Level.SEVERE, "BP_Location (Standard) NOT inserted");
@@ -1208,7 +1214,8 @@ public final class MSetup
 		 */
 		//  Create Product Category
 		MProductCategory pc = new MProductCategory(m_ctx, 0, m_trx.getTrxName());
-		pc.setAD_Org_ID(0);
+		//	pc.setAD_Org_ID(0);
+		pc.setClientOrg(m_client); //added by @win - TCS 
 		pc.setValue(defaultName);
 		pc.setName(defaultName);
 		pc.setIsDefault(true);
@@ -1246,7 +1253,8 @@ public final class MSetup
 
 		//  Tax - Zero Rate
 		MTax tax = new MTax (m_ctx, "Standard", Env.ZERO, C_TaxCategory_ID, m_trx.getTrxName());
-		tax.setAD_Org_ID(0);
+		//	tax.setAD_Org_ID(0);
+		tax.setClientOrg(m_client); //added by @win - TCS 
 		tax.setIsDefault(true);
 		if (tax.save())
 			m_info.append(Msg.translate(m_lang, "C_Tax_ID"))
@@ -1256,7 +1264,8 @@ public final class MSetup
 
 		//	Create Product
 		MProduct product = new MProduct (m_ctx, 0, m_trx.getTrxName());
-		product.setAD_Org_ID(0);
+		//	product.setAD_Org_ID(0);
+		product.setClientOrg(m_client); //added by @win - TCS 
 		product.setValue(defaultName);
 		product.setName(defaultName);
 		product.setC_UOM_ID(C_UOM_ID);
@@ -1327,7 +1336,8 @@ public final class MSetup
 		 */
 		//  PriceList
 		MPriceList pl = new MPriceList(m_ctx, 0, m_trx.getTrxName());
-		pl.setAD_Org_ID(0);
+		//	pl.setAD_Org_ID(0);
+		pl.setClientOrg(m_client); //added by @win - TCS 
 		pl.setName(defaultName);
 		pl.setC_Currency_ID(C_Currency_ID);
 		pl.setIsDefault(true);
@@ -1335,14 +1345,16 @@ public final class MSetup
 			log.log(Level.SEVERE, "PriceList NOT inserted");
 		//  Price List
 		MDiscountSchema ds = new MDiscountSchema(m_ctx, 0, m_trx.getTrxName());
-		ds.setAD_Org_ID(0);
+		//	ds.setAD_Org_ID(0);
+		ds.setClientOrg(m_client); //added by @win - TCS 
 		ds.setName(defaultName);
 		ds.setDiscountType(MDiscountSchema.DISCOUNTTYPE_Pricelist);
 		if (!ds.save())
 			log.log(Level.SEVERE, "DiscountSchema NOT inserted");
 		//  PriceList Version
 		MPriceListVersion plv = new MPriceListVersion(pl);
-		plv.setAD_Org_ID(0);
+		//	plv.setAD_Org_ID(0);
+		plv.setClientOrg(m_client); //added by @win - TCS 
 		plv.setName();
 		plv.setM_DiscountSchema_ID(ds.getM_DiscountSchema_ID());
 		if (!plv.save())
@@ -1350,13 +1362,15 @@ public final class MSetup
 		//  ProductPrice
 		MProductPrice pp = new MProductPrice(plv, product.getM_Product_ID(), 
 			Env.ONE, Env.ONE, Env.ONE);
+		pp.setClientOrg(m_client); //added by @win - TCS 
 		if (!pp.save())
 			log.log(Level.SEVERE, "ProductPrice NOT inserted");
 
 
 		//	Create Sales Rep for Client-User
 		MBPartner bpCU = new MBPartner (m_ctx, 0, m_trx.getTrxName());
-		bpCU.setAD_Org_ID(0);
+		//	bpCU.setAD_Org_ID(0);
+		bpCU.setClientOrg(m_client); //added by @win - TCS 
 		bpCU.setValue(AD_User_U_Name);
 		bpCU.setName(AD_User_U_Name);
 		bpCU.setBPGroup(bpg);
@@ -1368,9 +1382,10 @@ public final class MSetup
 			log.log(Level.SEVERE, "SalesRep (User) NOT inserted");
 		//  Location for Client-User
 		MLocation bpLocCU = new MLocation(m_ctx, C_Country_ID, C_Region_ID, City, m_trx.getTrxName());
-		bpLocCU.setAD_Org_ID(0);
+		//	bpLocCU.setAD_Org_ID(0);
 		bpLocCU.saveEx();
 		MBPartnerLocation bplCU = new MBPartnerLocation(bpCU);
+		bplCU.setClientOrg(m_client); //added by @win - TCS 
 		bplCU.setC_Location_ID(bpLocCU.getC_Location_ID());
 		if (!bplCU.save())
 			log.log(Level.SEVERE, "BP_Location (User) NOT inserted");
@@ -1384,7 +1399,8 @@ public final class MSetup
 
 		//	Create Sales Rep for Client-Admin
 		MBPartner bpCA = new MBPartner (m_ctx, 0, m_trx.getTrxName());
-		bpCA.setAD_Org_ID(0);
+		//	bpCA.setAD_Org_ID(0);
+		bpCA.setClientOrg(m_client); //added by @win - TCS 
 		bpCA.setValue(AD_User_Name);
 		bpCA.setName(AD_User_Name);
 		bpCA.setBPGroup(bpg);
@@ -1399,6 +1415,7 @@ public final class MSetup
 		bpLocCA.setAD_Org_ID(0);
 		bpLocCA.saveEx();
 		MBPartnerLocation bplCA = new MBPartnerLocation(bpCA);
+		bplCA.setClientOrg(m_client); //added by @win - TCS 
 		bplCA.setC_Location_ID(bpLocCA.getC_Location_ID());
 		if (!bplCA.save())
 			log.log(Level.SEVERE, "BP_Location (Admin) NOT inserted");
@@ -1469,6 +1486,7 @@ public final class MSetup
 		}
 
 		//  CashBook
+		/*//commented by @win, cash book depreciated 
 		MCashBook cb = new MCashBook(m_ctx, 0, m_trx.getTrxName());
 		cb.setName(defaultName);
 		cb.setC_Currency_ID(C_Currency_ID);
@@ -1476,6 +1494,7 @@ public final class MSetup
 			m_info.append(Msg.translate(m_lang, "C_CashBook_ID")).append("=").append(defaultName).append("\n");
 		else
 			log.log(Level.SEVERE, "CashBook NOT inserted");
+		*/
 		//
 		//do not commit if it is a dry run
 		if (m_dryRun)

@@ -327,4 +327,13 @@ public interface I_M_MatchInv
 	  * User who updated this records
 	  */
 	public int getUpdatedBy();
+	
+	/** Column name MatchType */
+    public static final String COLUMNNAME_MatchType = "MatchType";
+
+	/** Set Match Type	  */
+	public void setMatchType (String MatchType);
+
+	/** Get Match Type	  */
+	public String getMatchType();
 }

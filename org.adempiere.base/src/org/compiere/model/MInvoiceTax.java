@@ -47,6 +47,63 @@ public class MInvoiceTax extends X_C_InvoiceTax
 	 */
 	private static final long serialVersionUID = -5560880305482497098L;
 
+	/** 
+	 * 	Get Tax for Invoice 
+	 *	@param invoice invoice  
+	 *	@param precision currency precision 
+	 *	@param oldTax if true old tax is returned 
+	 *	@param trxName transaction name 
+	 *	@return existing or new tax 
+	 */ 
+	public static MInvoiceTax get (MInvoice invoice, int precision,  
+		boolean oldTax, String trxName) 
+	{ 
+		MInvoiceTax retValue = null; 
+		if (invoice == null || invoice.getC_Invoice_ID() == 0) 
+			return null; 
+		int C_Tax_ID = invoice.get_ValueAsInt("C_Tax_ID"); 
+		boolean isOldTax = oldTax && invoice.is_ValueChanged("C_Tax_ID");  
+		if (isOldTax) 
+		{ 
+			Object old = invoice.get_ValueOld("C_Tax_ID"); 
+			if (old == null) 
+				return null; 
+			C_Tax_ID = ((Integer)old).intValue(); 
+		} 
+		if (C_Tax_ID == 0) 
+		{ 
+			return null; 
+		} 
+		 
+		retValue = new Query(invoice.getCtx(), Table_Name, "C_Invoice_ID=? AND C_Tax_ID=?", trxName) 
+						.setParameters(invoice.getC_Invoice_ID(), C_Tax_ID) 
+						.firstOnly(); 
+		if (retValue != null) 
+		{ 
+			retValue.set_TrxName(trxName); 
+			retValue.setPrecision(precision); 
+			if (s_log.isLoggable(Level.FINE)) s_log.fine("(old=" + oldTax + ") " + retValue); 
+			return retValue; 
+		} 
+		// If the old tax was required and there is no MInvoiceTax for that 
+		// return null, and not create another MInvoiceTax - teo_sarca [ 1583825 ] 
+		else { 
+			if (isOldTax) 
+				return null; 
+		} 
+		 
+		//	Create New 
+		retValue = new MInvoiceTax(invoice.getCtx(), 0, trxName); 
+		retValue.set_TrxName(trxName); 
+		retValue.setClientOrg(invoice); 
+		retValue.setC_Invoice_ID(invoice.getC_Invoice_ID()); 
+		retValue.setC_Tax_ID(invoice.get_ValueAsInt("C_Tax_ID")); 
+		retValue.setPrecision(precision); 
+		retValue.setIsTaxIncluded(invoice.isTaxIncluded()); 
+		if (s_log.isLoggable(Level.FINE)) s_log.fine("(new) " + retValue); 
+		return retValue; 
+	}	//	get
+	
 	/**
 	 * 	Get Tax Line for Invoice Line
 	 *	@param line invoice line
@@ -291,6 +348,58 @@ public class MInvoiceTax extends X_C_InvoiceTax
 		return m_tax;
 	}	//	getTax
 		
+	/************************************************************************** 
+	 * 	Calculate/Set Tax Base Amt from Invoice Header 
+	 * 	@return true if tax calculated 
+	 */ 
+	public boolean calculateTaxFromHeader () 
+	{ 
+		BigDecimal taxBaseAmt = Env.ZERO; 
+		BigDecimal taxAmt = Env.ZERO; 
+		// 
+		boolean documentLevel = getTax().isDocumentLevel(); 
+		MTax tax = getTax(); 
+		// 
+		String sql = "SELECT TotalLines, COALESCE(TaxAmt,0), i.IsSOTrx " 
+			+ "FROM C_Invoice i WHERE C_Invoice_ID=? AND C_Tax_ID=?"; 
+		PreparedStatement pstmt = null; 
+		ResultSet rs = null; 
+		try 
+		{ 
+			pstmt = DB.prepareStatement (sql, get_TrxName()); 
+			pstmt.setInt (1, getC_Invoice_ID()); 
+			pstmt.setInt (2, getC_Tax_ID()); 
+			rs = pstmt.executeQuery (); 
+			while (rs.next ()) 
+			{ 
+				//	BaseAmt 
+				BigDecimal baseAmt = rs.getBigDecimal(1); 
+				taxBaseAmt = taxBaseAmt.add(baseAmt); 
+				//	TaxAmt 
+				BigDecimal amt = rs.getBigDecimal(2); 
+				if (amt == null) 
+					amt = Env.ZERO; 
+ 
+				amt = tax.calculateTax(baseAmt, false, getPrecision()); 
+				// 
+				taxAmt = taxAmt.add(amt); 
+			} 
+		} 
+		catch (SQLException e) 
+		{ 
+			throw new DBException(e, sql); 
+		} 
+		finally 
+		{ 
+			DB.close(rs, pstmt); 
+			rs = null; pstmt = null; 
+		} 
+		 
+		setTaxAmt(taxAmt); 
+		setTaxBaseAmt (taxBaseAmt); 
+		return true; 
+	}	//	calculateTaxFromHeader
+	
 	/**
 	 * 	Calculate/Set Tax and Tax Base Amt from Invoice Lines
 	 * 	@return true if tax calculated

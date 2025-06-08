@@ -179,6 +179,12 @@ public class ProductCost
 	public static final int ACCTTYPE_P_AverageCostVariance = 23;
 	/** Landed cost clearing **/
 	public static final int ACCTTYPE_P_LandedCostClearing = 24;
+	//	@Stephan TAOWI-817
+	/** Product return revenue **/
+	public static final int ACCTTYPE_P_ReturnRevenue = 25;
+	//	@Stephan TAOWI-1060
+	/** Deffered COGS Acct **/
+	public static final int ACCTTYPE_D_COGS = 26;
 
 	/**
 	 *  Line Account from Product
@@ -189,8 +195,13 @@ public class ProductCost
 	 */
 	public MAccount getAccount(int AcctType, MAcctSchema as)
 	{
+		/*	@Stephan TAOWI-817 TAOWI-1060
 		if (AcctType < ACCTTYPE_P_Revenue || AcctType > ACCTTYPE_P_LandedCostClearing)
 			return null;
+		*/
+		if (AcctType < ACCTTYPE_P_Revenue || AcctType > ACCTTYPE_D_COGS)
+			return null;
+		//end
 
 		//  No Product - get Default from Product Category
 		if (m_M_Product_ID == 0)
@@ -208,7 +219,8 @@ public class ProductCost
 				+ "P_RateVariance_Acct,P_MixVariance_Acct,P_FloorStock_Acct," 	//  14.15.16
 				+ "P_CostOfProduction_Acct,P_Labor_Acct,P_Burden_Acct,P_OutsideProcessing_Acct,"	//  17.18,19,20
 				+ "P_Overhead_Acct,P_Scrap_Acct,P_AverageCostVariance_Acct,"	//  21,23
-				+ "P_LandedCostClearing_Acct "									//  24
+				+ "P_LandedCostClearing_Acct,"									//  24
+				+ "P_Return_Revenue_Acct,D_COGS_Acct "							//	25..26	@Stephan TAOWI-817 TAOWI-1060
 				+ "FROM M_Product_Acct "
 				+ "WHERE M_Product_ID=? AND C_AcctSchema_ID=?";
 			//
@@ -249,8 +261,13 @@ public class ProductCost
 	 */
 	public MAccount getAccountDefault (int AcctType, MAcctSchema as)
 	{
+		/*	@Stephan TAOWI-817 TAOWI-1060
 		if (AcctType < ACCTTYPE_P_Revenue || AcctType > ACCTTYPE_P_LandedCostClearing)
 			return null;
+		*/
+		if (AcctType < ACCTTYPE_P_Revenue || AcctType > ACCTTYPE_D_COGS)
+			return null;
+		//end
 		
 		String key = as.getC_AcctSchema_ID()+ "_" + AcctType;
 		Integer validCombination_ID = s_default_valid_comb_cache.get(key);
@@ -264,7 +281,8 @@ public class ProductCost
 				+ "P_RateVariance_Acct,P_MixVariance_Acct,P_FloorStock_Acct," 			//  14.15.16
 				+ "P_CostOfProduction_Acct,P_Labor_Acct,P_Burden_Acct,P_OutsideProcessing_Acct,"		//  17.18,19,20
 				+ "P_Overhead_Acct,P_Scrap_Acct,P_AverageCostVariance_Acct,"			//  21,23
-				+ "P_LandedCostClearing_Acct "											//  24
+				+ "P_LandedCostClearing_Acct,"									//  24
+				+ "P_Return_Revenue_Acct,D_COGS_Acct "							//	25..26	@Stephan TAOWI-817 TAOWI-1060
 				+ "FROM M_Product_Category pc, M_Product_Category_Acct pca "
 				+ "WHERE pc.M_Product_Category_ID=pca.M_Product_Category_ID"
 				+ " AND pca.C_AcctSchema_ID=? "

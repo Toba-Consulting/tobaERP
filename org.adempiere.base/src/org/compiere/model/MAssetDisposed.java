@@ -29,7 +29,9 @@ import java.util.List;
 import java.util.Properties;
 import java.util.logging.Level;
 
+import org.adempiere.exceptions.AdempiereException;
 import org.compiere.process.DocAction;
+import org.compiere.process.DocOptions;
 import org.compiere.process.DocumentEngine;
 import org.compiere.util.Env;
 import org.compiere.util.Util;
@@ -43,8 +45,7 @@ import org.idempiere.fa.util.POCacheLocal;
  * Asset Disposal Model
  * @author Teo Sarca, SC ARHIPAC SERVICE SRL
  */
-public class MAssetDisposed extends X_A_Asset_Disposed
-implements DocAction
+public class MAssetDisposed extends X_A_Asset_Disposed implements DocAction, DocOptions
 {
 	/**
 	 * generated serial id
@@ -90,7 +91,6 @@ implements DocAction
 	 */
 	public static MAssetDisposed createAssetDisposed (MInvoiceLine invLine) {
 		MAssetDisposed assetDisposed = new MAssetDisposed(invLine);
-		assetDisposed.dump();
 		return assetDisposed;
 	}
 	
@@ -99,16 +99,26 @@ implements DocAction
 	 */
 	private MAssetDisposed (MInvoiceLine invLine) {
 		this(invLine.getCtx(),0,invLine.get_TrxName());
-		if (log.isLoggable(Level.FINEST)) log.finest("Entering: Project=" + invLine);
-		setAD_Org_ID(invLine.getAD_Org_ID());
+		if (log.isLoggable(Level.FINEST)) 
+			log.finest("Entering: Project=" + invLine);
+		
+		setAD_Org_ID(invLine.getA_Asset().getAD_Org_ID());
 		setPostingType(POSTINGTYPE_Actual);
 		setDateDoc(invLine.getC_Invoice().getDateInvoiced());
 		setDateAcct(invLine.getC_Invoice().getDateInvoiced());
 		setA_Disposed_Date(invLine.getC_Invoice().getDateInvoiced());
 		setA_Disposed_Method(A_DISPOSED_METHOD_Trade);
 		setA_Asset_ID(invLine.getA_Asset_ID());
-		set_ValueNoCheck("C_Invoice_ID", invLine.getC_Invoice_ID());
-		setM_InvoiceLine(invLine);
+		setC_Invoice_ID(invLine.getC_Invoice_ID());
+		setC_InvoiceLine_ID(invLine.get_ID());
+	
+		MDepreciationWorkfile assetwk = MDepreciationWorkfile.get(getCtx(), invLine.getA_Asset_ID(), POSTINGTYPE_Actual, get_TrxName());
+		
+		setA_Asset_Cost(assetwk.getA_Asset_Cost());
+		setA_Accumulated_Depr(assetwk.getA_Accumulated_Depr());
+		setA_Disposal_Amt(assetwk.getA_Asset_Cost());
+		setA_Accumulated_Depr_Delta(assetwk.getA_Accumulated_Depr());
+		setExpense(assetwk.getA_Asset_Cost().subtract(assetwk.getA_Accumulated_Depr()));
 		saveEx(invLine.get_TrxName());
 	}
 
@@ -186,15 +196,8 @@ implements DocAction
 			return DocAction.STATUS_Invalid;
 		}
 		
-		MPeriod.testPeriodOpen(getCtx(), getDateAcct(), MDocType.DOCBASETYPE_GLDocument, getAD_Org_ID());
+		MPeriod.testPeriodOpen(getCtx(), getDateAcct(), MDocType.DOCBASETYPE_FixedAssetsDisposal, getAD_Org_ID());
 
-		updateFromAsset(this);
-		saveEx(get_TrxName());
-		if (is_Changed())
-		{
-			throw new AssetStatusChangedException();
-		}
-		
 		// Check that the FA is not just depreciated
 		MDepreciationWorkfile assetwk = MDepreciationWorkfile.get(getCtx(), getA_Asset_ID(), getPostingType(), get_TrxName());
 		if (assetwk.isDepreciated(getDateAcct()))
@@ -258,47 +261,44 @@ implements DocAction
 		//loading asset
 		MAsset asset = getAsset();
 		if (log.isLoggable(Level.FINE)) log.fine("asset=" + asset);
-
-		// Activation
-		if(!isDisposal())
-		{
-			String method = getA_Activation_Method();
-			if(method.equals(A_ACTIVATION_METHOD_Activation))
-			{ // reactivation
-				asset.changeStatus(MAsset.A_ASSET_STATUS_Activated, getDateDoc());
-			}
-			else
-			{
-				throw new AssetNotSupportedException(COLUMNNAME_A_Activation_Method, method);
-			}
+		
+		String method = getA_Disposed_Method();
+		if (A_DISPOSED_METHOD_Preservation.equals(method)) {
+			asset.changeStatus(MAsset.A_ASSET_STATUS_Preservation, getDateDoc());
+			updateAssetWK();
 		}
-		// Preservation/Partial Retirement/etc
+		
+		else if (A_DISPOSED_METHOD_Simple.equals(method)
+				|| A_DISPOSED_METHOD_Simple_.equals(method)
+				|| A_DISPOSED_METHOD_Trade.equals(method))
+		{
+			//@Phie
+			setA_Disposal_Amt(getA_Asset_Cost());
+			setA_Accumulated_Depr_Delta(getA_Accumulated_Depr());
+			setExpense(getA_Disposal_Amt().subtract(getA_Accumulated_Depr_Delta()));
+			
+			MDepreciationWorkfile assetwk = MDepreciationWorkfile.get(getCtx(), getA_Asset_ID(), getPostingType(), get_TrxName());
+			BigDecimal newQty = assetwk.getA_QTY_Current();
+			newQty = newQty.subtract((BigDecimal) get_Value("qtyDisposed"));
+			
+			if(newQty.compareTo(Env.ZERO) < 0 )
+				throw new AdempiereException("Current qty is "+assetwk.getA_QTY_Current());
+			
+			assetwk.setA_Asset_Cost(assetwk.getA_Asset_Cost().subtract(getA_Asset_Cost()));
+			assetwk.setA_QTY_Current(newQty);
+			assetwk.adjustAccumulatedDepr(null, null, true);
+			assetwk.saveEx();
+			assetwk.truncDepreciation();
+			
+			if(assetwk.getA_QTY_Current().compareTo(Env.ZERO) == 0)
+				asset.changeStatus(MAsset.A_ASSET_STATUS_Disposed, getDateDoc());
+			//end phie
+		}
+		else if (A_DISPOSED_METHOD_PartialRetirement.equals(method))
+			updateAssetWK();
+		
 		else
-		{
-			String method = getA_Disposed_Method();
-			if (A_DISPOSED_METHOD_Preservation.equals(method))
-			{
-				asset.changeStatus(MAsset.A_ASSET_STATUS_Preservation, getDateDoc());
-			}
-			else if (A_DISPOSED_METHOD_Simple.equals(method)
-					|| A_DISPOSED_METHOD_Trade.equals(method)
-				)
-			{
-				asset.changeStatus(MAsset.A_ASSET_STATUS_Disposed, null);
-				setA_Disposal_Amt(getA_Asset_Cost());
-				setA_Accumulated_Depr_Delta(getA_Accumulated_Depr());
-				setExpense(getA_Disposal_Amt().subtract(getA_Accumulated_Depr_Delta()));
-				createDisposal();
-			}
-			else if (A_DISPOSED_METHOD_PartialRetirement.equals(method))
-			{
-				createDisposal();
-			}
-			else
-			{
-				throw new AssetNotSupportedException(COLUMNNAME_A_Disposed_Method, method);
-			}
-		}
+			throw new AssetNotSupportedException(COLUMNNAME_A_Disposed_Method, method);
 		
 		asset.saveEx(get_TrxName());
 		
@@ -319,13 +319,42 @@ implements DocAction
 	@Override
 	public boolean voidIt()
 	{
-		throw new AssetNotImplementedException("");
+		if (log.isLoggable(Level.INFO)) log.info("voidIt - " + toString());
+		// Before Void
+		m_processMsg = ModelValidationEngine.get().fireDocValidate(this,ModelValidator.TIMING_BEFORE_VOID);
+		if (m_processMsg != null)
+			return false;
+		
+		setA_Disposal_Amt(Env.ZERO);
+		setA_Accumulated_Depr_Delta(Env.ZERO);
+		setExpense(Env.ZERO);
+		setProcessed(true);
+		
+		setDocAction(DocAction.ACTION_None);
+		setDocStatus(DOCACTION_Void);
+		// After Void
+		m_processMsg = ModelValidationEngine.get().fireDocValidate(this,ModelValidator.TIMING_AFTER_VOID);
+		if (m_processMsg != null)
+			return false;
+		
+		return true;
 	}	//	voidIt
 	
 	@Override
 	public boolean closeIt()
 	{
-		setDocAction(DOCACTION_None);
+		if (log.isLoggable(Level.INFO)) log.info("closeIt - " + toString());
+		// Before Close
+		m_processMsg = ModelValidationEngine.get().fireDocValidate(this,ModelValidator.TIMING_BEFORE_CLOSE);
+		if (m_processMsg != null)
+			return false;
+		
+		setDocAction(DocAction.ACTION_None);
+		
+		m_processMsg = ModelValidationEngine.get().fireDocValidate(this,ModelValidator.TIMING_AFTER_CLOSE);
+		if (m_processMsg != null)
+			return false;
+		
 		return true;
 	}	//	closeIt
 	
@@ -386,10 +415,12 @@ implements DocAction
 		{
 			setDateAcct(getDateDoc());
 		}
+		/*
 		if (newRecord || is_ValueChanged(COLUMNNAME_DateAcct))
 		{
 			setC_Period_ID(MPeriod.get(getCtx(), getDateAcct(), getAD_Org_ID(), get_TrxName()).get_ID());
 		}
+		*/
 		if (getA_Disposed_Date() == null)
 		{
 			setA_Disposed_Date(getDateAcct());
@@ -410,7 +441,7 @@ implements DocAction
 				new String[] {
 					MAsset.COLUMNNAME_IsDisposed,
 					MAsset.COLUMNNAME_A_Asset_Status,
-					"AD_Org_ID",
+					MAsset.COLUMNNAME_AD_Org_ID,
 				}
 		);
 		
@@ -471,51 +502,37 @@ implements DocAction
 		bean.setExpense(Expense);
 	}
 	
-	/**
-	 * Process disposal
-	 */
-	private void createDisposal()
+	private void updateAssetWK()
 	{
-		for (MDepreciationWorkfile assetwk :  MDepreciationWorkfile.forA_Asset_ID(getCtx(), getA_Asset_ID(), get_TrxName()))
-		{
-			BigDecimal disposalAmt = Env.ZERO;
-			BigDecimal accumDeprAmt = Env.ZERO;
-			if (assetwk.getC_AcctSchema().getC_Currency_ID() != getC_Currency_ID()) 
-			{
-				disposalAmt  =  assetwk.getA_Asset_Cost();
-				accumDeprAmt = assetwk.getA_Accumulated_Depr();
-			} else
-			{
-				disposalAmt = getA_Disposal_Amt();
-				accumDeprAmt = getA_Accumulated_Depr_Delta();
-			}			
-			
-			MAssetChange change = new MAssetChange (getCtx(), 0, get_TrxName());
-			change.setAD_Org_ID(getAD_Org_ID()); 
-			change.setA_Asset_ID(getA_Asset_ID());
-			change.setChangeType(MAssetChange.CHANGETYPE_Disposal);
-			change.setTextDetails(MRefList.getListDescription (getCtx(),"A_Update_Type" , MAssetChange.CHANGETYPE_Disposal));
-			change.setPostingType(assetwk.getPostingType());
-			change.setAssetValueAmt(disposalAmt);
-			change.setAssetBookValueAmt(assetwk.getA_Asset_Remaining());
-			change.setAssetAccumDepreciationAmt(accumDeprAmt);
-			change.setA_QTY_Current(assetwk.getA_QTY_Current());
-			change.setC_AcctSchema_ID(assetwk.getC_AcctSchema_ID());
-			change.setAssetDisposalDate(getA_Disposed_Date());
-			change.setIsDisposed(true);
-			change.saveEx(get_TrxName());
-			
-			assetwk.adjustCost(disposalAmt.negate(), Env.ZERO, false);
-			assetwk.adjustAccumulatedDepr(accumDeprAmt.negate(), accumDeprAmt.negate(), false);
-			assetwk.saveEx();
-			assetwk.buildDepreciation();
+		MDepreciationWorkfile assetwk = MDepreciationWorkfile.get(getCtx(), getA_Asset_ID(), getPostingType(), get_TrxName());
+		assetwk.adjustCost(getA_Asset_Cost(), Env.ZERO, false);
+		assetwk.adjustAccumulatedDepr(null, null, true);
+		assetwk.saveEx();
+		assetwk.truncDepreciation();
+	}
+	
+	@Override
+	public int customizeValidActions(String docStatus, Object processing,
+			String orderType, String isSOTrx, int AD_Table_ID,
+			String[] docAction, String[] options, int index) {
+
+		for (int i = 0; i < options.length; i++) {
+			options[i] = null;
 		}
-		//
-		// Delete not processed expense entries
-		List<MDepreciationExp> list = MDepreciationExp.getNotProcessedEntries(getCtx(), getA_Asset_ID(), getPostingType(), get_TrxName());
-		for (MDepreciationExp ex : list)
-		{
-			ex.deleteEx(false);
-		}	
+
+		index = 0;
+
+		if (docStatus.equals(DocAction.STATUS_Drafted)) {
+			options[index++] = DocAction.ACTION_Complete;
+			options[index++] = DocAction.ACTION_Void;
+		} else if (docStatus.equals(DocAction.STATUS_InProgress)) {
+			options[index++] = DocAction.ACTION_Complete;
+			options[index++] = DocAction.ACTION_Void;
+		} else if (docStatus.equals(DocAction.STATUS_Invalid)) {
+			options[index++] = DocAction.ACTION_Complete;
+			options[index++] = DocAction.ACTION_Void;
+		}
+
+		return index;
 	}
 }

@@ -39,6 +39,8 @@ import org.compiere.model.I_M_MatchInv;
 import org.compiere.model.I_M_MatchPO;
 import org.compiere.model.MAccount;
 import org.compiere.model.MAcctSchema;
+import org.compiere.model.MBPGroup;
+import org.compiere.model.MBPartner;
 import org.compiere.model.MConversionRate;
 import org.compiere.model.MDocType;
 import org.compiere.model.MInOut;
@@ -48,6 +50,7 @@ import org.compiere.model.MMatchPO;
 import org.compiere.model.MNote;
 import org.compiere.model.MPeriod;
 import org.compiere.model.MRefList;
+import org.compiere.model.MSysConfig;
 import org.compiere.model.ModelValidationEngine;
 import org.compiere.model.ModelValidator;
 import org.compiere.model.PO;
@@ -1296,6 +1299,14 @@ public abstract class Doc
 	public static final int     ACCTTYPE_CommitmentOffset = 111;
 	/** GL Accounts - Commitment Offset	Sales */
 	public static final int     ACCTTYPE_CommitmentOffsetSales = 112;
+	
+	/** ARAP Acct By Currency*/ 
+	public static final int		ACCTTYPE_C_Receivable_ByCurrency = 121; 
+	public static final int		ACCTTYPE_V_Liability_ByCurrency = 122; 
+	public static final int		ACCTTYPE_UnEarnedRevenue_ByCurrency = 123; 
+	public static final int		ACCTTYPE_NotInvoicedReceipts_ByCurrency = 124; 
+	public static final int		ACCTTYPE_V_Prepayment_ByCurrency = 125; 
+	public static final int		ACCTTYPE_C_Prepayment_ByCurrency = 126; 
 
 	/**
 	 *	Get valid combination id by account type and accounting schema
@@ -1472,6 +1483,36 @@ public abstract class Doc
 		{
 			sql = "SELECT CommitmentOffsetSales_Acct FROM C_AcctSchema_GL WHERE C_AcctSchema_ID=?";
 			para_1 = -1;
+		}
+		else if (AcctType == ACCTTYPE_C_Receivable_ByCurrency) 
+		{ 
+			sql = "SELECT C_Receivable_Acct FROM C_BP_C_InvAcctByCurrency WHERE C_Currency_ID="+getC_Currency_ID()+" AND C_BPartner_ID="+getC_BPartner_ID()+" AND C_AcctSchema_ID=?"; 
+			para_1 = -1; 
+		} 
+		else if (AcctType == ACCTTYPE_V_Liability_ByCurrency) 
+		{ 
+			sql = "SELECT V_Liability_Acct FROM C_BP_V_InvAcctByCurrency WHERE C_Currency_ID="+getC_Currency_ID()+" AND C_BPartner_ID="+getC_BPartner_ID()+" AND C_AcctSchema_ID=?"; 
+			para_1 = -1; 
+		} 
+		else if (AcctType == ACCTTYPE_UnEarnedRevenue_ByCurrency) 
+		{ 
+			sql = "SELECT UnEarnedRevenue_Acct FROM C_BP_C_InvAcctByCurrency WHERE C_Currency_ID="+getC_Currency_ID()+" AND C_BPartner_ID="+getC_BPartner_ID()+" AND C_AcctSchema_ID=?"; 
+			para_1 = -1; 
+		} 
+		else if (AcctType == ACCTTYPE_NotInvoicedReceipts_ByCurrency) 
+		{ 
+			sql = "SELECT NotInvoicedReceipts_Acct FROM C_BP_V_InvAcctByCurrency WHERE C_Currency_ID="+getC_Currency_ID()+" AND C_BPartner_ID="+getC_BPartner_ID()+" AND C_AcctSchema_ID=?"; 
+			para_1 = -1; 
+		} 
+		else if (AcctType == ACCTTYPE_V_Prepayment_ByCurrency) 
+		{ 
+			sql = "SELECT V_Prepayment_Acct FROM C_BP_V_InvAcctByCurrency WHERE C_Currency_ID="+getC_Currency_ID()+" AND C_BPartner_ID="+getC_BPartner_ID()+" AND C_AcctSchema_ID=?"; 
+			para_1 = -1; 
+		} 
+		else if (AcctType == ACCTTYPE_C_Prepayment_ByCurrency) 
+		{ 
+			sql = "SELECT C_Prepayment_Acct FROM C_BP_C_InvAcctByCurrency WHERE C_Currency_ID="+getC_Currency_ID()+" AND C_BPartner_ID="+getC_BPartner_ID()+" AND C_AcctSchema_ID=?"; 
+			para_1 = -1; 
 		}
 
 		else
@@ -2276,6 +2317,134 @@ public abstract class Doc
 		return 0;
 	}	//	getUser2_ID
 
+	/** 
+	 *  Get User 3 
+	 *  @return user defined 3 
+	 */ 
+	public int getUser3_ID() 
+	{ 
+		int index = p_po.get_ColumnIndex("User3_ID"); 
+		if (index != -1) 
+		{ 
+			Integer ii = (Integer)p_po.get_Value(index); 
+			if (ii != null) 
+				return ii.intValue(); 
+		} 
+		return 0; 
+	}   //  getUser3_ID 
+	 
+	/** 
+	 *  Get User 4 
+	 *  @return user defined 4 
+	 */ 
+	public int getUser4_ID() 
+	{ 
+		int index = p_po.get_ColumnIndex("User4_ID"); 
+		if (index != -1) 
+		{ 
+			Integer ii = (Integer)p_po.get_Value(index); 
+			if (ii != null) 
+				return ii.intValue(); 
+		} 
+		return 0; 
+	}   //  getUser4_ID 
+	 
+	/** 
+	 *  Get User 5 
+	 *  @return user defined 5 
+	 */ 
+	public int getUser5_ID() 
+	{ 
+		int index = p_po.get_ColumnIndex("User5_ID"); 
+		if (index != -1) 
+		{ 
+			Integer ii = (Integer)p_po.get_Value(index); 
+			if (ii != null) 
+				return ii.intValue(); 
+		} 
+		return 0; 
+	}   //  getUser5_ID 
+	 
+	/** 
+	 *  Get User 6 
+	 *  @return user defined 6 
+	 */ 
+	public int getUser6_ID() 
+	{ 
+		int index = p_po.get_ColumnIndex("User6_ID"); 
+		if (index != -1) 
+		{ 
+			Integer ii = (Integer)p_po.get_Value(index); 
+			if (ii != null) 
+				return ii.intValue(); 
+		} 
+		return 0; 
+	}   //  getUser6_ID 
+	 
+	/** 
+	 *  Get User 7 
+	 *  @return user defined 7 
+	 */ 
+	public int getUser7_ID() 
+	{ 
+		int index = p_po.get_ColumnIndex("User7_ID"); 
+		if (index != -1) 
+		{ 
+			Integer ii = (Integer)p_po.get_Value(index); 
+			if (ii != null) 
+				return ii.intValue(); 
+		} 
+		return 0; 
+	}   //  getUser7_ID 
+	 
+	/** 
+	 *  Get User 8 
+	 *  @return user defined 8 
+	 */ 
+	public int getUser8_ID() 
+	{ 
+		int index = p_po.get_ColumnIndex("User8_ID"); 
+		if (index != -1) 
+		{ 
+			Integer ii = (Integer)p_po.get_Value(index); 
+			if (ii != null) 
+				return ii.intValue(); 
+		} 
+		return 0; 
+	}   //  getUser8_ID 
+	 
+	/** 
+	 *  Get User 9 
+	 *  @return user defined 9 
+	 */ 
+	public int getUser9_ID() 
+	{ 
+		int index = p_po.get_ColumnIndex("User9_ID"); 
+		if (index != -1) 
+		{ 
+			Integer ii = (Integer)p_po.get_Value(index); 
+			if (ii != null) 
+				return ii.intValue(); 
+		} 
+		return 0; 
+	}   //  getUser9_ID 
+	 
+	/** 
+	 *  Get User 10 
+	 *  @return user defined 10 
+	 */ 
+	public int getUser10_ID() 
+	{ 
+		int index = p_po.get_ColumnIndex("User10_ID"); 
+		if (index != -1) 
+		{ 
+			Integer ii = (Integer)p_po.get_Value(index); 
+			if (ii != null) 
+				return ii.intValue(); 
+		} 
+		return 0; 
+	}   //  getUser10_ID 
+	
     /**
 	 * Get value by column name
 	 * @param ColumnName
@@ -2337,4 +2506,31 @@ public abstract class Doc
 	public boolean isDeferPosting() {
 		return false;
 	}
+	
+	/** 
+	 * 	Get bp group 
+	 * 	@return MBPGroup 
+	 */ 
+	public MBPGroup getBPGroup(){ 
+		if(get_TableName().equals(MInvoice.Table_Name)){ 
+			MInvoice invoice = (MInvoice) getPO(); 
+			MBPartner partner = new MBPartner(getCtx(), invoice.getC_BPartner_ID(), invoice.get_TrxName()); 
+			return new MBPGroup(getCtx(), partner.getC_BP_Group_ID(), partner.get_TrxName()); 
+		} 
+		return null; 
+	}
+	
+	public boolean useCustomBPAcctByCurrency(int AccountingSchemaCurrency_ID, int C_Currency_ID){
+		
+		if (AccountingSchemaCurrency_ID==C_Currency_ID) {
+			return false;
+		}
+		
+		Timestamp cutOffDate = MSysConfig.getTimestampValue("Custom_Acct_By_BP_Currency_Cutoff_Date");
+		if (getDateAcct().before(cutOffDate)) 
+			return false;
+		
+		return true;
+	}
+	
 }   //  Doc

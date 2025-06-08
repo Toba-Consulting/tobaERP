@@ -30,6 +30,7 @@ import java.util.Map;
 import java.util.logging.Level;
 
 import org.adempiere.exceptions.AverageCostingZeroQtyException;
+import org.compiere.model.I_C_Invoice;
 import org.compiere.model.I_C_Order;
 import org.compiere.model.I_C_OrderLine;
 import org.compiere.model.MAccount;
@@ -198,9 +199,30 @@ public class Doc_MatchInv extends Doc
 		//  From Receipt
 		BigDecimal multiplier = getQty()
 			.divide(m_receiptLine.getMovementQty(), 12, RoundingMode.HALF_UP);
+		
+		/*@David
 		FactLine dr = fact.createLine (null,
 			getAccount(Doc.ACCTTYPE_NotInvoicedReceipts, as),
 			as.getC_Currency_ID(), Env.ONE, null);			// updated below
+		*/	
+		FactLine dr;
+		I_C_Invoice inv = m_invoiceLine.getC_Invoice();
+		if (!useCustomBPAcctByCurrency(as.getC_Currency_ID(),inv.getC_Currency_ID())) {
+			dr = fact.createLine (null,
+			getAccount(Doc.ACCTTYPE_NotInvoicedReceipts, as),
+			as.getC_Currency_ID(), Env.ONE, null);
+		}
+		else{
+			
+			String sql = "SELECT NotInvoicedReceipts_Acct FROM C_BP_V_InvAcctByCurrency WHERE C_Currency_ID="+inv.getC_Currency_ID()+" AND C_BPartner_ID="+inv.getC_BPartner_ID()+" AND C_AcctSchema_ID="+as.getC_AcctSchema_ID();
+			int ValidComb_ID=DB.getSQLValue(getTrxName(), sql);
+			MAccount account = new MAccount(getCtx(), ValidComb_ID, getTrxName());
+			dr = fact.createLine (null,
+			account,
+			as.getC_Currency_ID(), Env.ONE, null);
+		}
+		//@David End
+		
 		if (dr == null)
 		{
 			p_Error = "No Product Costs";
@@ -395,12 +417,16 @@ public class Doc_MatchInv extends Doc
 		processInvoicePriceVariance(as, fact, ipv, ipvSource);
 		if (log.isLoggable(Level.FINE)) log.fine("IPV=" + ipv + "; Balance=" + fact.getSourceBalance());
 
-		String error = createMatchInvCostDetail(as);
-		if (error != null && error.trim().length() > 0)
-		{
-			p_Error = error;
-			return null;
+		//@win add note: probably solution for error costing for asset item
+		if (!m_pc.isService()) {
+			String error = createMatchInvCostDetail(as);
+			if (error != null && error.trim().length() > 0)
+			{
+				p_Error = error;
+				return null;
+			}
 		}
+		
 		//
 		facts.add(fact);
 

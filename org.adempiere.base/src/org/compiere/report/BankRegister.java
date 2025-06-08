@@ -155,7 +155,7 @@ public class BankRegister extends SvrProcess
 		
 		sb.append("SELECT ").append(getAD_PInstance_ID()).append(", ").append(Env.getAD_Client_ID(getCtx())).append(", ").append(Env.getAD_Org_ID(getCtx())).append(", ")
 			.append(DB.TO_DATE(p_DateAcct_From, true)).append(", ").append(p_C_Bank_ID).append(", ")
-			.append(DB.TO_STRING(Msg.getMsg(Env.getCtx(), "Beginning Balance"))).append(", ").append(p_C_BPartner_ID).append(", NULL, NULL, " //NULL, 
+			.append(DB.TO_STRING(Msg.getMsg(Env.getCtx(), " Beginning Balance"))).append(", ").append(p_C_BPartner_ID).append(", NULL, NULL, " //NULL, 
 			+ "COALESCE(SUM(fa.AmtAcctDr),0), COALESCE(SUM(fa.AmtAcctCr),0), COALESCE(SUM(fa.AmtAcctDr-fa.AmtAcctCr),0) "
 			+ "From Fact_Acct fa "
 			+ "Inner Join C_Payment p On p.C_Payment_ID = fa.Record_ID AND p.docstatus IN ('CO', 'CL') "
@@ -186,11 +186,12 @@ public class BankRegister extends SvrProcess
 	private void createDetailLines()
 	{
 		StringBuilder sb = new StringBuilder ("INSERT INTO T_BankRegister "
-				+ "(AD_PInstance_ID, AD_Client_ID, AD_Org_ID, "
+				+ "(AccountNo, Name, AD_PInstance_ID, AD_Client_ID, AD_Org_ID, "
 				+ "DateAcct, C_Bank_ID, BankName, C_BPartner_ID, BPartner, DocumentNo, " //Account, 
 				+ "AmtAcctDr, AmtAcctCr, Balance) ");
 
-		sb.append("SELECT DISTINCT ").append(getAD_PInstance_ID()).append(", fa.AD_Client_ID, fa.AD_Org_ID, ")
+		sb.append("SELECT DISTINCT ").append("ba.AccountNo, ba.Name, ")
+			.append(getAD_PInstance_ID()).append(", fa.AD_Client_ID, fa.AD_Org_ID, ")
 			.append("TRUNC(fa.DateAcct), b.C_Bank_ID, b.name, bp.C_BPartner_ID, bp.name, p.documentNo, "	//ev.name, 
 			+ "fa.AmtAcctDr, fa.AmtAcctCr, fa.AmtAcctDr-fa.AmtAcctCr "
 			+ "From Fact_Acct fa "

@@ -1945,4 +1945,99 @@ public class X_M_InOut extends PO implements I_M_InOut, I_Persistent
 			 return Env.ZERO;
 		return bd;
 	}
+	
+	/** Set Create Asset.
+		@param A_CreateAsset Create Asset	  */
+	public void setA_CreateAsset (boolean A_CreateAsset)
+	{
+		set_Value (COLUMNNAME_A_CreateAsset, Boolean.valueOf(A_CreateAsset));
+	}
+	
+	/** Get Create Asset.
+		@return Create Asset	  */
+	public boolean isA_CreateAsset () 
+	{
+		Object oo = get_Value(COLUMNNAME_A_CreateAsset);
+		if (oo != null) 
+		{
+			 if (oo instanceof Boolean) 
+				 return ((Boolean)oo).booleanValue(); 
+			return "Y".equals(oo);
+		}
+		return false;
+	}
+	
+	/** Set Track As Asset.
+		@param IsTrackAsAsset Track As Asset	  */
+	public void setIsTrackAsAsset (boolean IsTrackAsAsset)
+	{
+		set_Value (COLUMNNAME_IsTrackAsAsset, Boolean.valueOf(IsTrackAsAsset));
+	}
+	
+	/** Get Track As Asset.
+		@return Track As Asset	  */
+	public boolean isTrackAsAsset () 
+	{
+		Object oo = get_Value(COLUMNNAME_IsTrackAsAsset);
+		if (oo != null) 
+		{
+			 if (oo instanceof Boolean) 
+				 return ((Boolean)oo).booleanValue(); 
+			return "Y".equals(oo);
+		}
+		return false;
+	}
+	
+	public org.compiere.model.I_M_Locator getM_Locator() throws RuntimeException
+	{
+		return (org.compiere.model.I_M_Locator)MTable.get(getCtx(), org.compiere.model.I_M_Locator.Table_Name)
+			.getPO(getM_Locator_ID(), get_TrxName());	}
+	
+	/** Set Locator.
+		@param M_Locator_ID 
+		Warehouse Locator
+	  */
+	public void setM_Locator_ID (int M_Locator_ID)
+	{
+		if (M_Locator_ID < 1) 
+			set_Value (COLUMNNAME_M_Locator_ID, null);
+		else 
+			set_Value (COLUMNNAME_M_Locator_ID, Integer.valueOf(M_Locator_ID));
+	}
+	
+	/** Get Locator.
+		@return Warehouse Locator
+	  */
+	public int getM_Locator_ID () 
+	{
+		Integer ii = (Integer)get_Value(COLUMNNAME_M_Locator_ID);
+		if (ii == null)
+			 return 0;
+		return ii.intValue();
+	}
+	
+	public I_M_WarehouseZone getM_WarehouseZone() throws RuntimeException
+	{
+		return (I_M_WarehouseZone)MTable.get(getCtx(), I_M_WarehouseZone.Table_Name)
+			.getPO(getM_WarehouseZone_ID(), get_TrxName());	}
+	
+	/** Set Warehouse Zone.
+		@param M_WarehouseZone_ID Warehouse Zone	  */
+	public void setM_WarehouseZone_ID (int M_WarehouseZone_ID)
+	{
+		if (M_WarehouseZone_ID < 1) 
+			set_Value (COLUMNNAME_M_WarehouseZone_ID, null);
+		else 
+			set_Value (COLUMNNAME_M_WarehouseZone_ID, Integer.valueOf(M_WarehouseZone_ID));
+	}
+	
+	/** Get Warehouse Zone.
+		@return Warehouse Zone	  */
+	public int getM_WarehouseZone_ID () 
+	{
+		Integer ii = (Integer)get_Value(COLUMNNAME_M_WarehouseZone_ID);
+		if (ii == null)
+			 return 0;
+		return ii.intValue();
+	}
 }

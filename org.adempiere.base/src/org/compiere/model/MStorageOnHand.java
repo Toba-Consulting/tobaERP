@@ -27,10 +27,12 @@ import java.util.List;
 import java.util.Properties;
 import java.util.logging.Level;
 
+import org.adempiere.exceptions.AdempiereException;
 import org.adempiere.exceptions.NegativeInventoryDisallowedException;
 import org.compiere.util.CLogger;
 import org.compiere.util.DB;
 import org.compiere.util.Env;
+import org.compiere.util.Msg;
 import org.compiere.util.Util;
 
 /**
@@ -839,6 +841,14 @@ public class MStorageOnHand extends X_M_StorageOnHand
 		if(dateLastInventory != null)
 			storage.updateDateLastInventory(dateLastInventory);
 		storage.addQtyOnHand(diffQtyOnHand);
+		if (storage.getQtyOnHand().signum() == -1) {
+			MLocator loc = new MLocator(ctx, M_Locator_ID, trxName);
+			if (MWarehouse.get(Env.getCtx(), loc.getM_Warehouse_ID()).isDisallowNegativeInv()) {
+				s_log.severe("Negative Inventory - Product="+M_Product_ID+",Locator="+M_Locator_ID
+						+",ASI="+M_AttributeSetInstance_ID+",date="+dateMPolicy);
+				throw new AdempiereException(Msg.getMsg(ctx, "NegativeInventoryDisallowed"));
+			}
+		}
 		if (s_log.isLoggable(Level.FINE)) {
 			StringBuilder diffText = new StringBuilder("(OnHand=").append(diffQtyOnHand).append(") -> ").append(storage.toString());
 			s_log.fine(diffText.toString());
@@ -1401,4 +1411,43 @@ public class MStorageOnHand extends X_M_StorageOnHand
 		
 		return null;
 	}  //getDateMaterialPolicy
+	
+	public static BigDecimal getQtyOnHandForWarehouseZone(int M_Product_ID,
+			int M_WarehouseZone_ID,int M_AttributeSetInstance_ID, String trxName) {
+		StringBuilder sql = new StringBuilder();
+		sql.append(" SELECT SUM(oh.QtyOnHand) FROM M_StorageOnHand oh")
+				.append(" WHERE oh.M_Product_ID=?")
+				.append(" AND oh.M_Locator_ID IN (SELECT M_Locator_ID FROM M_Locator WHERE M_WarehouseZone_ID=?)");
+
+		ArrayList<Object> params = new ArrayList<Object>();
+		params.add(M_Product_ID);
+		params.add(M_WarehouseZone_ID);
+
+		// With ASI
+		if (M_AttributeSetInstance_ID != 0) {
+			sql.append(" AND oh.M_AttributeSetInstance_ID=?");
+			params.add(M_AttributeSetInstance_ID);
+		}
+
+		BigDecimal qty = DB.getSQLValueBD(trxName, sql.toString(), params);
+		if (qty == null)
+			qty = Env.ZERO;
+
+		return qty;
+	}
+	
+	/**
+	 * 	Change Qty OnHand
+	 *	@param qty quantity
+	 *	@param add add if true 
+	 */
+	public void changeQtyOnHand (BigDecimal qty, boolean add)
+	{
+		if (qty == null || qty.signum() == 0)
+			return;
+		if (add)
+			setQtyOnHand(getQtyOnHand().add(qty));
+		else
+			setQtyOnHand(getQtyOnHand().subtract(qty));
+	}	//	changeQtyOnHand
 }	//	MStorageOnHand

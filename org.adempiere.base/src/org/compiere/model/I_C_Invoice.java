@@ -629,15 +629,6 @@ public interface I_C_Invoice
 	  */
 	public boolean isDiscountPrinted();
 
-    /** Column name IsFixedAssetInvoice */
-    public static final String COLUMNNAME_IsFixedAssetInvoice = "IsFixedAssetInvoice";
-
-	/** Set Is Fixed Asset Invoice	  */
-	public void setIsFixedAssetInvoice (boolean IsFixedAssetInvoice);
-
-	/** Get Is Fixed Asset Invoice	  */
-	public boolean isFixedAssetInvoice();
-
     /** Column name IsInDispute */
     public static final String COLUMNNAME_IsInDispute = "IsInDispute";
 
@@ -980,4 +971,104 @@ public interface I_C_Invoice
 	public int getUser2_ID();
 
 	public org.compiere.model.I_C_ElementValue getUser2() throws RuntimeException;
+	
+	/** Column name A_CreateAsset */
+    public static final String COLUMNNAME_A_CreateAsset = "A_CreateAsset";
+
+	/** Set Create Asset	  */
+	public void setA_CreateAsset (boolean A_CreateAsset);
+
+	/** Get Create Asset	  */
+	public boolean isA_CreateAsset();
+	
+	/** Column name A_Processed */
+    public static final String COLUMNNAME_A_Processed = "A_Processed";
+
+	/** Set Processed	  */
+	public void setA_Processed (boolean A_Processed);
+
+	/** Get Processed	  */
+	public boolean isA_Processed();
+	
+	/** Column name C_Tax_ID */
+    public static final String COLUMNNAME_C_Tax_ID = "C_Tax_ID";
+
+	/** Set Tax.
+	  * Tax identifier
+	  */
+	public void setC_Tax_ID (int C_Tax_ID);
+
+	/** Get Tax.
+	  * Tax identifier
+	  */
+	public int getC_Tax_ID();
+
+	public org.compiere.model.I_C_Tax getC_Tax() throws RuntimeException;
+	
+	/** Column name DownPaymentAmt */
+    public static final String COLUMNNAME_DownPaymentAmt = "DownPaymentAmt";
+
+	/** Set Down Payment Amt	  */
+	public void setDownPaymentAmt (BigDecimal DownPaymentAmt);
+
+	/** Get Down Payment Amt	  */
+	public BigDecimal getDownPaymentAmt();
+	
+	/** Column name GenerateWithholding */
+    public static final String COLUMNNAME_GenerateWithholding = "GenerateWithholding";
+
+	/** Set Generate Withholding	  */
+	public void setGenerateWithholding (String GenerateWithholding);
+
+	/** Get Generate Withholding	  */
+	public String getGenerateWithholding();
+	
+	/** Column name IsDownPaymentInvoice */
+    public static final String COLUMNNAME_IsDownPaymentInvoice = "IsDownPaymentInvoice";
+
+	/** Set Down Payment Invoice ?	  */
+	public void setIsDownPaymentInvoice (boolean IsDownPaymentInvoice);
+
+	/** Get Down Payment Invoice ?	  */
+	public boolean isDownPaymentInvoice();
+	
+	/** Column name IsInvoiceDPApplied */
+    public static final String COLUMNNAME_IsInvoiceDPApplied = "IsInvoiceDPApplied";
+
+	/** Set Invoice DP Applied	  */
+	public void setIsInvoiceDPApplied (boolean IsInvoiceDPApplied);
+
+	/** Get Invoice DP Applied	  */
+	public boolean isInvoiceDPApplied();
+	
+	/** Column name IsTrackAsAsset */
+    public static final String COLUMNNAME_IsTrackAsAsset = "IsTrackAsAsset";
+
+	/** Set Track As Asset	  */
+	public void setIsTrackAsAsset (boolean IsTrackAsAsset);
+
+	/** Get Track As Asset	  */
+	public boolean isTrackAsAsset();
+	
+	/** Column name TaxAmt */
+    public static final String COLUMNNAME_TaxAmt = "TaxAmt";
+
+	/** Set Tax Amount.
+	  * Tax Amount for a document
+	  */
+	public void setTaxAmt (BigDecimal TaxAmt);
+
+	/** Get Tax Amount.
+	  * Tax Amount for a document
+	  */
+	public BigDecimal getTaxAmt();
+	
+	/** Column name WithholdingAmt */
+    public static final String COLUMNNAME_WithholdingAmt = "WithholdingAmt";
+
+	/** Set Withholding Amount	  */
+	public void setWithholdingAmt (BigDecimal WithholdingAmt);
+
+	/** Get Withholding Amount	  */
+	public BigDecimal getWithholdingAmt();
 }

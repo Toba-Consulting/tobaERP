@@ -534,4 +534,26 @@ public interface I_A_Depreciation_Workfile
 
 	/** Get Use Life - Years (fiscal)	  */
 	public BigDecimal getUseLifeYears_F();
+	
+	/** Column name A_Period_Start */
+    public static final String COLUMNNAME_A_Period_Start = "A_Period_Start";
+
+	/** Set A_Period_Start	  */
+	public void setA_Period_Start (int A_Period_Start);
+
+	/** Get A_Period_Start	  */
+	public int getA_Period_Start();
+	
+	/** Column name IsValid */
+    public static final String COLUMNNAME_IsValid = "IsValid";
+
+	/** Set Valid.
+	  * Element is valid
+	  */
+	public void setIsValid (boolean IsValid);
+
+	/** Get Valid.
+	  * Element is valid
+	  */
+	public boolean isValid();
 }

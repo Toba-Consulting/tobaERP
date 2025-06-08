@@ -537,7 +537,7 @@ public class MDDOrderLine extends X_DD_OrderLine
 	 */
 	protected boolean beforeSave (boolean newRecord)
 	{
-		if (newRecord && getParent().isProcessed()) {
+		if (newRecord && getParent().isComplete()) {
 			log.saveError("ParentComplete", Msg.translate(getCtx(), "DD_Order_ID"));
 			return false;
 		}
@@ -548,6 +548,8 @@ public class MDDOrderLine extends X_DD_OrderLine
 		if (m_M_PriceList_ID == 0)
 			setHeaderInfo(getParent());
 		
+		/*
+		 * 	comment out by figo - based from taowi-1
 		//	R/O Check - Product/Warehouse Change
 		if (!newRecord 
 			&& (is_ValueChanged("M_Product_ID") || is_ValueChanged("M_Locator_ID") || is_ValueChanged("M_LocatorTo_ID"))) 
@@ -555,6 +557,7 @@ public class MDDOrderLine extends X_DD_OrderLine
 			if (!canChangeWarehouse())
 				return false;
 		}	//	Product Changed
+		*/
 		
 		//	Charge
 		if (getC_Charge_ID() != 0 && getM_Product_ID() != 0)
@@ -580,6 +583,8 @@ public class MDDOrderLine extends X_DD_OrderLine
 		if (newRecord || is_ValueChanged("QtyOrdered"))
 			setQtyOrdered(getQtyOrdered());
 		
+		/*
+		 * 	comment out by figo - based from taowi-1
 		//	Qty on instance ASI for SO
 		if (m_IsSOTrx 
 			&& getM_AttributeSetInstance_ID() != 0
@@ -620,6 +625,7 @@ public class MDDOrderLine extends X_DD_OrderLine
 			}	//	stocked
 			
 		}	//	SO instance
+		*/
 		
 		//	FreightAmt Not used
 		if (Env.ZERO.compareTo(getFreightAmt()) != 0)
@@ -629,7 +635,7 @@ public class MDDOrderLine extends X_DD_OrderLine
 		//	Get Line No
 		if (getLine() == 0)
 		{
-			String sql = "SELECT COALESCE(MAX(Line),0)+10 FROM C_OrderLine WHERE C_Order_ID=?";
+			String sql = "SELECT COALESCE(MAX(Line),0)+10 FROM DD_OrderLine WHERE DD_Order_ID=?";
 			int ii = DB.getSQLValue (get_TrxName(), sql, getDD_Order_ID());
 			setLine (ii);
 		}
@@ -651,12 +657,29 @@ public class MDDOrderLine extends X_DD_OrderLine
 			log.saveError("DeleteError", Msg.translate(getCtx(), "QtyDelivered") + "=" + getQtyDelivered());
 			return false;
 		}
+		
+		if (isProcessed())
+			return false;
+		
+		/*
+		 * 	comment out by figo - based from taowi-1
 		if (Env.ZERO.compareTo(getQtyReserved()) != 0)
 		{
 			//	For PO should be On Order
 			log.saveError("DeleteError", Msg.translate(getCtx(), "QtyReserved") + "=" + getQtyReserved());
 			return false;
 		}
+		*/
+		
+		String sql = "DELETE FROM M_MatchMovement WHERE DD_OrderLine_ID="+get_ID();
+		DB.executeUpdate(sql, get_TrxName());
+		
+		String sql2 = "DELETE FROM M_MatchQuotation WHERE DD_OrderLine_ID="+get_ID();
+		DB.executeUpdate(sql2, get_TrxName());
+		
+		String sql3 = "DELETE FROM M_MatchRequest WHERE DD_OrderLine_ID="+get_ID();
+		DB.executeUpdate(sql3, get_TrxName());
+		
 		return true;
 	}	//	beforeDelete
 	

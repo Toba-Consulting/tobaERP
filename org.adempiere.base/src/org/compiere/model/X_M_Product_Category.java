@@ -398,4 +398,28 @@ public class X_M_Product_Category extends PO implements I_M_Product_Category, I_
 	{
 		return (String)get_Value(COLUMNNAME_Value);
 	}
+	
+	/** Set QC Checked?.
+		@param IsQCChecked 
+		Quality Check Status
+	  */
+	public void setIsQCChecked (boolean IsQCChecked)
+	{
+		set_Value (COLUMNNAME_IsQCChecked, Boolean.valueOf(IsQCChecked));
+	}
+	
+	/** Get QC Checked?.
+		@return Quality Check Status
+	  */
+	public boolean isQCChecked () 
+	{
+		Object oo = get_Value(COLUMNNAME_IsQCChecked);
+		if (oo != null) 
+		{
+			 if (oo instanceof Boolean) 
+				 return ((Boolean)oo).booleanValue(); 
+			return "Y".equals(oo);
+		}
+		return false;
+}
 }

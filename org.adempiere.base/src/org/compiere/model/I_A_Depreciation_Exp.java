@@ -445,4 +445,17 @@ public interface I_A_Depreciation_Exp
 
 	/** Get Use Life - Months (fiscal)	  */
 	public int getUseLifeMonths_F();
+	
+	/** Column name CalendarYear */
+    public static final String COLUMNNAME_CalendarYear = "CalendarYear";
+
+	/** Set Year.
+	  * Calendar Year
+	  */
+	public void setCalendarYear (int CalendarYear);
+
+	/** Get Year.
+	  * Calendar Year
+	  */
+	public int getCalendarYear();
 }

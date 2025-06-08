@@ -174,8 +174,32 @@ public class MPaymentAllocate extends X_C_PaymentAllocate
 			if (m_invoice != null)
 				setAD_Org_ID(m_invoice.getAD_Org_ID());
 		}
+		payment.saveEx();
 		
 		return true;
 	}	//	beforeSave
+	
+	@Override
+	protected boolean afterSave(boolean newRecord, boolean success) {
+		MPayment payment = new MPayment(getCtx(), getC_Payment_ID(), get_TrxName());
+		//@win: if use payment allocate then cannot link payment to invoice, order, or charge on header
+		if (newRecord && payment.getC_Invoice_ID() > 0)
+			payment.setC_Invoice_ID(0);
+		if (newRecord && payment.getC_Charge_ID() > 0)
+			payment.setC_Charge_ID(0);
+		if (newRecord && payment.getC_Order_ID() > 0)
+			payment.setC_Order_ID(0);
+		
+		//@win: set payment amt as sum total amount on payment allocate 
+		if (newRecord || is_ValueChanged(COLUMNNAME_Amount)) {
+			BigDecimal totalAmt = new Query(getCtx(), MPaymentAllocate.Table_Name,"C_Payment_ID=?", get_TrxName())
+									.setParameters(payment.get_ID())
+									.setOnlyActiveRecords(true)
+									.sum(COLUMNNAME_Amount);
+			payment.setPayAmt(totalAmt);
+		}
+		payment.saveEx();
+		return true;
+	}
 	
 }	//	MPaymentAllocate

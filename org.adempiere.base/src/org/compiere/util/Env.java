@@ -1870,8 +1870,20 @@ public final class Env
 				else if (format.equals("Description"))
 					outStr.append(MRefList.getListDescription(getCtx(), DB.getSQLValueStringEx(null, "SELECT Name FROM AD_Reference WHERE AD_Reference_ID = ?", refID), (String) value));
 			} else if (value instanceof Date) {
+				boolean roman = false;
+				if (format.length()>1 && format.substring(0, 1).equalsIgnoreCase("R")) {
+					format = format.substring(1);
+					if (!(format.equalsIgnoreCase("MMM")|| format.equalsIgnoreCase("MMMM")))
+						roman = true;
+				}
+				
 				SimpleDateFormat df = new SimpleDateFormat(format);
-				outStr.append(df.format((Date)value));
+				
+				if (roman) {
+					outStr.append(getRomanNumber(Integer.parseInt(df.format((Date)value))));
+				} else {
+					outStr.append(df.format((Date)value));
+				}
 			} else if (value instanceof Number) {
 				DecimalFormat df = new DecimalFormat(format);
 				outStr.append(df.format(((Number)value).doubleValue()));
@@ -2368,6 +2380,64 @@ public final class Env
 	 */
 	public static boolean isPreference(String variable) {
 		return variable.startsWith("P|");
+	}
+	
+	public static String getRomanNumber(int input) {
+		if (input < 1 || input > 3999)
+			return "Invalid Roman Number Value";
+		String s = "";
+		while (input >= 1000) {
+			s += "M";
+			input -= 1000;        }
+		while (input >= 900) {
+			s += "CM";
+			input -= 900;
+		}
+		while (input >= 500) {
+			s += "D";
+			input -= 500;
+		}
+		while (input >= 400) {
+			s += "CD";
+			input -= 400;
+		}
+		while (input >= 100) {
+			s += "C";
+			input -= 100;
+		}
+		while (input >= 90) {
+			s += "XC";
+			input -= 90;
+		}
+		while (input >= 50) {
+			s += "L";
+			input -= 50;
+		}
+		while (input >= 40) {
+			s += "XL";
+			input -= 40;
+		}
+		while (input >= 10) {
+			s += "X";
+			input -= 10;
+		}
+		while (input >= 9) {
+			s += "IX";
+			input -= 9;
+		}
+		while (input >= 5) {
+			s += "V";
+			input -= 5;
+		}
+		while (input >= 4) {
+			s += "IV";
+			input -= 4;
+		}
+		while (input >= 1) {
+			s += "I";
+			input -= 1;
+		}    
+		return s;
 	}
 
 }   //  Env

@@ -201,6 +201,18 @@ public class MOrderLine extends X_C_OrderLine
 	{
 		super(ctx, rs, trxName);
 	}	//	MOrderLine
+	
+	public MOrderLine(MRequisitionLine reqLine) {
+		
+		this(reqLine.getCtx(), 0, reqLine.get_TrxName());
+		setClientOrg(reqLine);
+		set_ValueNoCheck("M_RequisitionLine_ID",reqLine.getM_RequisitionLine_ID());
+		setQtyDelivered(Env.ZERO);
+		setQtyInvoiced(Env.ZERO);
+		setM_Product_ID(reqLine.getM_Product_ID());
+        setC_Charge_ID(reqLine.getC_Charge_ID());
+		setC_UOM_ID(reqLine.getC_UOM_ID());   
+	}
 
 	protected int 			m_M_PriceList_ID = 0;
 	//
@@ -364,7 +376,53 @@ public class MOrderLine extends X_C_OrderLine
 	 */
 	public void setLineNetAmt ()
 	{
-		BigDecimal bd = getPriceEntered().multiply(getQtyEntered()); 
+		//BigDecimal bd = getPriceActual().multiply(getQtyOrdered()); 
+		BigDecimal bd = getPriceEntered().multiply(getQtyEntered());
+		
+		boolean documentLevel = getTax().isDocumentLevel();
+		
+		//	juddm: Tax Exempt & Tax Included in Price List & not Document Level - Adjust Line Amount
+		//  http://sourceforge.net/tracker/index.php?func=detail&aid=1733602&group_id=176962&atid=879332
+		if (isTaxIncluded() && !documentLevel)	{
+			BigDecimal taxStdAmt = Env.ZERO, taxThisAmt = Env.ZERO;
+			
+			MTax orderTax = getTax();
+			MTax stdTax = null;
+			
+			//	get the standard tax
+			if (getProduct() == null)
+			{
+				if (getCharge() != null)	// Charge 
+				{
+					stdTax = new MTax (getCtx(), 
+							((MTaxCategory) getCharge().getC_TaxCategory()).getDefaultTax().getC_Tax_ID(),
+							get_TrxName());
+				}
+					
+			}
+			else	// Product
+				stdTax = new MTax (getCtx(), 
+							((MTaxCategory) getProduct().getC_TaxCategory()).getDefaultTax().getC_Tax_ID(), 
+							get_TrxName());
+
+			if (stdTax != null)
+			{
+				if (log.isLoggable(Level.FINE)){
+					log.fine("stdTax rate is " + stdTax.getRate());
+					log.fine("orderTax rate is " + orderTax.getRate());
+				}
+								
+				taxThisAmt = taxThisAmt.add(orderTax.calculateTax(bd, isTaxIncluded(), getPrecision()));
+				taxStdAmt = taxStdAmt.add(stdTax.calculateTax(bd, isTaxIncluded(), getPrecision()));
+				
+				bd = bd.subtract(taxStdAmt).add(taxThisAmt);
+				
+				if (log.isLoggable(Level.FINE)) log.fine("Price List includes Tax and Tax Changed on Order Line: New Tax Amt: " 
+						+ taxThisAmt + " Standard Tax Amt: " + taxStdAmt + " Line Net Amt: " + bd);	
+			}
+			
+		}
+		
 		int precision = getPrecision();
 		if (bd.scale() > precision)
 			bd = bd.setScale(precision, RoundingMode.HALF_UP);
@@ -525,11 +583,15 @@ public class MOrderLine extends X_C_OrderLine
 			log.saveError("Error", Msg.translate(getCtx(), "QtyInvoiced") + "=" + getQtyInvoiced());
 			return false;
 		}
+		
+		/*	@Stephan comment out related with qty reserved
 		if (getQtyReserved().signum() != 0)
 		{
 			log.saveError("Error", Msg.translate(getCtx(), "QtyReserved") + "=" + getQtyReserved());
 			return false;
 		}
+		*/
+		
 		//	We can change
 		return true;
 	}	//	canChangeWarehouse
@@ -684,7 +746,8 @@ public class MOrderLine extends X_C_OrderLine
 		//	No List Price
 		if (Env.ZERO.compareTo(list) == 0)
 			return;
-		BigDecimal discount = list.subtract(getPriceActual())
+		//BigDecimal discount = list.subtract(getPriceActual())
+		BigDecimal discount = list.subtract(getPriceEntered())
 			.multiply(Env.ONEHUNDRED)
 			.divide(list, getPrecision(), RoundingMode.HALF_UP);
 		setDiscount(discount);
@@ -806,6 +869,30 @@ public class MOrderLine extends X_C_OrderLine
 		if (m_M_PriceList_ID == 0)
 			setHeaderInfo(getParent());
 		
+		//@win - recalculate multi uom on 
+		if (newRecord || is_ValueChanged(COLUMNNAME_C_UOM_ID) || 
+				is_ValueChanged(COLUMNNAME_M_Product_ID) || is_ValueChanged(COLUMNNAME_QtyEntered)) {
+			BigDecimal qtyEntered = getQtyEntered();
+			int p_C_UOM_ID = getC_UOM_ID();
+			BigDecimal qtyEntered1 = qtyEntered.setScale(MUOM.getPrecision(getCtx(), p_C_UOM_ID), RoundingMode.HALF_UP);
+			if (qtyEntered.compareTo(qtyEntered1) != 0)
+			{
+				qtyEntered = qtyEntered1;
+				setQtyEntered(qtyEntered);
+			}
+			
+			BigDecimal qtyOrdered = MUOMConversion.convertProductFrom (getCtx(), getM_Product_ID(),
+					p_C_UOM_ID, qtyEntered);
+			
+			if (qtyOrdered == null)
+					qtyOrdered = qtyEntered;
+			
+			if (getQtyOrdered().compareTo(qtyOrdered) != 0)
+				setQtyOrdered(qtyOrdered);
+		}
+
+		//end @win - recalculate multi uom
+		
 		//	R/O Check - Product/Warehouse Change
 		if (!newRecord 
 			&& (   is_ValueChanged("M_Product_ID")
@@ -846,12 +933,23 @@ public class MOrderLine extends X_C_OrderLine
 				log.saveError("UnderLimitPrice", "PriceEntered=" + getPriceEntered() + ", PriceLimit=" + getPriceLimit()); 
 				return false;
 			}
+			/*
+			 * 	comment out by figo - we use taowi1 method
 			int C_DocType_ID = getParent().getDocTypeID();
 			MDocType docType = MDocType.get(getCtx(), C_DocType_ID);
 			//
 			if (!docType.isNoPriceListCheck() && !m_productPrice.isCalculated())
 			{
 				throw new ProductNotOnPriceListException(m_productPrice, getLine());
+			}
+			*/
+			
+			// @Stephan TAOWI-2175
+			MOrder order = getParent();
+			boolean isNoPrice = order.get_ValueAsBoolean("IsNoPriceList");
+			
+			if (!m_productPrice.isCalculated() && !isNoPrice) {
+				throw new ProductNotOnPriceListException(m_productPrice,getLine());
 			}
 		}
 
@@ -918,6 +1016,15 @@ public class MOrderLine extends X_C_OrderLine
 			return false;
 		}
 		
+		/*
+		 *	stephan
+		 *	TAOWI-897 check tax in order line must be same with tax header 
+		 */
+		if(getParent().getC_Tax_ID() == 0)
+			return true;
+		else if(newRecord && getParent().getC_Tax_ID() != getC_Tax_ID())
+			setC_Tax_ID(getParent().getC_Tax_ID());
+		
 		return true;
 	}	//	beforeSave
 	
@@ -946,6 +1053,9 @@ public class MOrderLine extends X_C_OrderLine
 	@Override
 	protected boolean beforeDelete ()
 	{
+		if(isProcessed())
+			return false;
+		
 		//	R/O Check - Something delivered. etc.
 		if (Env.ZERO.compareTo(getQtyDelivered()) != 0)
 		{
@@ -957,15 +1067,45 @@ public class MOrderLine extends X_C_OrderLine
 			log.saveError("DeleteError", Msg.translate(getCtx(), "QtyInvoiced") + "=" + getQtyInvoiced());
 			return false;
 		}
+		
+		/*	@Stephan comment out related with qty reserved
 		if (Env.ZERO.compareTo(getQtyReserved()) != 0)
 		{
 			//	For PO should be On Order
 			log.saveError("DeleteError", Msg.translate(getCtx(), "QtyReserved") + "=" + getQtyReserved());
 			return false;
 		}
+		*/
 		
-		// UnLink All Requisitions
-		MRequisitionLine.unlinkC_OrderLine_ID(getCtx(), get_ID(), get_TrxName());
+		//@win remove MatchPR link
+		try {
+			DB.executeUpdate("DELETE FROM M_MatchPR WHERE C_OrderLine_ID=" + get_ID(), get_TrxName());
+		} catch (Exception e) {
+			log.saveError("DeleteError", "Cannot Delete Match PR records");
+			e.printStackTrace();
+		}
+		try {
+			DB.executeUpdate("DELETE FROM M_MatchQuotation WHERE C_OrderLine_ID=" + get_ID(), get_TrxName());
+		} catch (Exception e) {
+			log.saveError("DeleteError", "Cannot Delete Match Quotation records");
+			e.printStackTrace();
+		}
+		try {
+			DB.executeUpdate("DELETE FROM M_MatchRequest WHERE C_OrderLine_ID=" + get_ID(), get_TrxName());
+		} catch (Exception e) {
+			log.saveError("DeleteError", "Cannot Delete Match Request records");
+			e.printStackTrace();
+		}
+		try {
+			DB.executeUpdate("DELETE FROM M_MatchMovement WHERE C_OrderLine_ID=" + get_ID(), get_TrxName());
+		} catch (Exception e) {
+			log.saveError("DeleteError", "Cannot Delete Match Movement records");
+			e.printStackTrace();
+		}
+		
+		//	UnLink All Requisitions
+		//	MRequisitionLine.unlinkC_OrderLine_ID(getCtx(), get_ID(), get_TrxName());
+		//	@win end remove MatchPR link
 		
 		return true;
 	}	//	beforeDelete

@@ -21,6 +21,7 @@ import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.GregorianCalendar;
+import java.util.List;
 import java.util.Locale;
 import java.util.Properties;
 import java.util.StringTokenizer;
@@ -284,5 +285,22 @@ public class MYear extends X_C_Year
 		return true;
 		
 	}	//	createStdPeriods
+	
+	/** 
+	 * 	Get Period of Year 
+	 * 	@return periods 
+	 */ 
+	public MPeriod[] getPeriod() 
+	{ 
+ 
+		List<MPeriod> list = new Query(getCtx(), I_C_Period.Table_Name, "C_Year_ID=?", get_TrxName()) 
+		.setParameters(getC_Year_ID()) 
+		.setOrderBy(MPeriod.COLUMNNAME_PeriodNo) 
+		.list(); 
+		// 
+		MPeriod[] periods = new MPeriod[list.size()]; 
+		list.toArray(periods); 
+		return periods; 
+	}	//	getPeriod 
 	
 }	//	MYear

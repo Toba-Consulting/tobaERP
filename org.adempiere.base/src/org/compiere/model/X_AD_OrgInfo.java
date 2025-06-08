@@ -520,4 +520,69 @@ public class X_AD_OrgInfo extends PO implements I_AD_OrgInfo, I_Persistent
 			 return 0;
 		return ii.intValue();
 	}
+	
+	/** Set ISIC.
+		@param LCO_ISIC_ID ISIC	  */
+	public void setLCO_ISIC_ID (int LCO_ISIC_ID)
+	{
+		if (LCO_ISIC_ID < 1) 
+			set_Value (COLUMNNAME_LCO_ISIC_ID, null);
+		else 
+			set_Value (COLUMNNAME_LCO_ISIC_ID, Integer.valueOf(LCO_ISIC_ID));
+	}
+	
+	/** Get ISIC.
+		@return ISIC	  */
+	public int getLCO_ISIC_ID () 
+	{
+		Integer ii = (Integer)get_Value(COLUMNNAME_LCO_ISIC_ID);
+		if (ii == null)
+			 return 0;
+		return ii.intValue();
+	}
+	
+	/** Set Tax Payer Type.
+		@param LCO_TaxPayerType_ID Tax Payer Type	  */
+	public void setLCO_TaxPayerType_ID (int LCO_TaxPayerType_ID)
+	{
+		if (LCO_TaxPayerType_ID < 1) 
+			set_Value (COLUMNNAME_LCO_TaxPayerType_ID, null);
+		else 
+			set_Value (COLUMNNAME_LCO_TaxPayerType_ID, Integer.valueOf(LCO_TaxPayerType_ID));
+	}
+	
+	/** Get Tax Payer Type.
+		@return Tax Payer Type	  */
+	public int getLCO_TaxPayerType_ID () 
+	{
+		Integer ii = (Integer)get_Value(COLUMNNAME_LCO_TaxPayerType_ID);
+		if (ii == null)
+			 return 0;
+		return ii.intValue();
+	}
+	
+	public org.compiere.model.I_M_Warehouse getTransit_Warehouse() throws RuntimeException
+	{
+		return (org.compiere.model.I_M_Warehouse)MTable.get(getCtx(), org.compiere.model.I_M_Warehouse.Table_Name)
+			.getPO(getTransit_Warehouse_ID(), get_TrxName());	}
+	
+	/** Set Warehouse In Transit.
+		@param Transit_Warehouse_ID Warehouse In Transit	  */
+	public void setTransit_Warehouse_ID (int Transit_Warehouse_ID)
+	{
+		if (Transit_Warehouse_ID < 1) 
+			set_Value (COLUMNNAME_Transit_Warehouse_ID, null);
+		else 
+			set_Value (COLUMNNAME_Transit_Warehouse_ID, Integer.valueOf(Transit_Warehouse_ID));
+	}
+	
+	/** Get Warehouse In Transit.
+		@return Warehouse In Transit	  */
+	public int getTransit_Warehouse_ID () 
+	{
+		Integer ii = (Integer)get_Value(COLUMNNAME_Transit_Warehouse_ID);
+		if (ii == null)
+			 return 0;
+		return ii.intValue();
+	}
 }

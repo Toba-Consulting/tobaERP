@@ -64,15 +64,13 @@ public class MAssetAcct extends X_A_Asset_Acct implements ImmutablePOSupport
 	public MAssetAcct (Properties ctx, int X_A_Asset_Acct_ID, String trxName)
 	{
 		super (ctx,X_A_Asset_Acct_ID, trxName);
-		if (X_A_Asset_Acct_ID == 0)
-			setInitialDefaults();
 	}
 	
 	/**
 	 * Set the initial defaults for a new record
 	 */
 	private void setInitialDefaults() {
-		setA_Salvage_Value(Env.ZERO);
+		//	setA_Salvage_Value(Env.ZERO);
 	}
 
 	/**
@@ -173,6 +171,7 @@ public class MAssetAcct extends X_A_Asset_Acct implements ImmutablePOSupport
 		}
 		MAssetAcct acct = new Query(ctx, Table_Name, whereClause.toString(), trxName)
 								.setParameters(params)
+								.setOnlyActiveRecords(true)
 								.setOrderBy(COLUMNNAME_ValidFrom+" DESC NULLS LAST")
 								.first();
 		
@@ -197,16 +196,9 @@ public class MAssetAcct extends X_A_Asset_Acct implements ImmutablePOSupport
 		
 		SetGetUtil.copyValues(this, assetgrpacct, null, null);
 		setA_Asset_ID(asset.getA_Asset_ID());
-		if (asset.getA_Depreciation_ID() > 0)
-		{
-			setA_Depreciation_ID(asset.getA_Depreciation_ID());
-		}
-		if (asset.getA_Depreciation_F_ID() > 0)
-		{
-			setA_Depreciation_F_ID(asset.getA_Depreciation_F_ID());
-		}
 		setA_Period_Start(1);
 		setA_Period_End(asset.getUseLifeMonths());
+		setProcessing(false);
 		dump();
 	}
 	
@@ -240,8 +232,19 @@ public class MAssetAcct extends X_A_Asset_Acct implements ImmutablePOSupport
 	@Override
 	protected boolean beforeSave(boolean newRecord) {
 		if (getValidFrom() == null && newRecord)
-		{
-			setValidFrom(TimeUtil.getDay(1970, 01, 01)); // FIXME
+			setValidFrom(TimeUtil.getDay(2012, 12, 12));
+
+		if (!newRecord && is_ValueChanged(MAssetAcct.COLUMNNAME_A_Salvage_Value)) {
+			MDepreciationWorkfile wk = MDepreciationWorkfile.get(getCtx(), getA_Asset_ID(), getPostingType());
+			wk.setA_Salvage_Value(getA_Salvage_Value());
+			wk.setIsValid(false);
+			wk.saveEx();
+		}
+		else if (!newRecord && (is_ValueChanged(MAssetAcct.COLUMNNAME_A_Depreciation_ID) || is_ValueChanged(MAssetAcct.COLUMNNAME_A_Depreciation_Acct)
+				|| is_ValueChanged(MAssetAcct.COLUMNNAME_A_Accumdepreciation_Acct))) {
+			MDepreciationWorkfile wk = MDepreciationWorkfile.get(getCtx(), getA_Asset_ID(), getPostingType());
+			wk.setIsValid(false);
+			wk.saveEx();
 		}
 		return true;
 	}

@@ -117,6 +117,7 @@ public class MRMA extends X_M_RMA implements DocAction
 		}
 		List<MRMALine> list = new Query(getCtx(), I_M_RMALine.Table_Name, "M_RMA_ID=?", get_TrxName())
 		.setParameters(getM_RMA_ID())
+		.setOnlyActiveRecords(true)
 		.setOrderBy(MRMALine.COLUMNNAME_Line+","+MRMALine.COLUMNNAME_M_RMALine_ID)
 		.list();
 
@@ -460,6 +461,15 @@ public class MRMA extends X_M_RMA implements DocAction
 		if (m_processMsg != null)
 			return DocAction.STATUS_Invalid;
 
+		//@Stephan, invalid if qty in Line is 0, requestBy:Anin,Hadi
+		MRMALine lines[] = getLines(true);
+		for (MRMALine rmaLine : lines) {
+			if(rmaLine.getQty().compareTo(Env.ZERO)==0){
+				m_processMsg = "Qty on Line No" + rmaLine.getLine() + "is zero";
+				return DocAction.STATUS_Invalid;
+			}
+		}//End here
+		
 		//	Implicit Approval
 		if (!isApproved())
 			approveIt();
@@ -1008,5 +1018,21 @@ public class MRMA extends X_M_RMA implements DocAction
         rmaLine.setAD_Org_ID(getAD_Org_ID());
         rmaLine.setDescription(Description);
         rmaLine.saveEx();
+	}
+	
+	public boolean hasMatchRMAMovement() { 
+		 
+		final String whereClause = I_M_MatchMovement.COLUMNNAME_M_RMA_ID + "=?"; 
+		boolean match = new Query(getCtx(),X_M_MatchMovement.Table_Name, whereClause, get_TrxName()) 
+				.setParameters(get_ID()) 
+				.setOnlyActiveRecords(true) 
+				.match(); 
+ 
+		return match; 
+	} 
+	 
+	public MRMALine[] getLines() 
+	{ 
+		return getLines(false); 
 	}
 }	//	MRMA

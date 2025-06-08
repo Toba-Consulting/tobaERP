@@ -1054,7 +1054,11 @@ public final class DB
 				log.log(Level.SEVERE, cs.getSql() + " [" + trxName + "]", e);
 				String msg = DBException.getDefaultDBExceptionMessage(e);
 				log.saveError (msg != null ? msg : "DBExecuteError", e);
+			}			StringBuffer infoParam = new StringBuffer();
+			for (Object param : params) {
+				infoParam.append(param+", ");
 			}
+			log.log(Level.SEVERE, "Info Param ["+infoParam+"]");
 		}
 		finally
 		{

@@ -84,6 +84,7 @@ public class MAssetGroupAcct extends X_A_Asset_Group_Acct
 		}
 		return new Query(ctx, Table_Name, whereClause.toString(), trxName)
 					.setParameters(params)
+					.setOnlyActiveRecords(true)
 					.list();
 	}
 	
@@ -204,6 +205,7 @@ public class MAssetGroupAcct extends X_A_Asset_Group_Acct
 		final String whereClause = COLUMNNAME_A_Asset_Group_ID+"=? AND "+COLUMNNAME_PostingType+"=? AND " + COLUMNNAME_C_AcctSchema_ID +"=? " ;
 		return new Query(ctx, Table_Name, whereClause, null)
 					.setParameters(new Object[]{A_Asset_Group_ID, postingType, C_AcctSchema_ID})
+					.setOnlyActiveRecords(true)
 					.firstOnly();
 	}
 	

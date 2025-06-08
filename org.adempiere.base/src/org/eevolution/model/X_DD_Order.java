@@ -1551,4 +1551,99 @@ public class X_DD_Order extends PO implements I_DD_Order, I_Persistent
 			 return Env.ZERO;
 		return bd;
 	}
+	
+	public org.compiere.model.I_M_Movement getM_MovementIn() throws RuntimeException
+    {
+		return (org.compiere.model.I_M_Movement)MTable.get(getCtx(), org.compiere.model.I_M_Movement.Table_Name)
+			.getPO(getM_MovementIn_ID(), get_TrxName());	}
+
+	/** Set Inbound Move.
+		@param M_MovementIn_ID Inbound Move	  */
+	public void setM_MovementIn_ID (int M_MovementIn_ID)
+	{
+		if (M_MovementIn_ID < 1) 
+			set_Value (COLUMNNAME_M_MovementIn_ID, null);
+		else 
+			set_Value (COLUMNNAME_M_MovementIn_ID, Integer.valueOf(M_MovementIn_ID));
+	}
+
+	/** Get Inbound Move.
+		@return Inbound Move	  */
+	public int getM_MovementIn_ID () 
+	{
+		Integer ii = (Integer)get_Value(COLUMNNAME_M_MovementIn_ID);
+		if (ii == null)
+			 return 0;
+		return ii.intValue();
+	}
+
+	public org.compiere.model.I_M_Movement getM_MovementTo() throws RuntimeException
+    {
+		return (org.compiere.model.I_M_Movement)MTable.get(getCtx(), org.compiere.model.I_M_Movement.Table_Name)
+			.getPO(getM_MovementTo_ID(), get_TrxName());	}
+
+	/** Set Outbound Move.
+		@param M_MovementTo_ID Outbound Move	  */
+	public void setM_MovementTo_ID (int M_MovementTo_ID)
+	{
+		if (M_MovementTo_ID < 1) 
+			set_Value (COLUMNNAME_M_MovementTo_ID, null);
+		else 
+			set_Value (COLUMNNAME_M_MovementTo_ID, Integer.valueOf(M_MovementTo_ID));
+	}
+
+	/** Get Outbound Move.
+		@return Outbound Move	  */
+	public int getM_MovementTo_ID () 
+	{
+		Integer ii = (Integer)get_Value(COLUMNNAME_M_MovementTo_ID);
+		if (ii == null)
+			 return 0;
+		return ii.intValue();
+	}
+	
+	public org.compiere.model.I_M_Warehouse getM_WarehouseTo() throws RuntimeException
+    {
+		return (org.compiere.model.I_M_Warehouse)MTable.get(getCtx(), org.compiere.model.I_M_Warehouse.Table_Name)
+			.getPO(getM_WarehouseTo_ID(), get_TrxName());	}
+
+	/** Set Warehouse To.
+		@param M_WarehouseTo_ID Warehouse To	  */
+	public void setM_WarehouseTo_ID (int M_WarehouseTo_ID)
+	{
+		if (M_WarehouseTo_ID < 1) 
+			set_Value (COLUMNNAME_M_WarehouseTo_ID, null);
+		else 
+			set_Value (COLUMNNAME_M_WarehouseTo_ID, Integer.valueOf(M_WarehouseTo_ID));
+	}
+
+	/** Get Warehouse To.
+		@return Warehouse To	  */
+	public int getM_WarehouseTo_ID () 
+	{
+		Integer ii = (Integer)get_Value(COLUMNNAME_M_WarehouseTo_ID);
+		if (ii == null)
+			 return 0;
+		return ii.intValue();
+	}
+
+	/** Set Warehouse Zone.
+		@param M_WarehouseZone_ID Warehouse Zone	  */
+	public void setM_WarehouseZone_ID (int M_WarehouseZone_ID)
+	{
+		if (M_WarehouseZone_ID < 1) 
+			set_Value (COLUMNNAME_M_WarehouseZone_ID, null);
+		else 
+			set_Value (COLUMNNAME_M_WarehouseZone_ID, Integer.valueOf(M_WarehouseZone_ID));
+	}
+
+	/** Get Warehouse Zone.
+		@return Warehouse Zone	  */
+	public int getM_WarehouseZone_ID () 
+	{
+		Integer ii = (Integer)get_Value(COLUMNNAME_M_WarehouseZone_ID);
+		if (ii == null)
+			 return 0;
+		return ii.intValue();
+	}
 }

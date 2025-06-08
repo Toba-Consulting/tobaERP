@@ -90,17 +90,6 @@ public class MRfQResponseLine extends X_C_RfQResponseLine
 		setIsSelectedWinner (false);
 		setIsSelfService (false);
 		//
-		MRfQLineQty[] qtys = line.getQtys();
-		for (int i = 0; i < qtys.length; i++)
-		{
-			if (qtys[i].isActive() && qtys[i].isRfQQty())
-			{
-				if (get_ID() == 0)	//	save this line
-					saveEx();
-				MRfQResponseLineQty qty = new MRfQResponseLineQty (this, qtys[i]);
-				qty.saveEx();
-			}
-		}
 	}	//	MRfQResponseLine
 	
 	/**	RfQ Line				*/
@@ -188,6 +177,9 @@ public class MRfQResponseLine extends X_C_RfQResponseLine
 	@Override
 	protected boolean beforeSave (boolean newRecord)
 	{
+		if (!isDescription() && getM_Product_ID()<=0 && getC_Charge_ID()<=0) 
+			return false; 
+		
 		//	Calculate Complete Date (also used to verify)
 		if (getDateWorkStart() != null && getDeliveryDays() != 0)
 			setDateWorkComplete (TimeUtil.addDays(getDateWorkStart(), getDeliveryDays()));

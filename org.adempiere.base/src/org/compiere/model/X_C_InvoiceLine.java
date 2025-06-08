@@ -715,28 +715,6 @@ public class X_C_InvoiceLine extends PO implements I_C_InvoiceLine, I_Persistent
 		return false;
 	}
 
-	/** Set Is Fixed Asset Invoice.
-		@param IsFixedAssetInvoice Is Fixed Asset Invoice
-	*/
-	public void setIsFixedAssetInvoice (boolean IsFixedAssetInvoice)
-	{
-		set_Value (COLUMNNAME_IsFixedAssetInvoice, Boolean.valueOf(IsFixedAssetInvoice));
-	}
-
-	/** Get Is Fixed Asset Invoice.
-		@return Is Fixed Asset Invoice	  */
-	public boolean isFixedAssetInvoice()
-	{
-		Object oo = get_Value(COLUMNNAME_IsFixedAssetInvoice);
-		if (oo != null)
-		{
-			 if (oo instanceof Boolean)
-				 return ((Boolean)oo).booleanValue();
-			return "Y".equals(oo);
-		}
-		return false;
-	}
-
 	/** Set Printed.
 		@param IsPrinted Indicates if this document / line is printed
 	*/
@@ -1217,5 +1195,46 @@ public class X_C_InvoiceLine extends PO implements I_C_InvoiceLine, I_Persistent
 		if (ii == null)
 			 return 0;
 		return ii.intValue();
+	}
+	
+	/** Set Discount %.
+		@param Discount 
+		Discount in percent
+	  */
+	public void setDiscount (BigDecimal Discount)
+	{
+		set_ValueNoCheck (COLUMNNAME_Discount, Discount);
+	}
+	
+	/** Get Discount %.
+		@return Discount in percent
+	  */
+	public BigDecimal getDiscount () 
+	{
+		BigDecimal bd = (BigDecimal)get_Value(COLUMNNAME_Discount);
+		if (bd == null)
+			 return Env.ZERO;
+		return bd;
+	}
+	
+	/** Set Track As Asset.
+		@param IsTrackAsAsset Track As Asset	  */
+	public void setIsTrackAsAsset (boolean IsTrackAsAsset)
+	{
+		set_Value (COLUMNNAME_IsTrackAsAsset, Boolean.valueOf(IsTrackAsAsset));
+	}
+	
+	/** Get Track As Asset.
+		@return Track As Asset	  */
+	public boolean isTrackAsAsset () 
+	{
+		Object oo = get_Value(COLUMNNAME_IsTrackAsAsset);
+		if (oo != null) 
+		{
+			 if (oo instanceof Boolean) 
+				 return ((Boolean)oo).booleanValue(); 
+			return "Y".equals(oo);
+		}
+		return false;
 	}
 }

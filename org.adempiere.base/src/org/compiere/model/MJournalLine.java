@@ -104,6 +104,7 @@ public class MJournalLine extends X_GL_JournalLine
 		setGL_Journal_ID(parent.getGL_Journal_ID());
 		setC_Currency_ID(parent.getC_Currency_ID());
 		setC_ConversionType_ID(parent.getC_ConversionType_ID());
+		setCurrencyRate(parent.getCurrencyRate());
 		setDateAcct(parent.getDateAcct());
 		
 	}	//	MJournalLine
@@ -326,8 +327,27 @@ public class MJournalLine extends X_GL_JournalLine
 		}
 		fillDimensionsFromCombination();
 
+		//@win make sure sync values with parent
+		BigDecimal rate = Env.ZERO;
+		if (getCurrencyRate().compareTo(Env.ZERO)<=0) {
+			rate = getParent().getCurrencyRate();
+			setCurrencyRate(rate);
+		} else {
+			rate = getCurrencyRate();
+		}
+		if (getC_Currency_ID()<=0)
+			setC_Currency_ID(getParent().getC_Currency_ID());
+		
+		if (getC_ConversionType_ID()<=0)
+			setC_ConversionType_ID(getParent().getC_ConversionType_ID());
+		
+		if (getDateAcct()== null)
+			setDateAcct(getParent().getDateAcct());
+		
+		//@win
+		
 		//	Acct Amts
-		BigDecimal rate = getCurrencyRate();
+		//	BigDecimal rate = getCurrencyRate();
 		BigDecimal amt = rate.multiply(getAmtSourceDr());
 		if (amt.scale() > getPrecision())
 			amt = amt.setScale(getPrecision(), RoundingMode.HALF_UP);
@@ -463,8 +483,9 @@ public class MJournalLine extends X_GL_JournalLine
 			MAccount acct = MAccount.get(getCtx(), getAD_Client_ID(), getAD_Org_ID(), gl.getC_AcctSchema_ID(), getAccount_ID(),
 					getC_SubAcct_ID(), getM_Product_ID(), getC_BPartner_ID(), getAD_OrgTrx_ID(), getC_LocFrom_ID(),
 					getC_LocTo_ID(), getC_SalesRegion_ID(), getC_Project_ID(), getC_Campaign_ID(), 
-					getC_Activity_ID(), getUser1_ID(), getUser2_ID(), 0, 0,
-					get_TrxName());
+					getC_Activity_ID(), getUser1_ID(), getUser2_ID(), getUser3_ID(), getUser4_ID(), getUser5_ID(),
+					getUser6_ID(), getUser7_ID(), getUser8_ID(), getUser9_ID(), getUser10_ID(), 0, 0, 0, 0, 0, 0, 
+					0, 0, 0, 0, get_TrxName());
 
 			if (acct != null)
 			{

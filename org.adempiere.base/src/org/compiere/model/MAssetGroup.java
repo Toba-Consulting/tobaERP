@@ -28,6 +28,8 @@ import org.compiere.util.DB;
 import org.compiere.util.Env;
 import org.idempiere.cache.ImmutableIntPOCache;
 import org.idempiere.cache.ImmutablePOSupport;
+import org.idempiere.fa.model.I_FA_DefaultAccount;
+import org.idempiere.fa.model.MFADefaultAccount;
 
 /**
  * Asset Group Model
@@ -165,30 +167,13 @@ public class MAssetGroup extends X_A_Asset_Group implements ImmutablePOSupport
 		final String sql = "SELECT "+COLUMNNAME_A_Asset_Group_ID
 				+ " FROM "+Table_Name
 				+ " WHERE AD_Client_ID=?"
+				+ " AND IsActive=?"
 				+ " ORDER BY "+COLUMNNAME_IsDefault+" DESC"
 							+", "+COLUMNNAME_A_Asset_Group_ID+" ASC" // default first, older first
 		;
-		int id = DB.getSQLValueEx(null, sql, AD_Client_ID);
+		int id = DB.getSQLValueEx(null, sql, AD_Client_ID, true);
 		
 		return id;
-	}
-	
-	/**
-	 * Update Asset<br/>
-	 * - updates asset M_AssetGroup_ID if is null
-	 */
-	public static void updateAsset(SetGetModel m, int A_Asset_Group_ID)
-	{
-		if (A_Asset_Group_ID < 0) {
-			A_Asset_Group_ID = MAssetGroup.getDefault_ID(SetGetUtil.wrap(m));
-			m.set_AttrValue(MAsset.COLUMNNAME_A_Asset_Group_ID, A_Asset_Group_ID);
-		}
-	}
-
-	@Override
-	protected boolean beforeSave (boolean newRecord)
-	{
-		return true;
 	}
 	
 	@Override
@@ -196,21 +181,30 @@ public class MAssetGroup extends X_A_Asset_Group implements ImmutablePOSupport
 	{
 		if(!success)
 		{
-			return false;
+			return success;
 		}
 		//
 		if (newRecord)
 		{
-			// If this is not the default group, then copy accounting settings from default group
-			int default_id = getDefault_ID(SetGetUtil.wrap(this));
-			if (default_id > 0 && default_id != get_ID())
-			{
-				for (MAssetGroupAcct acct : MAssetGroupAcct.forA_Asset_Group_ID(getCtx(), default_id, null, get_TrxName()))
-				{
-					MAssetGroupAcct newAcct = acct.copy(this);
-					newAcct.saveEx(get_TrxName());
-				}
-			}
+			int defAcctID = new Query(getCtx(), I_FA_DefaultAccount.Table_Name, "AD_Client_ID=?", get_TrxName())
+					.setParameters(new Object[] {getAD_Client_ID()})
+					.setOnlyActiveRecords(true)
+					.setOrderBy(I_FA_DefaultAccount.COLUMNNAME_FA_DefaultAccount_ID)
+					.firstId();
+
+			MFADefaultAccount defAcct = new MFADefaultAccount(getCtx(), defAcctID, get_TrxName());
+			MAssetGroupAcct groupAcct = new MAssetGroupAcct(getCtx(), 0, get_TrxName());
+			groupAcct.setAD_Org_ID(defAcct.getAD_Org_ID());
+			groupAcct.setA_Asset_Group_ID(get_ID());
+			groupAcct.setA_Depreciation_ID(defAcct.getA_Depreciation_ID());
+			groupAcct.setC_AcctSchema_ID(defAcct.getC_AcctSchema_ID());
+			groupAcct.setA_Asset_Acct(defAcct.getA_Asset_Acct());
+			groupAcct.setA_Depreciation_Acct(defAcct.getA_Depreciation_Acct());
+			groupAcct.setA_Accumdepreciation_Acct(defAcct.getA_Accumdepreciation_Acct());
+			groupAcct.setA_Disposal_Revenue_Acct(defAcct.getA_Disposal_Revenue_Acct());
+			groupAcct.setA_Disposal_Gain_Acct(defAcct.getA_Disposal_Gain_Acct());
+			groupAcct.setA_Disposal_Loss_Acct(defAcct.getA_Disposal_Loss_Acct());
+			groupAcct.saveEx();
 		}
 		//
 		return true;

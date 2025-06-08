@@ -50,7 +50,9 @@ public class MSysConfig extends X_AD_SysConfig
 	private static final long serialVersionUID = 8636352432923806208L;
 
 	/** Constant for Predefine System Configuration Names (in alphabetical order) */
-	
+	//@tegar
+	public static final String GIRO_ALLOCATE_ON_MATURITY_DATE = "GIRO_ALLOCATE_ON_MATURITY_DATE";
+	//end
     public static final String AD_CHANGELOG_SAVE_UUID = "AD_CHANGELOG_SAVE_UUID";
     public static final String ADDRESS_VALIDATION = "ADDRESS_VALIDATION";
     public static final String ALERT_SEND_ATTACHMENT_AS_XLS = "ALERT_SEND_ATTACHMENT_AS_XLS";

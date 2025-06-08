@@ -131,7 +131,13 @@ public class Doc_Payment extends Doc
 			if (getC_Charge_ID() != 0)
 				acct = MCharge.getAccount(getC_Charge_ID(), as);
 			else if (m_Prepayment)
-				acct = getAccount(Doc.ACCTTYPE_C_Prepayment, as);
+				//@David
+				//acct = getAccount(Doc.ACCTTYPE_C_Prepayment, as);
+				if (!useCustomBPAcctByCurrency(as.getC_Currency_ID(),getC_Currency_ID())) 
+					acct = getAccount(Doc.ACCTTYPE_C_Prepayment, as);					
+				else
+					acct = getAccount(Doc.ACCTTYPE_C_Prepayment_ByCurrency, as);
+				//@David End
 			else
 				acct = getAccount(Doc.ACCTTYPE_UnallocatedCash, as);
 			fl = fact.createLine(null, acct,
@@ -143,22 +149,30 @@ public class Doc_Payment extends Doc
 		//  APP
 		else if (getDocumentType().equals(DOCTYPE_APPayment))
 		{
+			FactLine fl = null;
 			MAccount acct = null;
 			if (getC_Charge_ID() != 0)
 				acct = MCharge.getAccount(getC_Charge_ID(), as);
 			else if (m_Prepayment)
-				acct = getAccount(Doc.ACCTTYPE_V_Prepayment, as);
+				//@David 
+				//acct = getAccount(Doc.ACCTTYPE_V_Prepayment, as); 
+				if (!useCustomBPAcctByCurrency(as.getC_Currency_ID(),getC_Currency_ID())) 
+					acct = getAccount(Doc.ACCTTYPE_V_Prepayment, as);					 
+				else 
+					acct = getAccount(Doc.ACCTTYPE_V_Prepayment_ByCurrency, as);					 
+				//@David End 
 			else
 				acct = getAccount(Doc.ACCTTYPE_PaymentSelect, as);
-			FactLine fl = fact.createLine(null, acct,
-				getC_Currency_ID(), getAmount(), null);
+			fl = fact.createLine(null, acct, getC_Currency_ID(), getAmount(), null);
 			if (fl != null && AD_Org_ID != 0
 				&& getC_Charge_ID() == 0)		//	don't overwrite charge
 				fl.setAD_Org_ID(AD_Org_ID);
 
 			//	Asset
-			fl = fact.createLine(null, getAccount(Doc.ACCTTYPE_BankInTransit, as),
-				getC_Currency_ID(), null, getAmount());
+			int acctType = Doc.ACCTTYPE_BankInTransit;
+			//
+				fl = fact.createLine(null, getAccount(acctType, as),getC_Currency_ID(), null, getAmount());
+			//
 			if (fl != null && AD_Org_ID != 0)
 				fl.setAD_Org_ID(AD_Org_ID);
 		}

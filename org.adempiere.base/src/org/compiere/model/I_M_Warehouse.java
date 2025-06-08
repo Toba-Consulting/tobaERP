@@ -264,4 +264,13 @@ public interface I_M_Warehouse
 	  * Search key for the record in the format required - must be unique
 	  */
 	public String getValue();
+	
+	/** Column name IsUseWHZoning */
+    public static final String COLUMNNAME_IsUseWHZoning = "IsUseWHZoning";
+
+	/** Set Use Zoning?	  */
+	public void setIsUseWHZoning (boolean IsUseWHZoning);
+
+	/** Get Use Zoning?	  */
+	public boolean isUseWHZoning();
 }

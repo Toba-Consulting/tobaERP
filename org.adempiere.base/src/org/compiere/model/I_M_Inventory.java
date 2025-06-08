@@ -480,4 +480,45 @@ public interface I_M_Inventory
 	public int getUser2_ID();
 
 	public org.compiere.model.I_C_ElementValue getUser2() throws RuntimeException;
+	
+	/** Column name C_Charge_ID */
+    public static final String COLUMNNAME_C_Charge_ID = "C_Charge_ID";
+    
+    /** Set Charge.
+	  * Additional document charges
+	  */
+	public void setC_Charge_ID (int C_Charge_ID);
+	
+	/** Get Charge.
+	  * Additional document charges
+	  */
+	public int getC_Charge_ID();
+
+	public org.compiere.model.I_C_Charge getC_Charge() throws RuntimeException;
+	
+	/** Column name M_Locator_ID */
+    public static final String COLUMNNAME_M_Locator_ID = "M_Locator_ID";
+
+	/** Set Locator.
+	  * Warehouse Locator
+	  */
+	public void setM_Locator_ID (int M_Locator_ID);
+
+	/** Get Locator.
+	  * Warehouse Locator
+	  */
+	public int getM_Locator_ID();
+
+	public org.compiere.model.I_M_Locator getM_Locator() throws RuntimeException;
+	
+	/** Column name M_WarehouseZone_ID */
+    public static final String COLUMNNAME_M_WarehouseZone_ID = "M_WarehouseZone_ID";
+
+	/** Set Warehouse Zone	  */
+	public void setM_WarehouseZone_ID (int M_WarehouseZone_ID);
+
+	/** Get Warehouse Zone	  */
+	public int getM_WarehouseZone_ID();
+
+	public I_M_WarehouseZone getM_WarehouseZone() throws RuntimeException;
 }

@@ -1345,4 +1345,49 @@ public interface I_C_Payment
 	  * Amount to write-off
 	  */
 	public BigDecimal getWriteOffAmt();
+	
+	/** Column name AppliedAmt */
+    public static final String COLUMNNAME_AppliedAmt = "AppliedAmt";
+
+	/** Set AppliedAmt	  */
+	public void setAppliedAmt (BigDecimal AppliedAmt);
+
+	/** Get AppliedAmt	  */
+	public BigDecimal getAppliedAmt();
+	
+	/** Column name GiroNo */
+    public static final String COLUMNNAME_GiroNo = "GiroNo";
+    
+    /** Set Giro No	  */
+	public void setGiroNo (String GiroNo);
+	
+	/** Get Giro No	  */
+	public String getGiroNo();
+	
+	/** Column name GiroStatus */
+    public static final String COLUMNNAME_GiroStatus = "GiroStatus";
+
+	/** Set Giro Status	  */
+	public void setGiroStatus (String GiroStatus);
+
+	/** Get Giro Status	  */
+	public String getGiroStatus();
+	
+	/** Column name MaturityDate */
+    public static final String COLUMNNAME_MaturityDate = "MaturityDate";
+
+	/** Set Maturity Date	  */
+	public void setMaturityDate (Timestamp MaturityDate);
+
+	/** Get Maturity Date	  */
+	public Timestamp getMaturityDate();
+	
+	/** Column name UserRate */
+    public static final String COLUMNNAME_UserRate = "UserRate";
+
+	/** Set User Rate	  */
+	public void setUserRate (BigDecimal UserRate);
+
+	/** Get User Rate	  */
+	public BigDecimal getUserRate();
 }

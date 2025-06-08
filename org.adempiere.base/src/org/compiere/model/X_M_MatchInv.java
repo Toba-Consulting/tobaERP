@@ -517,4 +517,29 @@ public class X_M_MatchInv extends PO implements I_M_MatchInv, I_Persistent
 			 return 0;
 		return ii.intValue();
 	}
+	
+	/** MatchType AD_Reference_ID=300038 */
+	public static final int MATCHTYPE_AD_Reference_ID=300038;
+	/** Matched Invoices for Material Receipt = API */
+	public static final String MATCHTYPE_MatchedInvoicesForMaterialReceipt = "API";
+	/** Matched Invoices for Shipment = ARI */
+	public static final String MATCHTYPE_MatchedInvoicesForShipment = "ARI";
+	/** Matched Invoices for Customer Return = ARC */
+	public static final String MATCHTYPE_MatchedInvoicesForCustomerReturn = "ARC";
+	/** Matched Invoices for Vendor Return = APC */
+	public static final String MATCHTYPE_MatchedInvoicesForVendorReturn = "APC";
+	/** Set Match Type.
+		@param MatchType Match Type	  */
+	public void setMatchType (String MatchType)
+	{
+
+		set_Value (COLUMNNAME_MatchType, MatchType);
+	}
+
+	/** Get Match Type.
+		@return Match Type	  */
+	public String getMatchType () 
+	{
+		return (String)get_Value(COLUMNNAME_MatchType);
+	}
 }

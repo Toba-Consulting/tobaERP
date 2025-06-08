@@ -204,9 +204,11 @@ public class MRequest extends X_R_Request
 		MStatus status = MStatus.getDefault(getCtx(), getR_RequestType_ID());
 		if (status == null)
 		{
+			/* commented out by stephan
 			log.warning("No default found");
 			if (getR_Status_ID() != 0)
 				setR_Status_ID(0);
+			*/
 		}
 		else
 			setR_Status_ID(status.getR_Status_ID());

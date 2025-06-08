@@ -67,6 +67,7 @@ import static org.compiere.model.SystemIDs.REFERENCE_DATATYPE_URL;
 import static org.compiere.model.SystemIDs.REFERENCE_DATATYPE_UUID;
 import static org.compiere.model.SystemIDs.REFERENCE_DATATYPE_YES_NO;
 import static org.compiere.model.SystemIDs.REFERENCE_DATATYPE_JSON;
+import static org.compiere.model.SystemIDs.REFERENCE_DATATYPE_COORDINATES;
 
 import java.text.DateFormat;
 import java.text.DecimalFormat;
@@ -175,6 +176,9 @@ public final class DisplayType
 	//	Candidates:
 	/** Display Type 200012	Payment	*/
 	public static final int Payment  = REFERENCE_DATATYPE_PAYMENT;
+	
+	// Coordinates;
+	public static final int Coordinates = REFERENCE_DATATYPE_COORDINATES;
 	
 	public static final int Chart = REFERENCE_DATATYPE_CHART;
 	

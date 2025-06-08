@@ -260,6 +260,9 @@ public class MRfQLine extends X_C_RfQLine
 	@Override
 	protected boolean beforeSave (boolean newRecord)
 	{
+		if (!isDescription() && getM_Product_ID()<=0 && getC_Charge_ID()<=0)
+			return false;
+		
 		//	Calculate Complete Date (also used to verify)
 		if (getDateWorkStart() != null && getDeliveryDays() != 0)
 			setDateWorkComplete (TimeUtil.addDays(getDateWorkStart(), getDeliveryDays()));
@@ -272,5 +275,26 @@ public class MRfQLine extends X_C_RfQLine
 
 		return true;
 	}	//	beforeSave
+	
+	@Override
+	protected boolean beforeDelete()
+	{
+		String sql = "DELETE FROM M_MatchInquiry WHERE C_RfQLine_ID="+get_ID();
+		DB.executeUpdate(sql, get_TrxName());
+		
+		String sql2 = "DELETE FROM M_MatchRfQResponses WHERE C_RfQLine_ID="+get_ID();
+		DB.executeUpdate(sql2, get_TrxName());
+		
+		String sql3 = "DELETE FROM M_MatchQuotation WHERE C_RfQLine_ID="+get_ID();
+		DB.executeUpdate(sql3, get_TrxName());
+		
+		String sql4 = "DELETE FROM M_MatchRequest WHERE C_RfQLine_ID="+get_ID();
+		DB.executeUpdate(sql4, get_TrxName());
+		
+		String sql5 = "UPDATE C_InquiryLine SET C_RfQLine_ID=NULL WHERE C_RfQLine_ID="+get_ID();
+		DB.executeUpdate(sql5, get_TrxName());
+		
+		return true;
+	}
 
 }	//	MRfQLine

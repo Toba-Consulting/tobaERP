@@ -170,6 +170,7 @@ public class SystemIDs
 	public final static int REFERENCE_DATATYPE_TIMEZONE = 200135;
 	public final static int REFERENCE_DATATYPE_URL = 40;
 	public final static int REFERENCE_DATATYPE_YES_NO = 20;
+	public final static int REFERENCE_DATATYPE_COORDINATES = 300062;
 
 	public final static int REFERENCE_ACCOUNT = 175;
 	public final static int REFERENCE_AD_LANGUAGE = 106;

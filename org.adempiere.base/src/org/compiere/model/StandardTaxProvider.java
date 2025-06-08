@@ -410,4 +410,67 @@ public class StandardTaxProvider implements ITaxProvider {
 	public String validateConnection(MTaxProvider provider, ProcessInfo pi) throws Exception {
 		throw new IllegalStateException(Msg.getMsg(provider.getCtx(), "ActionNotSupported"));
 	}
+	
+	//Stephan
+	@Override
+	public boolean recalculateTax(MTaxProvider provider, MQuotationLine line,
+			boolean newRecord) {
+		if (!newRecord && line.is_ValueChanged(MQuotationLine.COLUMNNAME_C_Tax_ID) && !line.getParent().isProcessed())
+		{
+			MTax mtax = new MTax(line.getCtx(), line.getC_Tax_ID(), line.get_TrxName());
+	    	if (mtax.getC_TaxProvider_ID() == 0)
+	    	{
+				//	Recalculate Tax for old Tax
+				if (!line.updateQuotationTax(true))
+					return false;
+	    	}
+		}
+		return line.updateHeaderTax();
+		//return false;
+	}
+
+	@Override
+	public boolean updateQuotationTax(MTaxProvider provider, MQuotationLine line) {
+		MTax mtax = new MTax(line.getCtx(), line.getC_Tax_ID(), line.get_TrxName());
+		if(mtax.getC_TaxProvider_ID()==0){
+			return line.updateQuotationTax(false);
+		}
+		return true;
+	}
+	//Stephan
+	@Override
+	public boolean updateHeaderTax(MTaxProvider provider, MQuotationLine line) {
+		String sql;
+		sql = "UPDATE C_Quotation i "
+				+ "SET TotalLines=("
+				+ "SELECT COALESCE(SUM(LineNetAmt),0) "
+				+ "FROM C_QuotationLine il "
+				+ "WHERE i.C_Quotation_ID=il.C_Quotation_ID)"
+				+ "WHERE C_Quotation_ID="+line.getC_Quotation_ID();
+		int no = DB.executeUpdate(sql, line.get_TrxName());
+		
+		if(no != 1){
+			log.warning("(1) #" + no);
+		}
+		
+		if(line.isTaxIncluded()){
+			sql="UPDATE C_Quotation i "
+				+ "SET GrandTotal=TotalLines "
+				+ "WHERE C_Quotation_ID=" + line.getC_Quotation_ID();
+		}
+		else{
+			sql="UPDATE C_Quotation i "
+				+ "SET GrandTotal=TotalLines+"
+				+ "(SELECT COALESCE(SUM(TaxAmt),0) FROM C_QuotationTax it WHERE i.C_Quotation_ID=it.C_Quotation_ID) "
+				+ "WHERE C_Quotation_ID=" + line.getC_Quotation_ID();
+		}
+		no=DB.executeUpdate(sql, line.get_TrxName());
+		if(no!=1){
+			log.warning("(2) #" + no);
+		}
+		
+		line.clearParent();
+		
+		return no==1;
+	}
 }

@@ -231,6 +231,30 @@ public class MMovementLine extends X_M_MovementLine
 			}
 		}
 
+		//@win - recalculate multi uom
+		if (newRecord || is_ValueChanged(COLUMNNAME_C_UOM_ID) || 
+				is_ValueChanged(COLUMNNAME_M_Product_ID) || is_ValueChanged(COLUMNNAME_QtyEntered)) {
+			BigDecimal qtyEntered = getQtyEntered();
+			int p_C_UOM_ID = getC_UOM_ID();
+			BigDecimal qtyEntered1 = qtyEntered.setScale(MUOM.getPrecision(getCtx(), p_C_UOM_ID), RoundingMode.HALF_UP);
+			if (qtyEntered.compareTo(qtyEntered1) != 0)
+			{
+				qtyEntered = qtyEntered1;
+				setQtyEntered(qtyEntered);
+			}
+
+			BigDecimal movementQty = MUOMConversion.convertProductFrom (getCtx(), getM_Product_ID(),
+					p_C_UOM_ID, qtyEntered);
+
+			if (movementQty == null)
+				movementQty = qtyEntered;
+
+			if (getMovementQty().compareTo(movementQty) != 0)
+				setMovementQty(movementQty);
+		}
+
+		//end @win - recalculate multi uom
+		
 		//	Qty Precision
 		if (newRecord || is_ValueChanged(COLUMNNAME_MovementQty))
 			setMovementQty(getMovementQty());
@@ -255,11 +279,30 @@ public class MMovementLine extends X_M_MovementLine
 	 */
 	@Override
 	protected boolean beforeDelete() {
-		if (getParent().pendingConfirmations()) {
+		/*if (getParent().pendingConfirmations()) {
 			log.saveError("DeleteError", Msg.parseTranslation(getCtx(), "@Open@: @M_MovementConfirm_ID@"));
 			return false;
 		}
 		return super.beforeDelete();
+		*/
+		
+		if(isProcessed()) 
+			return false; 
+		 
+		try { 
+			DB.executeUpdate("DELETE FROM M_MatchMovement WHERE M_MovementLine_ID=" + get_ID(), get_TrxName()); 
+		} catch (Exception e) { 
+			log.saveError("DeleteError", "Cannot Delete Match Movement records"); 
+			e.printStackTrace(); 
+		} 
+		try { 
+			DB.executeUpdate("DELETE FROM M_MatchRequest WHERE M_MovementLine_ID=" + get_ID(), get_TrxName()); 
+		} catch (Exception e) { 
+			log.saveError("DeleteError", "Cannot Delete Match Request records"); 
+			e.printStackTrace(); 
+		} 
+	
+		return true; 
 	}
 
 	/** 

@@ -99,7 +99,9 @@ public class FinReport extends SvrProcess
 	/**	The Report Columns				*/
 	private MReportColumn[] 	m_columns;
 	/** The Report Lines				*/
-	private MReportLine[] 		m_lines;
+	private MReportLine[] 		m_lines;	
+	/** Organization Trx				*/
+	private int 				p_AD_OrgTrx_ID = 0;
 
 
 	/**
@@ -146,6 +148,8 @@ public class FinReport extends SvrProcess
 				p_DetailsSourceFirst = "Y".equals(para[i].getParameter());
 			else if (name.equals("PA_ReportCube_ID"))
 				p_PA_ReportCube_ID = para[i].getParameterAsInt();
+			else if (name.equals("AD_OrgTrx_ID"))
+				p_AD_OrgTrx_ID = para[i].getParameterAsInt();
 			else
 				MProcessPara.validateUnknownParameter(getProcessInfo().getAD_Process_ID(), para[i]);
 		}
@@ -529,6 +533,10 @@ public class FinReport extends SvrProcess
 			
 			//	Parameter Where
 			select.append(m_parameterWhere);
+			//	@Stephan TAOWI-1069
+			if(p_AD_OrgTrx_ID > 0)
+				select.append(" AND AD_OrgTrx_ID="+p_AD_OrgTrx_ID);
+			//	@Stephan end
 			if (log.isLoggable(Level.FINEST)) log.finest("Line=" + line + ",Col=" + line + ": " + select);
 
 			//	Update SET portion
@@ -1493,6 +1501,10 @@ public class FinReport extends SvrProcess
 			
 			//	Parameter Where
 			select.append(m_parameterWhere);
+			// @Stephan TAOWI-1069
+			if (p_AD_OrgTrx_ID > 0)
+				select.append(" AND AD_OrgTrx_ID=" + p_AD_OrgTrx_ID);
+			// @Stephan end
 			if (log.isLoggable(Level.FINEST))
 				log.finest("Col=" + col + ", Line=" + line + ": " + select);
 			//

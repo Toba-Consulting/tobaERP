@@ -25,6 +25,7 @@ import java.math.BigDecimal;
 import java.sql.ResultSet;
 import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Collection;
 import java.util.List;
 import java.util.Properties;
@@ -122,7 +123,6 @@ public class MDepreciationExp extends X_A_Depreciation_Exp
 		depexp.setA_Asset_ID(A_Asset_ID);
 		depexp.setDR_Account_ID(drAcct);
 		depexp.setCR_Account_ID(crAcct);
-		depexp.setA_Account_Number_Acct(drAcct);	// TODO: DELETEME
 		depexp.setPostingType(postingType);
 		depexp.setExpense(expense);
 		depexp.setDescription(Msg.parseTranslation(ctx, description));
@@ -170,26 +170,33 @@ public class MDepreciationExp extends X_A_Depreciation_Exp
 				int PeriodNo, Timestamp dateAcct,
 				BigDecimal amt, BigDecimal amt_F,
 				BigDecimal accumAmt, BigDecimal accumAmt_F,
-				String help, String trxName)
+				String help, String entryType, String trxName)
 	{
 		ArrayList<MDepreciationExp> list = new ArrayList<MDepreciationExp>();
 		Properties ctx = assetwk.getCtx();
 		MAssetAcct assetAcct = assetwk.getA_AssetAcct(dateAcct, trxName);
 		MDepreciationExp depexp = null;
 		
-		depexp = createEntry (ctx, A_ENTRY_TYPE_Depreciation, assetwk.getA_Asset_ID(), PeriodNo, dateAcct, assetwk.getPostingType()
-			, assetAcct.getA_Depreciation_Acct(), assetAcct.getA_Accumdepreciation_Acct()
-			, amt
-			, "@AssetDepreciationAmt@"
-			, assetwk);
+		depexp = createEntry (assetwk.getCtx(), A_ENTRY_TYPE_Depreciation, assetwk.getA_Asset_ID(), PeriodNo, dateAcct, assetwk.getPostingType(), 
+				assetAcct.getA_Depreciation_Acct(), assetAcct.getA_Accumdepreciation_Acct(), amt, "@AssetDepreciationAmt@", assetwk);
+		
 		if(depexp != null) {
 			depexp.setAD_Org_ID(assetwk.getA_Asset().getAD_Org_ID()); // added by zuhri
 			if (accumAmt != null)
 				depexp.setA_Accumulated_Depr(accumAmt);
+			
 			if (accumAmt_F != null)
 				depexp.setA_Accumulated_Depr_F(accumAmt_F);
+			
 			if (help != null && help.length() > 0)
 				depexp.setHelp(help);
+			
+			if (entryType != null)
+				depexp.setA_Entry_Type(entryType);
+
+			if (depreciated(depexp.getA_Period(), assetwk.getA_Period_Start()))
+				depexp.setProcessed(true);
+			
 			depexp.setExpense_F(amt_F);
 			depexp.setA_Accumulated_Depr_Delta(amt);
 			depexp.setA_Accumulated_Depr_F_Delta(amt_F);
@@ -197,6 +204,18 @@ public class MDepreciationExp extends X_A_Depreciation_Exp
 			list.add(depexp);
 		}
 		return list;
+	}
+	
+	/**
+	 * @author Stephan
+	 * @param Current Period
+	 * @param Start Period
+	 * @return true if depreciated
+	 */
+	public static boolean depreciated(int currentPeriod, int startPeriod){
+		if(currentPeriod < startPeriod)
+			return true;
+		else return false;
 	}
 
 	/**
@@ -240,9 +259,69 @@ public class MDepreciationExp extends X_A_Depreciation_Exp
 			// nothing to do for other entry types
 		}
 		//
+		//@phie
+		/*
+		 * First step : set processed true, because it will affect on the first depr entry, 
+		 * 				if processed still false, there's no exp processed when workfile want to get current period and date acct
+		 * Next : update workfile data (get last period on processed exp +1)
+		 * Next : Update expense 
+		 */
 		setProcessed(true);
+		saveEx();
+		
+		assetwk.setA_Current_Period();
+		assetwk.saveEx();
+		
 		updateFrom(assetwk);
 		saveEx();
+	}
+	
+	/**
+	 * Unprocess this entry and save the modified workfile.
+	 */
+	public void unProcess()
+	{
+		if(!isProcessed()) {
+			log.fine("@AlreadyUnprocessed@");
+			return;
+		}
+
+		MAsset asset = (MAsset) getA_Asset();
+		if (asset.isFullyDepreciated()) {
+			asset.setIsFullyDepreciated(false);
+			if (asset.getA_Asset_Status().equals(MAsset.A_ASSET_STATUS_Depreciated))
+				asset.setA_Asset_Status(MAsset.A_ASSET_STATUS_Activated);
+		}
+
+		MDepreciationWorkfile assetwk = getA_Depreciation_Workfile();
+
+		if (assetwk == null) {
+			throw new AssetException("@NotFound@ @A_Depreciation_Workfile_ID@");
+		}
+
+		if (MDepreciationExp.A_ENTRY_TYPE_Depreciation.equals(getA_Entry_Type())) {
+			checkExistsProcessedEntries(getCtx(), getA_Asset_ID(), getDateAcct(), getPostingType(), get_TrxName());
+			assetwk.adjustAccumulatedDepr(getExpense().negate(), getExpense_F(), false);
+		}
+		
+		//@phie
+		/*
+		 * For Re-Active
+		 * Set workfile before processed on exp become false, so work file just get the last period on processed exp
+		 * Then, set processed exp to false
+		 * Update asset_remaining on exp from new value on workfile
+		 */
+		assetwk.setA_Current_PeriodBack();
+		assetwk.saveEx();
+		setProcessed(false);
+		updateFrom(assetwk);
+		//end phie
+		saveEx();
+	}
+	
+	private MDepreciationWorkfile getA_Depreciation_Workfile()
+	{
+		return MDepreciationWorkfile.get(getCtx(), getA_Asset_ID(), getPostingType(), get_TrxName());
 	}
 	
 	@Override
@@ -250,20 +329,22 @@ public class MDepreciationExp extends X_A_Depreciation_Exp
 	{
 		if (isProcessed())
 		{
-			Collection<MDepreciationWorkfile> workFiles = MDepreciationWorkfile.forA_Asset_ID(getCtx(), getA_Asset_ID(), get_TrxName());
-			for(MDepreciationWorkfile assetwk : workFiles) {	
-				// TODO : check if we can reverse it (check period, check dateacct etc)
-				assetwk.adjustAccumulatedDepr(getA_Accumulated_Depr().negate(), getA_Accumulated_Depr_F().negate(), false);
-				assetwk.saveEx();
-			}
-		}
-		// Try to delete postings
-		if (isPosted())
-		{
-			MPeriod.testPeriodOpen(getCtx(), getDateAcct(), MDocType.DOCBASETYPE_GLDocument, getAD_Org_ID());
-			MDepreciationEntry.deleteFacts(this);
+			return false;
 		}
 		return true;
+	}
+	
+	protected boolean beforeSave (boolean newRecord)
+	{
+		if (newRecord || is_ValueChanged(COLUMNNAME_DateAcct)) {
+			Calendar cal = Calendar.getInstance();
+			cal.setTimeInMillis(getDateAcct().getTime());
+			int year = cal.get(Calendar.YEAR);
+			setCalendarYear(year);
+		}
+
+		return true;
+
 	}
 	
 	@Override
@@ -274,25 +355,12 @@ public class MDepreciationExp extends X_A_Depreciation_Exp
 			return false;
 		}
 		//
-		// If it was processed, we need to update workfile's current period
 		if (isProcessed())
 		{
-			Collection<MDepreciationWorkfile> workFiles = MDepreciationWorkfile.forA_Asset_ID(getCtx(), getA_Asset_ID(), get_TrxName());
-			for(MDepreciationWorkfile wk : workFiles) {	
-				wk.setA_Current_Period();
-				wk.saveEx();
-			}
+			return false;
 		}
 		//
 		return true;
-	}
-	
-	/**
-	 * @return true if posted
-	 */
-	protected boolean isPosted()
-	{
-		return isProcessed() && getA_Depreciation_Entry_ID() > 0;
 	}
 	
 	/**
@@ -313,11 +381,33 @@ public class MDepreciationExp extends X_A_Depreciation_Exp
 								+" AND "+MDepreciationExp.COLUMNNAME_Processed+"=?";
 		boolean match = new Query(ctx, MDepreciationExp.Table_Name, whereClause, trxName)
 					.setParameters(new Object[]{A_Asset_ID, TimeUtil.getMonthFirstDay(dateAcct), postingType, false})
+					.setOnlyActiveRecords(true)
 					.match();
 		if (match)
 		{
 			throw new AssetException("There are unprocessed records to date");
 		}
+	}
+	
+	public static void checkExistsProcessedEntries(Properties ctx,
+			int A_Asset_ID, Timestamp dateAcct, String postingType,
+			String trxName)
+	{
+		final String whereClause = MDepreciationExp.COLUMNNAME_A_Asset_ID+"=?"
+				+" AND TRUNC("+MDepreciationExp.COLUMNNAME_DateAcct+",'MONTH')>?"
+				+" AND "+MDepreciationExp.COLUMNNAME_PostingType+"=?"
+				+" AND "+MDepreciationExp.COLUMNNAME_Processed+"=?";
+
+		//@phie match exists if there are processed record that date acct > this date acct (month) and isProcessed = Y
+		boolean match = new Query(ctx, MDepreciationExp.Table_Name, whereClause, trxName)
+		.setParameters(new Object[]{A_Asset_ID, TimeUtil.getMonthFirstDay(dateAcct), postingType, true})
+		.setOnlyActiveRecords(true)
+		.match();
+		//end @phie
+		
+		if (match)
+			throw new AssetException("There are processed records for period after currents");
+
 	}
 	
 	/**
@@ -336,21 +426,9 @@ public class MDepreciationExp extends X_A_Depreciation_Exp
 	             	  +" AND "+MDepreciationExp.COLUMNNAME_Processed+"=?";
 		List<MDepreciationExp> list = new Query(ctx, MDepreciationExp.Table_Name, whereClause, trxName)
 	                      	.setParameters(new Object[]{A_Asset_ID, postingType, false})
+	                      	.setOnlyActiveRecords(true)
 		                    .list();
 		return list;
-	}
-
-	@Override
-	public void setProcessed(boolean Processed)
-	{
-		super.setProcessed(Processed);
-		//
-		if (get_ID() > 0)
-		{
-			//lock record
-			final String sql = "UPDATE "+Table_Name+" SET Processed=? WHERE "+COLUMNNAME_A_Depreciation_Exp_ID+"=?";
-			DB.executeUpdateEx(sql, new Object[]{Processed, get_ID()}, get_TrxName());
-		}
 	}
 	
 	@Override

@@ -463,4 +463,62 @@ public class X_M_RequisitionLine extends PO implements I_M_RequisitionLine, I_Pe
 			 return Env.ZERO;
 		return bd;
 	}
+	
+	/** Set Track As Asset.
+		@param IsTrackAsAsset Track As Asset	  */
+	public void setIsTrackAsAsset (boolean IsTrackAsAsset)
+	{
+		set_Value (COLUMNNAME_IsTrackAsAsset, Boolean.valueOf(IsTrackAsAsset));
+	}
+	
+	/** Get Track As Asset.
+		@return Track As Asset	  */
+	public boolean isTrackAsAsset () 
+	{
+		Object oo = get_Value(COLUMNNAME_IsTrackAsAsset);
+		if (oo != null) 
+		{
+			 if (oo instanceof Boolean) 
+				 return ((Boolean)oo).booleanValue(); 
+			return "Y".equals(oo);
+		}
+		return false;
+	}
+	
+	/** Set Ordered Quantity.
+		@param QtyOrdered 
+		Ordered Quantity
+	  */
+	public void setQtyOrdered (BigDecimal QtyOrdered)
+	{
+		set_ValueNoCheck (COLUMNNAME_QtyOrdered, QtyOrdered);
+	}
+	
+	/** Get Ordered Quantity.
+		@return Ordered Quantity
+	  */
+	public BigDecimal getQtyOrdered () 
+	{
+		BigDecimal bd = (BigDecimal)get_Value(COLUMNNAME_QtyOrdered);
+		if (bd == null)
+			 return Env.ZERO;
+		return bd;
+	}
+	
+	/** Set Required Qty.
+		@param QtyRequired Required Qty	  */
+	public void setQtyRequired (BigDecimal QtyRequired)
+	{
+		set_Value (COLUMNNAME_QtyRequired, QtyRequired);
+	}
+	
+	/** Get Required Qty.
+		@return Required Qty	  */
+	public BigDecimal getQtyRequired () 
+	{
+		BigDecimal bd = (BigDecimal)get_Value(COLUMNNAME_QtyRequired);
+		if (bd == null)
+			 return Env.ZERO;
+		return bd;
+	}
 }

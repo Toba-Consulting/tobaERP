@@ -30,9 +30,12 @@ import org.compiere.model.GridField;
 import org.compiere.model.GridTab;
 import org.compiere.model.I_A_Asset_Addition;
 import org.compiere.model.MAssetAddition;
+import org.compiere.model.MAssetDisposed;
+import org.compiere.model.MAssetGroupAcct;
 import org.compiere.model.MConversionRateUtil;
 import org.compiere.model.MProject;
 import org.compiere.model.SetGetUtil;
+import org.compiere.util.DB;
 import org.compiere.util.Env;
 import org.compiere.util.TimeUtil;
 
@@ -85,7 +88,7 @@ public class CalloutA_Asset_Addition extends CalloutEngine
 		mTab.setValue(MAssetAddition.COLUMNNAME_AssetSourceAmt, amtEntered);
 		MConversionRateUtil.convertBase(SetGetUtil.wrap(mTab),
 				MAssetAddition.COLUMNNAME_DateAcct,
-				MAssetAddition.COLUMNNAME_AssetSourceAmt,
+				MAssetAddition.COLUMNNAME_AssetAmtEntered,
 				MAssetAddition.COLUMNNAME_AssetValueAmt,
 				mField.getColumnName());
 		
@@ -109,6 +112,16 @@ public class CalloutA_Asset_Addition extends CalloutEngine
 		
 	public String periodOffset(Properties ctx, int WindowNo, GridTab mTab, GridField mField, Object value)
 	{
+		
+		if(value == null)
+			return null;
+		
+		boolean isAdjustAccmDepr = (boolean) value;
+		if(!isAdjustAccmDepr){
+			mTab.setValue("A_Accumulated_Depr", Env.ZERO);
+			mTab.setValue("A_Period_Start", Env.ONE);
+		}
+		
 		I_A_Asset_Addition aa = GridTabWrapper.create(mTab, I_A_Asset_Addition.class);
 		int periods = TimeUtil.getMonthsBetween(aa.getDateDoc(), aa.getDateAcct());
 		if (periods <= 0)
@@ -116,6 +129,31 @@ public class CalloutA_Asset_Addition extends CalloutEngine
 			return "";
 		}
 		return "";
+	}
+	
+	public String newActivation (Properties ctx, int WindowNo, GridTab mTab, GridField mField, Object value){
+		I_A_Asset_Addition assetAdd = GridTabWrapper.create(mTab, I_A_Asset_Addition.class);
+		if(assetAdd.isA_CreateAsset())
+			assetAdd.setIsAdjustUseLife(true);
+		
+		return null;
+	}
+	
+	public String assetGroup (Properties ctx, int WindowNo, GridTab mTab, GridField mField, Object value){
+		if (value==null)
+			return "";
+		
+		Integer AD_Client_ID = (Integer)mTab.getValue(MAssetDisposed.COLUMNNAME_AD_Client_ID);
+		String sqlAcctSchema = "SELECT C_AcctSchema_ID FROM "
+				+ " C_AcctSchema WHERE AD_Client_ID = " + AD_Client_ID;
+		int acctSchema = DB.getSQLValue(sqlAcctSchema, null);
+		MAssetGroupAcct assetGroupAcct = MAssetGroupAcct.forA_Asset_Group_ID(ctx, 
+				(Integer) value, MAssetGroupAcct.POSTINGTYPE_Actual, acctSchema);
+
+		mTab.setValue(MAssetAddition.COLUMNNAME_UseLifeYears, assetGroupAcct.getUseLifeYears());
+		mTab.setValue(MAssetAddition.COLUMNNAME_A_Salvage_Value, assetGroupAcct.getA_Salvage_Value());
+		
+		return null;
 	}
 	
 }

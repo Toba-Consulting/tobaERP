@@ -2,7 +2,11 @@ package org.compiere.model;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.sql.ResultSet;
+import java.sql.Timestamp;
+import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Properties;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -10,6 +14,7 @@ import java.util.logging.Logger;
 import org.compiere.util.CLogMgt;
 import org.compiere.util.CLogger;
 import org.compiere.util.Env;
+import org.compiere.util.TimeUtil;
 import org.idempiere.cache.ImmutablePOSupport;
 import org.idempiere.cache.IntPOCopyCache;
 import org.idempiere.cache.POCopyCache;
@@ -17,6 +22,7 @@ import org.idempiere.fa.exceptions.AssetNotImplementedException;
 import org.idempiere.fa.exceptions.AssetNotSupportedException;
 import org.idempiere.fa.service.api.DepreciationDTO;
 import org.idempiere.fa.service.api.IDepreciationMethod;
+import org.taowi.model.MDepreciationTemp;
 
 /**
  * Depreciation Method (eg. SL, ARH_VAR ...).
@@ -174,6 +180,7 @@ public class MDepreciation extends X_A_Depreciation implements ImmutablePOSuppor
 		final String whereClause = COLUMNNAME_DepreciationType+"=?"
 									+" AND AD_Client_ID IN (0,?)";
 		depr = new Query(ctx, Table_Name, whereClause, null)
+						.setOnlyActiveRecords(true)
 						.setOrderBy("AD_Client_ID DESC")
 						.setParameters(new Object[]{depreciationType, AD_Client_ID})
 						.firstOnly();
@@ -208,7 +215,8 @@ public class MDepreciation extends X_A_Depreciation implements ImmutablePOSuppor
 	 * @return amortized value
 	 */
 	public BigDecimal invoke(MDepreciationWorkfile assetwk, MAssetAcct assetAcct,
-								int A_Current_Period, BigDecimal Accum_Dep, IDepreciationMethod depreciationMethod)
+			int A_Current_Period, BigDecimal Accum_Dep, IDepreciationMethod depreciationMethod, 
+			Timestamp dateAcct)
 	{
 		String depreciationType = getDepreciationType();
 		BigDecimal retValue = null;
@@ -263,6 +271,10 @@ public class MDepreciation extends X_A_Depreciation implements ImmutablePOSuppor
 		else if (depreciationType.equalsIgnoreCase("ARH_ZERO"))
 		{
 			retValue = apply_ARH_ZERO(assetwk, assetAcct, A_Current_Period, Accum_Dep);
+		}
+		else if (depreciationType.equalsIgnoreCase("DB200"))
+		{
+			retValue = apply_DB_200(assetwk, assetAcct, A_Current_Period, Accum_Dep, dateAcct);
 		}
 		else
 		{
@@ -329,8 +341,13 @@ public class MDepreciation extends X_A_Depreciation implements ImmutablePOSuppor
 	private BigDecimal apply_SL (MDepreciationWorkfile wk, MAssetAcct assetAcct,
 									int A_Current_Period, BigDecimal Accum_Dep)
 	{
-		BigDecimal remainingPeriods = new BigDecimal(wk.getRemainingPeriods(A_Current_Period - 1));
-		BigDecimal remainingAmt = wk.getRemainingCost(Accum_Dep);
+		//	@Stephan TAOWI-1708 always calculate from the beginning
+		//BigDecimal remainingPeriods = new BigDecimal(wk.getRemainingPeriods(A_Current_Period - 1));
+		//BigDecimal remainingAmt = wk.getRemainingCost(Accum_Dep);
+		BigDecimal remainingPeriods = new BigDecimal(wk.getUseLifeMonths());
+		BigDecimal remainingAmt = wk.getActualCost();
+		//	@Stephan end
+		
 		BigDecimal amtPerPeriod = Env.ZERO;
 		if (remainingPeriods.signum() != 0)
 		{
@@ -514,6 +531,126 @@ public class MDepreciation extends X_A_Depreciation implements ImmutablePOSuppor
 
 		makeImmutable();
 		return this;
+	}
+	
+	/**
+	 *  @author Stephan
+	 *  @param MDepreciationWorkFile
+	 *  @param MAssetAcct
+	 *  @param A_Current_Period
+	 *  @param Accum_Dep
+	 *  @param DateAcct
+	 *	@return depreciation for the current month
+	 */
+	private BigDecimal apply_DB_200 (MDepreciationWorkfile wk, MAssetAcct assetAcct,
+			int A_Current_Period, BigDecimal Accum_Dep, Timestamp dateAcct)
+	{
+		final BigDecimal multiplier = new BigDecimal(2);
+		BigDecimal remainingPeriods = new BigDecimal(wk.getRemainingPeriods(A_Current_Period - 1));
+		HashMap<Integer, MDepreciationTemp> listAmtPerYear = new HashMap<>();
+		
+		BigDecimal yearlyRate = Env.ONEHUNDRED
+			.divide(wk.getUseLifeYears(),4,RoundingMode.HALF_UP);
+		
+		yearlyRate = yearlyRate.multiply(multiplier);
+		yearlyRate = yearlyRate.divide(Env.ONEHUNDRED,4,RoundingMode.HALF_UP);
+		
+		//	grouping period in first year, last year and between them
+		
+		int currentYear = TimeUtil.getYear(dateAcct);
+		
+		//	initialize first year
+		Timestamp firstDateAcct = wk.getDateAcct();
+		firstDateAcct = TimeUtil.addMonths(firstDateAcct, -wk.getA_Current_Period()+1);
+		MAsset asset = (MAsset) wk.getA_Asset();
+		int firstYear = TimeUtil.getYear(firstDateAcct);
+		if(asset.isSecondAddition()){
+			firstYear = TimeUtil.getYear(asset.getDateFirstAddition());
+			firstDateAcct = asset.getDateFirstAddition();
+		}
+		
+		BigDecimal startMonth = new BigDecimal(TimeUtil.getMonth(firstDateAcct)).add(Env.ONE);
+		BigDecimal monthInFirstYear = BD_12.subtract(
+				startMonth).add(Env.ONE);
+		
+		//	initialize last year
+		Timestamp dateLast = TimeUtil.addMonths(firstDateAcct, wk.getUseLifeMonths()-1);
+		int lastYear = TimeUtil.getYear(dateLast);
+		BigDecimal endMonth = new BigDecimal(TimeUtil.getMonth(dateLast)).add(Env.ONE);
+		BigDecimal monthInLastYear = endMonth;
+		
+		//	month always add by one because start month in library calendar = 0;
+		
+		List<Integer> listYear = new ArrayList<>();
+		for(int i=firstYear ; i<=lastYear ; i++){
+			listYear.add(i);
+		}
+		
+		BigDecimal amtPerPeriod = Env.ZERO;
+		
+		//	calculate and store them in temporary class
+		//	always calculate from first year
+		for (Integer year : listYear){
+			if(year == firstYear){
+				BigDecimal costAsset = wk.getA_Asset_Cost();
+
+				BigDecimal totalAmtInFirstYear = costAsset.multiply(yearlyRate);
+
+				totalAmtInFirstYear = totalAmtInFirstYear.multiply(monthInFirstYear)
+						.divide(BD_12,getPrecision(), RoundingMode.HALF_UP);
+				
+				BigDecimal leftAmtInFirstYear = costAsset.subtract(totalAmtInFirstYear);
+				MDepreciationTemp inputTemp = new MDepreciationTemp();
+				inputTemp.create(year, totalAmtInFirstYear, leftAmtInFirstYear);
+				listAmtPerYear.put(firstYear, inputTemp);
+			}
+			else{
+				MDepreciationTemp temp = listAmtPerYear.get(year-1);
+				BigDecimal leftAmtInLastYear = temp.getAmtLeftPerYear();
+				
+				BigDecimal totalAmtInYear = Env.ZERO;
+				/*
+				if(year==lastYear && wk.getA_Salvage_Value().compareTo(Env.ZERO) > 0)
+					totalAmtInYear = leftAmtInLastYear.subtract(wk.getA_Salvage_Value());
+				else if(year == lastYear && wk.getA_Salvage_Value().compareTo(Env.ZERO) == 0)
+					totalAmtInYear = leftAmtInLastYear;
+				*/
+				if(year == lastYear)
+					totalAmtInYear = leftAmtInLastYear.subtract(wk.getA_Salvage_Value());
+				else
+					totalAmtInYear = leftAmtInLastYear.multiply(yearlyRate);
+				
+				totalAmtInYear = totalAmtInYear.setScale(getPrecision(), RoundingMode.HALF_UP);
+						
+				BigDecimal leftAmtInYear = leftAmtInLastYear.subtract(totalAmtInYear)
+						.setScale(getPrecision(), RoundingMode.HALF_UP);
+				MDepreciationTemp inputTemp = new MDepreciationTemp();
+				inputTemp.create(year, totalAmtInYear, leftAmtInYear);
+				listAmtPerYear.put(year, inputTemp);
+			}
+		}
+		
+		MDepreciationTemp getTemp = listAmtPerYear.get(currentYear);
+		
+		/* for testing only
+		for (Integer year : listYear) {
+			MDepreciationTemp getTempp = listAmtPerYear.get(year);
+			log.info(year+", "+getTempp.getAmtDepPerYear()+", "+getTempp.getAmtLeftPerYear());
+		}*/
+		
+		if(currentYear == firstYear){
+			amtPerPeriod = getTemp.getAmtDepPerYear()
+				.divide(monthInFirstYear,getPrecision(),RoundingMode.HALF_UP);
+		}
+		else{
+			amtPerPeriod = (currentYear == lastYear)
+				? getTemp.getAmtDepPerYear().divide(monthInLastYear,getPrecision(),RoundingMode.HALF_UP)
+				: getTemp.getAmtDepPerYear().divide(BD_12,getPrecision(),RoundingMode.HALF_UP);
+		}
+		
+		if (log.isLoggable(Level.INFO)) log.info("date = "+dateAcct+" year = "+currentYear+", currentPeriod=" + A_Current_Period + ", remainingAmt=" + getTemp.getAmtLeftPerYear() + ", remainingPeriods=" + remainingPeriods + " => amtPerPeriod=" + amtPerPeriod);
+		
+		return amtPerPeriod;
 	}
 
 }

@@ -21,6 +21,7 @@ import org.compiere.model.MBPartner;
 import org.compiere.model.MClient;
 import org.compiere.model.MConversionRate;
 import org.compiere.model.MConversionRateUtil;
+import org.compiere.model.MConversionType;
 import org.compiere.model.MPayment;
 import org.compiere.model.MPaymentAllocate;
 import org.compiere.util.DB;
@@ -67,49 +68,51 @@ public class CreditManagerPayment implements ICreditManager
 		}
 		else if (MPayment.DOCACTION_Complete.equals(docAction))
 		{
-			// Charge Handling
+			//	Charge Handling
 			boolean createdAllocationRecords = false;
-			if (payment.getC_Charge_ID() == 0)
+			if (payment.getC_Charge_ID() != 0)
 			{
-				createdAllocationRecords = payment.allocateIt(); // Create Allocation Records
+				payment.setIsAllocated(true);
+			}
+			else
+			{
+				createdAllocationRecords = payment.allocateIt();	//	Create Allocation Records
 				payment.testAllocation();
 			}
-			// Update BP for Prepayments
-			if (payment.getC_BPartner_ID() != 0
-				&& payment.getC_Invoice_ID() == 0
-				&& payment.getC_Charge_ID() == 0
-				&& MPaymentAllocate.get(payment).length == 0
-				&& !createdAllocationRecords)
+			
+			//	Update BP for Prepayments
+			if (payment.getC_BPartner_ID() != 0 
+					&& payment.getC_Invoice_ID() == 0 
+					&& payment.getC_Charge_ID() == 0 
+					&& MPaymentAllocate.get(payment).length == 0 
+					&& !createdAllocationRecords)
 			{
-				Properties ctx = payment.getCtx();
-				MBPartner bp = new MBPartner(ctx, payment.getC_BPartner_ID(), payment.get_TrxName());
+				MBPartner bp = new MBPartner (payment.getCtx(), payment.getC_BPartner_ID(), payment.get_TrxName());
 				DB.getDatabase().forUpdate(bp, 0);
-				// Update total balance to include this payment
+				//	Update total balance to include this payment
+				//@Stephan
+				//	must check if user rate or not and calculate into payAmt
 				BigDecimal payAmt = null;
-				int baseCurrencyId = Env.getContextAsInt(ctx, Env.C_CURRENCY_ID);
-				if (payment.getC_Currency_ID() != baseCurrencyId && payment.isOverrideCurrencyRate())
-				{
-					payAmt = payment.getConvertedAmt();
+				BigDecimal userRate = null;
+				MConversionType currType = new MConversionType(payment.getCtx(), payment.getC_ConversionType_ID(), payment.get_TrxName());
+				if(currType.get_ValueAsBoolean("IsUserRate")){
+					userRate = (BigDecimal)payment.get_Value("UserRate");
+					if(userRate == null || userRate.compareTo(Env.ZERO)==0)
+						payAmt = null;
+					else
+						payAmt = userRate.multiply(payment.getPayAmt());
+				}else{
+					payAmt = MConversionRate.convertBase(payment.getCtx(), payment.getPayAmt(), 
+							payment.getC_Currency_ID(), payment.getDateAcct(), payment.getC_ConversionType_ID(), 
+							payment.getAD_Client_ID(), payment.getAD_Org_ID());
 				}
-				else
-				{
-					payAmt = MConversionRate.convertBase(	ctx, payment.getPayAmt(),
-															payment.getC_Currency_ID(),
-															payment.getDateAcct(),
-															payment.getC_ConversionType_ID(),
-															payment.getAD_Client_ID(),
-															payment.getAD_Org_ID());
-
-					if (payAmt == null)
-					{
-						errorMsg = MConversionRateUtil.getErrorMessage(	ctx, "ErrorConvertingCurrencyToBaseCurrency",
-																	payment.getC_Currency_ID(),
-																	MClient.get(ctx).getC_Currency_ID(),
-																	payment.getC_ConversionType_ID(),
-																	payment.getDateAcct(), payment.get_TrxName());
-					}
-				}
-				// Total Balance
+				/*
+				 payAmt = MConversionRate.convertBase(getCtx(), getPayAmt(), 
+							getC_Currency_ID(), getDateAcct(), getC_ConversionType_ID(), getAD_Client_ID(), getAD_Org_ID());
+				 */
+				//end here
+				
+				//	Total Balance
 				BigDecimal newBalance = bp.getTotalOpenBalance();
 				if (newBalance == null)
 					newBalance = Env.ZERO;
@@ -117,7 +120,7 @@ public class CreditManagerPayment implements ICreditManager
 					newBalance = newBalance.subtract(payAmt);
 				else
 					newBalance = newBalance.add(payAmt);
-
+					
 				bp.setTotalOpenBalance(newBalance);
 				bp.setSOCreditStatus();
 				bp.saveEx();

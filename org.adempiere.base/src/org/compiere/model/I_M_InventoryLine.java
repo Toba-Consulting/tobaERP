@@ -370,4 +370,41 @@ public interface I_M_InventoryLine
 	  * Search key for the record in the format required - must be unique
 	  */
 	public String getValue();
+	
+	/** Column name C_UOM_ID */
+    public static final String COLUMNNAME_C_UOM_ID = "C_UOM_ID";
+
+	/** Set UOM.
+	  * Unit of Measure
+	  */
+	public void setC_UOM_ID (int C_UOM_ID);
+
+	/** Get UOM.
+	  * Unit of Measure
+	  */
+	public int getC_UOM_ID();
+
+	public org.compiere.model.I_C_UOM getC_UOM() throws RuntimeException;
+	
+	/** Column name QtyEntered */
+    public static final String COLUMNNAME_QtyEntered = "QtyEntered";
+
+	/** Set Quantity.
+	  * The Quantity Entered is based on the selected UoM
+	  */
+	public void setQtyEntered (BigDecimal QtyEntered);
+
+	/** Get Quantity.
+	  * The Quantity Entered is based on the selected UoM
+	  */
+	public BigDecimal getQtyEntered();
+	
+	/** Column name QtyMiscReceipt */
+    public static final String COLUMNNAME_QtyMiscReceipt = "QtyMiscReceipt";
+
+	/** Set Qty Misc Receipt	  */
+	public void setQtyMiscReceipt (BigDecimal QtyMiscReceipt);
+
+	/** Get Qty Misc Receipt	  */
+	public BigDecimal getQtyMiscReceipt();
 }

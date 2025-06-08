@@ -16,9 +16,13 @@
  *****************************************************************************/
 package org.compiere.model;
 
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.Properties;
 
+import org.adempiere.exceptions.DBException;
+import org.compiere.util.DB;
 import org.compiere.util.Env;
 import org.idempiere.cache.ImmutableIntPOCache;
 import org.idempiere.cache.ImmutablePOSupport;
@@ -191,6 +195,45 @@ public class MOrgInfo extends X_AD_OrgInfo implements ImmutablePOSupport
 		if(!newRecord && getParent_Org_ID()==get_ID()){
 			log.saveError("Error", "Parent_Org_ID=AD_Org_ID");
 			return false;
+		}
+		
+		if (is_ValueChanged(COLUMNNAME_Transit_Warehouse_ID)) { 
+			//check old warehouse if empty 
+			int oldWHTransit = get_ValueOldAsInt(COLUMNNAME_Transit_Warehouse_ID); 
+			StringBuilder sql = new StringBuilder("SELECT M_Product_ID, SUM(QtyOnHand) FROM M_StorageOnHand ") 
+									.append("WHERE M_Locator_ID IN ") 
+									.append("(SELECT M_Locator_ID FROM M_Locator WHERE M_Warehouse_ID=?) ") 
+									.append("GROUP BY M_Product_ID ")					 
+									.append("HAVING SUM(QtyOnHand) > 0"); 
+			 
+			PreparedStatement pstmt = null; 
+			ResultSet rs = null; 
+			try { 
+				pstmt = DB.prepareStatement(sql.toString(), get_TrxName()); 
+				pstmt.setInt(1, oldWHTransit); 
+				rs = pstmt.executeQuery(); 
+				if (rs.next()) { 
+					log.saveError("Error", "Old Intransit Warehouse Must Be Empty Before Changing"); 
+					return false; 
+				} 
+				DB.close(rs, pstmt); 
+				rs = null; 
+				pstmt = null; 
+ 
+			} 
+			catch (SQLException e) { 
+				throw new DBException(e, sql.toString()); 
+			} 
+			finally { 
+				DB.close(rs, pstmt); 
+			} 
+			 
+			MWarehouse whTransit = new MWarehouse(getCtx(), getTransit_Warehouse_ID(), get_TrxName());	 
+			if (!whTransit.isInTransit()) { 
+				log.saveError("Error", "Selected Warehouse is not In-Transit Type"); 
+				return false; 						 
+			} 
+			 
 		}
 		
 		return true;

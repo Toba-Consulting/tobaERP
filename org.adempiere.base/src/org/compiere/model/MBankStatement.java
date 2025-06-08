@@ -24,8 +24,11 @@ import java.util.List;
 import java.util.Properties;
 import java.util.logging.Level;
 
+import javax.print.DocPrintJob;
+
 import org.adempiere.exceptions.AdempiereException;
 import org.compiere.process.DocAction;
+import org.compiere.process.DocOptions;
 import org.compiere.process.DocumentEngine;
 import org.compiere.util.DB;
 import org.compiere.util.Env;
@@ -50,7 +53,7 @@ import org.compiere.util.Util;
 *  
 *   @version $Id: MBankStatement.java,v 1.3 2006/07/30 00:51:03 jjanke Exp $
 */
-public class MBankStatement extends X_C_BankStatement implements DocAction
+public class MBankStatement extends X_C_BankStatement implements DocAction, DocOptions
 {
     /**
 	 * generated serial id 
@@ -332,6 +335,7 @@ public class MBankStatement extends X_C_BankStatement implements DocAction
 		//	Std Period open?
 		MPeriod.testPeriodOpen(getCtx(), getDateAcct(), getC_DocType_ID(), getAD_Org_ID());
 		MBankStatementLine[] lines = getLines(true);
+		MPeriod period = MPeriod.get(getCtx(), getDateAcct(), getAD_Org_ID(), get_TrxName());
 		if (lines.length == 0)
 		{
 			m_processMsg = "@NoLines@";
@@ -345,12 +349,12 @@ public class MBankStatement extends X_C_BankStatement implements DocAction
 			if (!line.isActive())
 				continue;
 
-			if (!line.isDateConsistentIfUsedForPosting()) {
-				m_processMsg = Msg.getMsg(getCtx(), "BankStatementLinePeriodNotSameAsHeader", new Object[] {line.getLine()});
+			total = total.add(line.getStmtAmt());
+			//@win
+			if (line.getDateAcct().before(period.getStartDate()) || line.getDateAcct().after(period.getEndDate()))  {
+				m_processMsg = "@DateAcctNotInPeriod@";
 				return DocAction.STATUS_Invalid;
 			}
-
-			total = total.add(line.getStmtAmt());
 		}
 		setStatementDifference(total);
 		setEndingBalance(getBeginningBalance().add(total));
@@ -418,18 +422,32 @@ public class MBankStatement extends X_C_BankStatement implements DocAction
 			approveIt();
 		if (log.isLoggable(Level.INFO)) log.info("completeIt - " + toString());
 		
+		//@win refactor and validate 
+		MPeriod period = MPeriod.get(getCtx(), getDateAcct(), 0, null);
+		int bankAccountID = getC_BankAccount_ID();
+		
 		//	Set Payment reconciled
 		MBankStatementLine[] lines = getLines(false);
-		for (int i = 0; i < lines.length; i++)
-		{
-			MBankStatementLine line = lines[i];
-			if (line.getC_Payment_ID() != 0)
-			{
+		for (MBankStatementLine line : lines) {
+			if (line.getC_Payment_ID() != 0) {
 				MPayment payment = new MPayment (getCtx(), line.getC_Payment_ID(), get_TrxName());
 				payment.setIsReconciled(true);
 				payment.saveEx(get_TrxName());
+				
+				//Compare bank account in payment with bank account in bank statement
+				if (payment.getC_BankAccount_ID()!=bankAccountID)
+					return "Error: Payment in Line " + line.getLine() + " Has Different Bank Account from Statement Header"; 
+				
+				//Date acct in statement line must be within period start date and end date
+				if (line.getDateAcct().before(period.getStartDate()))
+					return "Error: Date Acct in Line " +line.getLine() + " Is Before Statement Period Start Date";
+				
+				if (line.getDateAcct().after(period.getEndDate()))
+					return "Error: Date Acct in Line " +line.getLine() + " Is After Statement Period End Date";
 			}
 		}
+		//end @win refactor and validate
+		
 		//	Update Bank Account
 		MBankAccount ba = getBankAccount();
 		ba.load(get_TrxName());
@@ -650,11 +668,50 @@ public class MBankStatement extends X_C_BankStatement implements DocAction
 		if (m_processMsg != null)
 			return false;		
 		
+		//@win TODO: add check if there are bank statement record with date after current one that is completed.
+		StringBuilder whereClause = new StringBuilder("C_BankAccount_ID=")
+				.append(getC_BankAccount_ID())
+				.append(" AND DocStatus='CO' AND DateAcct > '")
+				.append(getDateAcct()+"' ");
+		
+		boolean match = new Query(getCtx(), MBankStatement.Table_Name, whereClause.toString() , get_TrxName())
+				.match();
+		
+		if (match) {
+			m_processMsg = "Error: Cannot Reactivate. Bank Statement Newer Than Current Record Exists";
+			return false;
+		}
+		//	Set Payment reconciled
+		MBankStatementLine[] lines = getLines(false);
+		for (MBankStatementLine line: lines)
+		{
+			if (line.getC_Payment_ID() != 0)
+			{
+				MPayment payment = new MPayment (getCtx(), line.getC_Payment_ID(), get_TrxName());
+				payment.setIsReconciled(false);
+				payment.saveEx(get_TrxName());
+			}
+		}
+		//	Update Bank Account
+		MBankAccount ba = getBankAccount();
+		ba.load(get_TrxName());
+		//BF 1933645
+		ba.setCurrentBalance(ba.getCurrentBalance().subtract(getStatementDifference()));
+		ba.saveEx(get_TrxName());
+				
+		//
+		
 		// After reActivate
 		m_processMsg = ModelValidationEngine.get().fireDocValidate(this,ModelValidator.TIMING_AFTER_REACTIVATE);
 		if (m_processMsg != null)
-			return false;		
-		return false;
+			return false;	
+		
+		MFactAcct.deleteEx(MBankStatement.Table_ID, get_ID(), get_TrxName());
+		setProcessed(false);
+		setDocStatus(DocAction.STATUS_InProgress);
+		setDocAction(DOCACTION_Complete);
+		
+		return true;
 	}	//	reActivateIt
 		
 	/**
@@ -734,6 +791,34 @@ public class MBankStatement extends X_C_BankStatement implements DocAction
 	 */
 	public static boolean isPostWithDateFromLine(int clientID) {
 		return MSysConfig.getBooleanValue(MSysConfig.BANK_STATEMENT_POST_WITH_DATE_FROM_LINE, false, Env.getAD_Client_ID(Env.getCtx()));
+	}
+	
+	@Override
+	public int customizeValidActions(String docStatus, Object processing,
+			String orderType, String isSOTrx, int AD_Table_ID,
+			String[] docAction, String[] options, int index) {
+
+		for (int i = 0; i < options.length; i++) {
+			options[i] = null;
+		}
+
+		index = 0;
+
+		if (docStatus.equals(DocAction.STATUS_Drafted)) {
+			options[index++] = DocAction.ACTION_Complete;
+			options[index++] = DocAction.ACTION_Void;
+		} else if (docStatus.equals(DocAction.STATUS_InProgress)) {
+			options[index++] = DocAction.ACTION_Complete;
+			options[index++] = DocAction.ACTION_Void;
+		} else if (docStatus.equals(DocAction.STATUS_Completed)) {
+			options[index++] = DocAction.ACTION_ReActivate;
+		} else if (docStatus.equals(DocAction.STATUS_Invalid)) {
+			options[index++] = DocAction.ACTION_Complete;
+			options[index++] = DocAction.ACTION_Void;
+		}
+
+		return index;
+		
 	}
 	
 }	//	MBankStatement

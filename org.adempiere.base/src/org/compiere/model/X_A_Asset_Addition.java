@@ -1201,4 +1201,122 @@ public class X_A_Asset_Addition extends PO implements I_A_Asset_Addition, I_Pers
 		}
 		return false;
 	}
+	
+	public org.compiere.model.I_A_Asset_Group getA_Asset_Group() throws RuntimeException
+    {
+		return (org.compiere.model.I_A_Asset_Group)MTable.get(getCtx(), org.compiere.model.I_A_Asset_Group.Table_Name)
+			.getPO(getA_Asset_Group_ID(), get_TrxName());	}
+
+	/** Set Asset Group.
+		@param A_Asset_Group_ID 
+		Group of Assets
+	  */
+	public void setA_Asset_Group_ID (int A_Asset_Group_ID)
+	{
+		if (A_Asset_Group_ID < 1) 
+			set_Value (COLUMNNAME_A_Asset_Group_ID, null);
+		else 
+			set_Value (COLUMNNAME_A_Asset_Group_ID, Integer.valueOf(A_Asset_Group_ID));
+	}
+
+	/** Get Asset Group.
+		@return Group of Assets
+	  */
+	public int getA_Asset_Group_ID () 
+	{
+		Integer ii = (Integer)get_Value(COLUMNNAME_A_Asset_Group_ID);
+		if (ii == null)
+			 return 0;
+		return ii.intValue();
+	}
+	
+	/** Set New Asset Name.
+		@param A_NewAsset_Name New Asset Name	  */
+	public void setA_NewAsset_Name (String A_NewAsset_Name)
+	{
+		set_Value (COLUMNNAME_A_NewAsset_Name, A_NewAsset_Name);
+	}
+	
+	/** Get New Asset Name.
+		@return New Asset Name	  */
+	public String getA_NewAsset_Name () 
+	{
+		return (String)get_Value(COLUMNNAME_A_NewAsset_Name);
+	}
+	
+	/** Set New Asset Value.
+		@param A_NewAsset_Value New Asset Value	  */
+	public void setA_NewAsset_Value (String A_NewAsset_Value)
+	{
+		set_Value (COLUMNNAME_A_NewAsset_Value, A_NewAsset_Value);
+	}
+	
+	/** Get New Asset Value.
+		@return New Asset Value	  */
+	public String getA_NewAsset_Value () 
+	{
+		return (String)get_Value(COLUMNNAME_A_NewAsset_Value);
+	}
+	
+	/** Set Adjust Accm Depreciation ?.
+		@param IsAdjustAccmDepr Adjust Accm Depreciation ?	  */
+	public void setIsAdjustAccmDepr (boolean IsAdjustAccmDepr)
+	{
+		set_Value (COLUMNNAME_IsAdjustAccmDepr, Boolean.valueOf(IsAdjustAccmDepr));
+	}
+	
+	/** Get Adjust Accm Depreciation ?.
+		@return Adjust Accm Depreciation ?	  */
+	public boolean isAdjustAccmDepr () 
+	{
+		Object oo = get_Value(COLUMNNAME_IsAdjustAccmDepr);
+		if (oo != null) 
+		{
+			 if (oo instanceof Boolean) 
+				 return ((Boolean)oo).booleanValue(); 
+			return "Y".equals(oo);
+		}
+		return false;
+	}
+	
+	/** Set Adjust Use Life (Year) ?.
+		@param IsAdjustUseLife Adjust Use Life (Year) ?	  */
+	public void setIsAdjustUseLife (boolean IsAdjustUseLife)
+	{
+		set_Value (COLUMNNAME_IsAdjustUseLife, Boolean.valueOf(IsAdjustUseLife));
+	}
+	
+	/** Get Adjust Use Life (Year) ?.
+		@return Adjust Use Life (Year) ?	  */
+	public boolean isAdjustUseLife () 
+	{
+		Object oo = get_Value(COLUMNNAME_IsAdjustUseLife);
+		if (oo != null) 
+		{
+			 if (oo instanceof Boolean) 
+				 return ((Boolean)oo).booleanValue(); 
+			return "Y".equals(oo);
+		}
+		return false;
+	}
+	
+	/** Set Usable Life - Years.
+		@param UseLifeYears 
+		Years of the usable life of the asset
+	  */
+	public void setUseLifeYears (int UseLifeYears)
+	{
+		set_Value (COLUMNNAME_UseLifeYears, Integer.valueOf(UseLifeYears));
+	}
+	
+	/** Get Usable Life - Years.
+		@return Years of the usable life of the asset
+	  */
+	public int getUseLifeYears () 
+	{
+		Integer ii = (Integer)get_Value(COLUMNNAME_UseLifeYears);
+		if (ii == null)
+			 return 0;
+		return ii.intValue();
+	}
 }

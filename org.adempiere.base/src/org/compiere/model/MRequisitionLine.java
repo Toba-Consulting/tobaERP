@@ -17,6 +17,7 @@
 package org.compiere.model;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.sql.ResultSet;
 import java.sql.Timestamp;
 import java.util.List;
@@ -180,7 +181,8 @@ public class MRequisitionLine extends X_M_RequisitionLine
 		this (req.getCtx(), 0, req.get_TrxName());
 		setClientOrg(req);
 		setM_Requisition_ID(req.getM_Requisition_ID());
-		m_M_PriceList_ID = req.getM_PriceList_ID();
+		//	@win price list not mandatory 
+		//	m_M_PriceList_ID = req.getM_PriceList_ID();
 		m_parent = req;
 	}	//	MRequisitionLine
 
@@ -188,12 +190,16 @@ public class MRequisitionLine extends X_M_RequisitionLine
 	private MRequisition	m_parent = null;
 	
 	/**	PriceList				*/
-	private int 	m_M_PriceList_ID = 0;
+	//	@win price list not mandatory 
+	//	private int 	m_M_PriceList_ID = 0;
 	
 	/**
 	 * Get Ordered Qty
 	 * @return Ordered Qty
 	 */
+	/* 
+	 * comment out by figo - unused from taowi-1 
+	 * 
 	public BigDecimal getQtyOrdered()
 	{
 		if (getC_OrderLine_ID() > 0)
@@ -201,6 +207,7 @@ public class MRequisitionLine extends X_M_RequisitionLine
 		else
 			return Env.ZERO;
 	}
+	*/
 	
 	/**
 	 * 	Get Parent
@@ -233,6 +240,7 @@ public class MRequisitionLine extends X_M_RequisitionLine
 	 */
 	public void setPrice()
 	{
+		/*//@win price list not mandatory   
 		if (getC_Charge_ID() != 0)
 		{
 			MCharge charge = MCharge.get(getCtx(), getC_Charge_ID());
@@ -247,6 +255,7 @@ public class MRequisitionLine extends X_M_RequisitionLine
 			throw new AdempiereException("PriceList unknown!");
 		}
 		setPrice (m_M_PriceList_ID);
+		*/
 	}	//	setPrice
 	
 	/**
@@ -271,7 +280,8 @@ public class MRequisitionLine extends X_M_RequisitionLine
 	 */
 	public void setLineNetAmt ()
 	{
-		BigDecimal lineNetAmt = getQty().multiply(getPriceActual());
+		//	BigDecimal lineNetAmt = getQty().multiply(getPriceActual());
+		BigDecimal lineNetAmt = getQtyRequired().multiply(getPriceActual()); 
 		super.setLineNetAmt (lineNetAmt);
 	}	//	setLineNetAmt
 		
@@ -293,6 +303,29 @@ public class MRequisitionLine extends X_M_RequisitionLine
 			int ii = DB.getSQLValueEx (get_TrxName(), sql, getM_Requisition_ID());
 			setLine (ii);
 		}
+		
+		//@win - recalculate multi uom on    
+		if (newRecord || is_ValueChanged(COLUMNNAME_C_UOM_ID) ||    
+				is_ValueChanged(COLUMNNAME_M_Product_ID) || is_ValueChanged(COLUMNNAME_Qty)) {   
+			BigDecimal qty = getQty();   
+			int p_C_UOM_ID = getC_UOM_ID();   
+			BigDecimal qty1 = qty.setScale(MUOM.getPrecision(getCtx(), p_C_UOM_ID), RoundingMode.HALF_UP);   
+			if (qty.compareTo(qty1) != 0)   
+			{   
+				qty = qty1;   
+				setQty(qty);   
+			}   
+			   
+			BigDecimal qtyRequired = MUOMConversion.convertProductFrom (getCtx(), getM_Product_ID(),   
+					p_C_UOM_ID, qty);   
+			   
+			if (qtyRequired == null)   
+				qtyRequired = qty;   
+		   
+			if (getQtyRequired().compareTo(qtyRequired) != 0)   
+				setQtyRequired(qtyRequired); 
+		} 
+		
 		//	Product & ASI - Charge
 		if (getM_Product_ID() != 0 && getC_Charge_ID() != 0)
 			setC_Charge_ID(0);
@@ -304,15 +337,18 @@ public class MRequisitionLine extends X_M_RequisitionLine
 			setC_UOM_ID(getM_Product().getC_UOM_ID());
 		}
 		//
+		/*//@win price list not mandatory  
 		if (getPriceActual().signum() == 0)
 			setPrice();
 		setLineNetAmt();
+		*/
 
 		/* Carlos Ruiz - globalqss
 		 * IDEMPIERE-178 Orders and Invoices must disallow amount lines without product/charge
 		 */
 		if (getParent().getC_DocType().isChargeOrProductMandatory()) {
-			if (getC_Charge_ID() == 0 && getM_Product_ID() == 0 && (getPriceActual().signum() != 0 || getQty().signum() != 0)) {
+			//	if (getC_Charge_ID() == 0 && getM_Product_ID() == 0 && (getPriceActual().signum() != 0 || getQty().signum() != 0)) {
+			if (getC_Charge_ID() == 0 && getM_Product_ID() == 0) { 
 				log.saveError("FillMandatory", Msg.translate(getCtx(), "ChargeOrProductMandatory"));
 				return false;
 			}
@@ -373,5 +409,16 @@ public class MRequisitionLine extends X_M_RequisitionLine
 		m_parent = null;
 		return no == 1;
 	}	//	updateHeader
+	
+	protected boolean beforeDelete ()   
+	{   
+		String sql2 = "DELETE FROM M_MatchQuotation WHERE M_RequisitionLine_ID="+get_ID();   
+		DB.executeUpdate(sql2, get_TrxName());   
+		   
+		String sql3 = "DELETE FROM M_MatchRequest WHERE M_RequisitionLine_ID="+get_ID();   
+		DB.executeUpdate(sql3, get_TrxName());   
+		   
+		return true;   
+	}
 	
 }	//	MRequisitionLine

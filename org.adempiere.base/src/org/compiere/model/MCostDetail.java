@@ -53,6 +53,12 @@ public class MCostDetail extends X_M_CostDetail
 	 */
 	private static final long serialVersionUID = -3896161579785627935L;
 
+	private static final String INVENTORYLINE_DOCSUBTYPE_SQL = 
+			"SELECT c.DocSubTypeInv FROM M_Inventory inv "
+			+ "INNER JOIN M_InventoryLine invl ON invl.M_Inventory_ID = inv.M_Inventory_ID "
+			+ "INNER JOIN C_DocType c ON c.C_DocType_ID = inv.C_DocType_ID "
+			+ "WHERE invl.M_InventoryLine_ID=?";
+	
 	protected static final String INOUTLINE_DOCBASETYPE_SQL =
 		    "SELECT c.DocBaseType From M_InOut io " +
 			"INNER JOIN M_InOutLine iol ON io.M_InOut_ID=iol.M_InOut_ID " +
@@ -855,6 +861,36 @@ public class MCostDetail extends X_M_CostDetail
 	}
 	
 	/**
+	 * 	@author stephan
+	 *	@return true if misc issue 
+	 */
+	public boolean isMiscIssue()
+	{
+		if(getM_InventoryLine_ID() > 0)
+		{
+			String docSubType = DB.getSQLValueString(get_TrxName(),
+					INVENTORYLINE_DOCSUBTYPE_SQL, getM_InventoryLine_ID());
+			return MDocType.DOCSUBTYPEINV_InternalUseInventory.equals(docSubType);
+		}
+		return false;
+	}
+	
+	/**
+	 * 	@author stephan
+	 *	@return true if misc receipt
+	 */
+	public boolean isMiscReceipt()
+	{
+		if(getM_InventoryLine_ID() > 0)
+		{
+			String docSubType = DB.getSQLValueString(get_TrxName(),
+					INVENTORYLINE_DOCSUBTYPE_SQL, getM_InventoryLine_ID());
+			return MDocType.DOCSUBTYPEINV_MiscReceipt.equals(docSubType);
+		}
+		return false;
+	}
+	
+	/**
 	 * 	Is this a Delta Record (previously processed)?
 	 *	@return true if delta is not null
 	 */
@@ -1210,7 +1246,10 @@ public class MCostDetail extends X_M_CostDetail
 			|| getC_ProjectIssue_ID() != 0
 			|| getPP_Cost_Collector_ID() != 0)
 		{
-			boolean addition = qty.signum() > 0;
+			//	@stephan
+			//	boolean addition = qty.signum() > 0;
+			boolean addition = qty.signum() > 0 || isMiscIssue() || isMiscReceipt();
+			//	end
 			boolean adjustment = getM_InventoryLine_ID() > 0 && qty.signum() == 0 && amt.signum() != 0;
 			boolean isVendorRMA = isVendorRMA();
 			//

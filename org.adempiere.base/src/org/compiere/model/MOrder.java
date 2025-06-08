@@ -43,6 +43,7 @@ import org.adempiere.util.IReservationTracer;
 import org.adempiere.util.IReservationTracerFactory;
 import org.compiere.print.ReportEngine;
 import org.compiere.process.DocAction;
+import org.compiere.process.DocOptions;
 import org.compiere.process.DocumentEngine;
 import org.compiere.util.CLogger;
 import org.compiere.util.DB;
@@ -70,7 +71,7 @@ import org.eevolution.model.MPPProductBOMLine;
  *  @author Michael Judd, www.akunagroup.com
  *          <li>BF [ 2804888 ] Incorrect reservation of products with attributes
  */
-public class MOrder extends X_C_Order implements DocAction
+public class MOrder extends X_C_Order implements DocAction, DocOptions 
 {
 	/**
 	 * generated serial id
@@ -380,6 +381,14 @@ public class MOrder extends X_C_Order implements DocAction
 			if (counterC_BPartner_ID == 0)
 				return null;
 			to.setBPartner(MBPartner.get(from.getCtx(), counterC_BPartner_ID));
+			
+			//@Stephan BMT-429
+			MBPartner bp = new MBPartner(from.getCtx(), from.getC_BPartner_ID(), from.get_TrxName());
+			if(bp.isCustomer() && bp.getM_PriceList_ID()>0)
+				to.setM_PriceList_ID(bp.getM_PriceList_ID());
+			else if(bp.isVendor() && bp.getPO_PriceList_ID()>0)
+				to.setM_PriceList_ID(bp.getPO_PriceList_ID());
+			//@Stephan end BMT-429
 		} else
 			to.setRef_Order_ID(0);
 		//
@@ -1227,6 +1236,20 @@ public class MOrder extends X_C_Order implements DocAction
 				log.saveWarning("WarehouseOrgConflict", "");
 		}
 
+		/*
+		 *	@stephan
+		 *	TAOWI-897 check tax in order line must be same with tax header 
+		 */
+		if(is_ValueChanged(MOrder.COLUMNNAME_C_Tax_ID)){
+			for (MOrderLine orderLine : getLines()) {
+				if(getC_Tax_ID() != orderLine.getC_Tax_ID()){
+					orderLine.setC_Tax_ID(getC_Tax_ID());
+					orderLine.saveEx();
+				}
+			}
+		}
+		//	end
+		
 		//	Reservations in Warehouse
 		if (!newRecord && is_ValueChanged("M_Warehouse_ID"))
 		{
@@ -1284,8 +1307,11 @@ public class MOrder extends X_C_Order implements DocAction
 		if (getBill_Location_ID() == 0)
 			setBill_Location_ID(getC_BPartner_Location_ID());
 
+		//  @Stephan TAOWI-2175
+		boolean isNoPrice = get_ValueAsBoolean("IsNoPriceList");
+		
 		//	Default Price List
-		if (getM_PriceList_ID() == 0)
+		if (getM_PriceList_ID() == 0 && !isNoPrice)
 		{
 			int ii = DB.getSQLValueEx(null,
 				"SELECT M_PriceList_ID FROM M_PriceList "
@@ -1488,6 +1514,32 @@ public class MOrder extends X_C_Order implements DocAction
 	{
 		if (isProcessed())
 			return false;
+		
+		try {
+			DB.executeUpdate("DELETE FROM M_MatchPR WHERE C_Order_ID=" + get_ID(), get_TrxName());
+		} catch (Exception e) {
+			log.saveError("DeleteError", "Cannot Delete Match PR records");
+			e.printStackTrace();
+		}
+		try {
+			DB.executeUpdate("DELETE FROM M_MatchQuotation WHERE C_Order_ID=" + get_ID(), get_TrxName());
+		} catch (Exception e) {
+			log.saveError("DeleteError", "Cannot Delete Match Quotation records");
+			e.printStackTrace();
+		}
+		try {
+			DB.executeUpdate("DELETE FROM M_MatchRequest WHERE C_Order_ID=" + get_ID(), get_TrxName());
+		} catch (Exception e) {
+			log.saveError("DeleteError", "Cannot Delete Match Request records");
+			e.printStackTrace();
+		}
+		try {
+			DB.executeUpdate("DELETE FROM M_MatchMovement WHERE C_Order_ID=" + get_ID(), get_TrxName());
+		} catch (Exception e) {
+			log.saveError("DeleteError", "Cannot Delete Match Movement records");
+			e.printStackTrace();
+		}
+		
 		// automatic deletion of lines is driven by model cascade definition in dictionary - see IDEMPIERE-2060
 		return true;
 	}	//	beforeDelete
@@ -1657,6 +1709,8 @@ public class MOrder extends X_C_Order implements DocAction
 		//	Lines
 		if (explodeBOM())
 			lines = getLines(true, MOrderLine.COLUMNNAME_M_Product_ID);
+		
+		/*	@Stephan temporary comment
 		if (!reserveStock(dt, lines))
 		{
 			String innerMsg = CLogger.retrieveErrorString("");
@@ -1665,6 +1719,8 @@ public class MOrder extends X_C_Order implements DocAction
 				m_processMsg = m_processMsg + " -> " + innerMsg;
 			return DocAction.STATUS_Invalid;
 		}
+		*/
+		
 		if (!calculateTaxTotal())
 		{
 			m_processMsg = "Error calculating tax";
@@ -2127,8 +2183,11 @@ public class MOrder extends X_C_Order implements DocAction
 			|| MDocType.DOCSUBTYPESO_Quotation.equals(DocSubTypeSO)) 
 		{
 			//	Binding
+			/*	@Stephan temporary comment
 			if (MDocType.DOCSUBTYPESO_Quotation.equals(DocSubTypeSO))
 				reserveStock(dt, getLines(true, MOrderLine.COLUMNNAME_M_Product_ID));
+			*/
+			
 			m_processMsg = ModelValidationEngine.get().fireDocValidate(this, ModelValidator.TIMING_BEFORE_COMPLETE);
 			if (m_processMsg != null)
 				return DocAction.STATUS_Invalid;
@@ -2631,6 +2690,11 @@ public class MOrder extends X_C_Order implements DocAction
 		//
 		counter.setAD_Org_ID(counterAD_Org_ID);
 		counter.setM_Warehouse_ID(counterOrgInfo.getM_Warehouse_ID());
+		
+		// @win: TAOWI-258
+		counter.setDateOrdered(new Timestamp (System.currentTimeMillis()));
+		// end @win: TAOWI-258
+		
 		counter.setDatePromised(getDatePromised());		// default is date ordered 
 		//	References (Should not be required)
 		counter.setSalesRep_ID(getSalesRep_ID());
@@ -2677,6 +2741,9 @@ public class MOrder extends X_C_Order implements DocAction
 		if (m_processMsg != null)
 			return false;
 
+		if(!isSOTrx())
+			removeRequisition();
+		
 		if (getLink_Order_ID() > 0) {
 			MOrder so = new MOrder(getCtx(), getLink_Order_ID(), get_TrxName());
 			so.setLink_Order_ID(0);
@@ -2723,12 +2790,15 @@ public class MOrder extends X_C_Order implements DocAction
 		}
 		
 		addDescription(Msg.getMsg(getCtx(), "Voided"));
+		
+		/*	@Stephan temporary comment
 		//	Clear Reservations
 		if (!reserveStock(null, lines))
 		{
 			m_processMsg = "Cannot unreserve Stock (void)";
 			return false;
 		}
+		*/
 		
 		// UnLink All Requisitions
 		MRequisitionLine.unlinkC_Order_ID(getCtx(), get_ID(), get_TrxName());
@@ -2921,12 +2991,15 @@ public class MOrder extends X_C_Order implements DocAction
 				line.saveEx(get_TrxName());
 			}
 		}
+		
+		/*	@Stephan temporary comment
 		//	Clear Reservations
 		if (!reserveStock(null, lines))
 		{
 			m_processMsg = "Cannot unreserve Stock (close)";
 			return false;
 		}
+		*/
 		
 		setProcessed(true);
 		setDocAction(DOCACTION_None);
@@ -2973,12 +3046,15 @@ public class MOrder extends X_C_Order implements DocAction
 					return "Couldn't save orderline";
 			}
 		}
+		
+		/*	@Stephan temporary comment
 		//	Clear Reservations
 		if (!reserveStock(null, lines))
 		{
 			m_processMsg = "Cannot unreserve Stock (close)";
 			return "Failed to update reservations";
 		}
+		*/
 
 		setDocStatus(MOrder.DOCSTATUS_Completed);
 		setDocAction(DOCACTION_Close);
@@ -3047,6 +3123,20 @@ public class MOrder extends X_C_Order implements DocAction
 		MDocType dt = MDocType.get(getCtx(), getC_DocType_ID());
 		String DocSubTypeSO = dt.getDocSubTypeSO();
 		
+		//@win - TAOWI-183
+		if (!isSOTrx() && hasMatchPO()) {
+			m_processMsg = "Purchase Order has already receipt";
+			return false;
+		}
+		
+		if (isSOTrx() && (hasSOShipment() || hasSOInvoice())) {
+			return false;
+		}
+		//end TAOWI-183
+		
+		if(!isSOTrx())
+			removeRequisition();
+		
 		//	PO - just re-open
 		if (!isSOTrx()) {
 			if (log.isLoggable(Level.INFO)) log.info("Existing documents not modified - " + dt);
@@ -3071,6 +3161,14 @@ public class MOrder extends X_C_Order implements DocAction
 		m_processMsg = ModelValidationEngine.get().fireDocValidate(this,ModelValidator.TIMING_AFTER_REACTIVATE);
 		if (m_processMsg != null)
 			return false;
+		
+		// @Stephan TAOWI-1999
+		if (!isSOTrx()) {
+			for (MOrderLine orderLine : getLines()) {
+				deleteMatchPOCostDetail(orderLine);
+			}
+		}
+		// @Stephan end
 		
 		setDocAction(DOCACTION_Complete);
 		setProcessed(false);
@@ -3155,6 +3253,12 @@ public class MOrder extends X_C_Order implements DocAction
 						as.getC_AcctSchema_ID(), get_TrxName());
 				if (cd !=  null)
 				{
+					// @edwinhandy delete cost detail from cost history 
+					StringBuilder sb = new StringBuilder();
+					sb.append("DELETE FROM M_CostHistory WHERE M_CostDetail_ID="+cd.getM_CostDetail_ID());
+					DB.executeUpdate(sb.toString(), get_TrxName());
+					// @edwinhandy end
+					
 					cd.setProcessed(false);
 					cd.delete(true);
 				}
@@ -3271,4 +3375,139 @@ public class MOrder extends X_C_Order implements DocAction
 			retValue = retValue.add(invoicePaid);
 		return retValue;
 	}
+	
+	@Override
+	public int customizeValidActions(String docStatus, Object processing,
+			String orderType, String isSOTrx, int AD_Table_ID,
+			String[] docAction, String[] options, int index) {
+		
+		for (int i = 0; i < options.length; i++) {
+			options[i] = null;
+		}
+
+		index = 0;
+
+		if (docStatus.equals(DocAction.STATUS_Drafted)) {
+			options[index++] = DocAction.ACTION_Complete;
+			options[index++] = DocAction.ACTION_Void;
+		} else if (docStatus.equals(DocAction.STATUS_InProgress)) {
+			options[index++] = DocAction.ACTION_Complete;
+			options[index++] = DocAction.ACTION_Void;
+		} else if (docStatus.equals(DocAction.STATUS_Completed)) {
+			options[index++] = DocAction.ACTION_Void;
+			//options[index++] = DocAction.ACTION_Reverse_Accrual;
+		} else if (docStatus.equals(DocAction.STATUS_Invalid)) {
+			options[index++] = DocAction.ACTION_Complete;
+			options[index++] = DocAction.ACTION_Void;
+		}
+
+		return index;
+	}
+	
+	/**
+	 * 
+	 * @return
+	 */
+	public boolean hasMatchPO()
+	{
+		final String whereClause = "C_OrderLine_ID IN (SELECT C_OrderLine_ID " +
+				"FROM C_OrderLine where C_Order_ID=? AND Reversal_ID is NULL)";
+		
+		boolean match = new Query(getCtx(), I_M_MatchPO.Table_Name, whereClause, get_TrxName())
+		.setParameters(get_ID())
+		.match();
+		
+		return match;
+	}	//	hasMatchPO
+	
+	public boolean hasSOShipment() {
+		final String whereClause = "DocStatus NOT IN (?,?) AND "
+				+ "EXISTS (SELECT 1 FROM M_InOutLine iol "
+				+ "JOIN C_OrderLine col ON iol.C_OrderLine_ID=col.C_OrderLine_ID "
+				+ "WHERE iol.M_InOut_ID=M_InOut.M_InOut_ID AND col.C_Order_ID=?)";
+		boolean match = new Query(getCtx(), I_M_InOut.Table_Name, whereClause, get_TrxName())
+		.setParameters(new Object[]{DOCSTATUS_Reversed, DOCSTATUS_Voided, get_ID()})
+		.match();
+		return match;
+	}
+
+	public boolean hasSOInvoice() {
+		final String whereClause = "DocStatus NOT IN (?,?) AND "
+				+ "EXISTS (SELECT 1 FROM C_InvoiceLine il "
+				+ "JOIN C_OrderLine ol ON il.C_OrderLine_ID=ol.C_OrderLine_ID "
+				+ "WHERE ol.C_Order_ID=?) ";
+		boolean match = new Query(getCtx(), I_C_Invoice.Table_Name, whereClause, get_TrxName())
+		.setParameters(new Object[]{DOCSTATUS_Reversed, DOCSTATUS_Voided, get_ID()})
+		.match();
+		
+		return match;
+	}
+	
+	private String updateRequisition(){
+		String whereClause = "DocStatus!='CO' AND M_Requisition_ID IN (SELECT DISTINCT M_Requisition_ID "
+				+ "FROM M_RequisitionLine mrl "
+				+ "JOIN C_OrderLine col ON col.M_RequisitionLine_ID=mrl.M_RequisitionLine_ID "
+				+ "WHERE col.C_Order_ID=?)";
+		
+		List<MRequisition> requisitions = new Query(getCtx(), MRequisition.Table_Name, whereClause, get_TrxName())
+								.setParameters(getC_Order_ID())
+								.setOnlyActiveRecords(true)
+								.list();
+		
+		if (!requisitions.isEmpty()) {
+			StringBuilder sb = new StringBuilder();
+			for (MRequisition req : requisitions) {
+				sb.append(req.getDocumentNo()).append(",");
+			}
+			sb.deleteCharAt(sb.length()-1);
+			return "Abort.. Please check document status for Requisition: ";
+			
+		}
+		
+		for (MOrderLine orderLine : getLines()) {
+			int M_RequisitionLine_ID = orderLine.get_ValueAsInt("M_RequisitionLine_ID");
+			if(M_RequisitionLine_ID <= 0)
+				continue;
+			MRequisitionLine requisitionLine = new MRequisitionLine(getCtx(), M_RequisitionLine_ID, get_TrxName());			
+			requisitionLine.setQtyRequired(requisitionLine.getQtyRequired().subtract(orderLine.getQtyOrdered()));
+			requisitionLine.setQtyOrdered(requisitionLine.getQtyOrdered().add(orderLine.getQtyOrdered()));
+			requisitionLine.saveEx();
+			
+			X_M_MatchPR matchPR = new X_M_MatchPR(Env.getCtx(),0,get_TrxName());
+	        matchPR.setC_OrderLine_ID(orderLine.getC_OrderLine_ID());
+	        matchPR.setM_Requisition_ID(requisitionLine.getM_Requisition_ID());
+	        matchPR.setM_RequisitionLine_ID(requisitionLine.get_ID());
+	        matchPR.setC_Order_ID(orderLine.getC_Order_ID());
+	        matchPR.setDateTrx(orderLine.getC_Order().getDateOrdered());
+	        matchPR.setQtyOrdered(orderLine.getQtyOrdered());
+	        matchPR.saveEx();
+		}
+		
+		return "";
+	}
+	
+	private void removeRequisition(){
+		if (getDocStatus().equals(DOCSTATUS_Completed)) {
+			for (MOrderLine orderLine : getLines()) {
+				int M_RequisitionLine_ID = orderLine.get_ValueAsInt("M_RequisitionLine_ID");
+				if(M_RequisitionLine_ID <= 0)
+					continue;
+				MRequisitionLine requisitionLine = new MRequisitionLine(getCtx(), M_RequisitionLine_ID, get_TrxName());
+				requisitionLine.setQtyRequired(requisitionLine.getQtyRequired().add(orderLine.getQtyOrdered()));
+				requisitionLine.setQtyOrdered(requisitionLine.getQtyOrdered().subtract(orderLine.getQtyOrdered()));
+				requisitionLine.saveEx();	
+			}
+			String sqlDelete = "DELETE FROM M_MatchPR WHERE C_Order_ID=?";
+			DB.executeUpdate(sqlDelete, get_ID(), get_TrxName());
+			
+		}
+		/*//@win: for now we prefer not removing the reference to Requisition Line to preserve audit reference
+		if (DocAction.equalsIgnoreCase(DOCACTION_Void)) {
+	        String sql = "UPDATE C_OrderLine SET M_RequisitionLine_ID = NULL WHERE C_Order_ID=?";
+	        int no = DB.executeUpdate(sql, get_ID(), get_TrxName());
+	        log.info("UPDATED Order Line "+no);
+		}
+		*/	
+	}
+	
 }	//	MOrder

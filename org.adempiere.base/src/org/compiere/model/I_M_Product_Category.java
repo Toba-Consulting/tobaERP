@@ -262,4 +262,17 @@ s planned margin as a percentage
 	  * Search key for the record in the format required - must be unique
 	  */
 	public String getValue();
+	
+	/** Column name IsQCChecked */
+    public static final String COLUMNNAME_IsQCChecked = "IsQCChecked";
+
+	/** Set QC Checked?.
+	  * Quality Check Status
+	  */
+	public void setIsQCChecked (boolean IsQCChecked);
+
+	/** Get QC Checked?.
+	  * Quality Check Status
+	  */
+	public boolean isQCChecked();
 }

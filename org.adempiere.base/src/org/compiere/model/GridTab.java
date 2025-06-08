@@ -2295,11 +2295,14 @@ public class GridTab implements DataStatusListener, Evaluatee, Serializable
 		String msg = m_DataStatusEvent.getAD_Message();
 		if (msg != null && msg.equals(GridTable.SORTED_DSE_EVENT))
 		{
+			/* comment out by figo - we use old method
 			oldCurrentRow = m_currentRow;
 			if (e.getCurrentRow() >= 0)
 				setCurrentRow(e.getCurrentRow());
 			else
 				setCurrentRow(0, true);
+			*/
+			setCurrentRow(0, true);
 		}
 		//  set current row
 		m_DataStatusEvent = e;          //  setCurrentRow clear it, need to save again

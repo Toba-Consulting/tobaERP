@@ -282,7 +282,7 @@ public class MInventoryLine extends X_M_InventoryLine
 	 * 	Set Parent
 	 *	@param parent parent
 	 */
-	protected void setParent(MInventory parent)
+	public void setParent(MInventory parent)
 	{
 		m_parent = parent; 
 	}	//	setParent
@@ -371,7 +371,31 @@ public class MInventoryLine extends X_M_InventoryLine
 				log.saveError("FillMandatory", Msg.getElement(getCtx(), COLUMNNAME_QtyInternalUse));
 				return false;
 			}
+		} else if (MDocType.DOCSUBTYPEINV_MiscReceipt.equals(docSubTypeInv)) {
 
+			// Internal Use Inventory validations
+			if (!INVENTORYTYPE_ChargeAccount.equals(getInventoryType()))
+				setInventoryType(INVENTORYTYPE_ChargeAccount);
+			//
+			if (getC_Charge_ID() == 0)
+			{
+				log.saveError("MiscReceiptNeedsCharge", "");
+				return false;
+			}
+			// error if book or count are filled on an internal use inventory
+			// i.e. coming from import or web services
+			if (getQtyBook().signum() != 0) {
+				log.saveError("Quantity", Msg.getElement(getCtx(), COLUMNNAME_QtyBook));
+				return false;
+			}
+			if (getQtyCount().signum() != 0) {
+				log.saveError("Quantity", Msg.getElement(getCtx(), COLUMNNAME_QtyCount));
+				return false;
+			}
+			if (getQtyInternalUse().signum() == 0) {
+				log.saveError("FillMandatory", Msg.getElement(getCtx(), COLUMNNAME_QtyInternalUse));
+				return false;
+			}
 		} else if (MDocType.DOCSUBTYPEINV_PhysicalInventory.equals(docSubTypeInv)) {
 
 			// Physical Inventory validations

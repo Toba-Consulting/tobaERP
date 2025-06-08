@@ -955,4 +955,27 @@ public class X_A_Asset_Acct extends PO implements I_A_Asset_Acct, I_Persistent
 	{
 		return (Timestamp)get_Value(COLUMNNAME_ValidFrom);
 	}
+	
+	public I_C_ValidCombination getA_Asset_Clearing_A() throws RuntimeException
+    {
+		return (I_C_ValidCombination)MTable.get(getCtx(), I_C_ValidCombination.Table_Name)
+			.getPO(getA_Asset_Clearing_Acct(), get_TrxName());	
+	}
+	
+	/** Set Asset Clearing Acct.
+	@param A_Asset_Clearing_Acct Asset Clearing Acct	  */
+	public void setA_Asset_Clearing_Acct (int A_Asset_Clearing_Acct)
+	{
+		set_Value (COLUMNNAME_A_Asset_Clearing_Acct, Integer.valueOf(A_Asset_Clearing_Acct));
+	}
+	
+	/** Get Asset Clearing Acct.
+		@return Asset Clearing Acct	  */
+	public int getA_Asset_Clearing_Acct () 
+	{
+		Integer ii = (Integer)get_Value(COLUMNNAME_A_Asset_Clearing_Acct);
+		if (ii == null)
+			 return 0;
+		return ii.intValue();
+	}
 }

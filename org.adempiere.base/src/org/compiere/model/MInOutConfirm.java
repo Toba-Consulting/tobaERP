@@ -20,6 +20,7 @@ import java.io.File;
 import java.math.BigDecimal;
 import java.sql.ResultSet;
 import java.sql.Timestamp;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 import java.util.logging.Level;
@@ -90,6 +91,43 @@ public class MInOutConfirm extends X_M_InOutConfirm implements DocAction
 		if (s_log.isLoggable(Level.INFO)) s_log.info("New: " + confirm);
 		return confirm;
 	}	//	create
+	
+	/** 
+	 * 	Create Confirmation or return existing one 
+	 *	@author edwinang 
+	 *	@param ship shipment 
+	 *	@param confirmType confirmation type 
+	 *	@param checkExisting if false, new confirmation is created 
+	 *	@return Confirmation 
+	 */ 
+	public static MInOutConfirm create (MInOut ship, ArrayList<MInOutLine> shipLines, String confirmType, boolean checkExisting) 
+	{ 
+		if (checkExisting) 
+		{ 
+			MInOutConfirm[] confirmations = ship.getConfirmations(false); 
+			for (int i = 0; i < confirmations.length; i++) 
+			{ 
+				MInOutConfirm confirm = confirmations[i]; 
+				if (confirm.getConfirmType().equals(confirmType)) 
+				{ 
+					if (s_log.isLoggable(Level.INFO)) s_log.info("create - existing: " + confirm); 
+					return confirm; 
+				} 
+			} 
+		} 
+ 
+		MInOutConfirm confirm = new MInOutConfirm (ship, confirmType); 
+		confirm.saveEx(); 
+		 
+		for (MInOutLine sLine: shipLines) 
+		{ 
+			MInOutLineConfirm cLine = new MInOutLineConfirm (confirm); 
+			cLine.setInOutLine(sLine); 
+			cLine.saveEx(); 
+		} 
+		if (s_log.isLoggable(Level.INFO)) s_log.info("New: " + confirm); 
+		return confirm; 
+	}	//	MInOutConfirm 
 	
 	/**	Static Logger	*/
 	private static CLogger	s_log	= CLogger.getCLogger (MInOutConfirm.class);

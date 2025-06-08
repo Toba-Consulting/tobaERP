@@ -98,6 +98,8 @@ public class MAllocationLine extends X_C_AllocationLine
 		setC_AllocationHdr_ID(parent.getC_AllocationHdr_ID());
 		m_parent = parent;
 		set_TrxName(parent.get_TrxName());
+		//@tegar  set date 
+		setDateTrx(parent.getDateTrx()); 
 	}	//	MAllocationLine
 
 	/**

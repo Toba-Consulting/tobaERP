@@ -251,4 +251,106 @@ public interface I_C_RfQLine
 	  * User who updated this records
 	  */
 	public int getUpdatedBy();
+	
+	/** Column name C_Charge_ID */
+    public static final String COLUMNNAME_C_Charge_ID = "C_Charge_ID";
+
+	/** Set Charge.
+	  * Additional document charges
+	  */
+	public void setC_Charge_ID (int C_Charge_ID);
+
+	/** Get Charge.
+	  * Additional document charges
+	  */
+	public int getC_Charge_ID();
+
+	public org.compiere.model.I_C_Charge getC_Charge() throws RuntimeException;
+	
+	/** Column name C_UOM_ID */
+    public static final String COLUMNNAME_C_UOM_ID = "C_UOM_ID";
+
+	/** Set UOM.
+	  * Unit of Measure
+	  */
+	public void setC_UOM_ID (int C_UOM_ID);
+
+	/** Get UOM.
+	  * Unit of Measure
+	  */
+	public int getC_UOM_ID();
+
+	public org.compiere.model.I_C_UOM getC_UOM() throws RuntimeException;
+	
+	/** Column name IsDescription */
+    public static final String COLUMNNAME_IsDescription = "IsDescription";
+
+	/** Set Description Only.
+	  * if true, the line is just description and no transaction
+	  */
+	public void setIsDescription (boolean IsDescription);
+
+	/** Get Description Only.
+	  * if true, the line is just description and no transaction
+	  */
+	public boolean isDescription();
+	
+	/** Column name M_Product_Category_ID */
+    public static final String COLUMNNAME_M_Product_Category_ID = "M_Product_Category_ID";
+
+	/** Set Product Category.
+	  * Category of a Product
+	  */
+	public void setM_Product_Category_ID (int M_Product_Category_ID);
+
+	/** Get Product Category.
+	  * Category of a Product
+	  */
+	public int getM_Product_Category_ID();
+
+	public org.compiere.model.I_M_Product_Category getM_Product_Category() throws RuntimeException;
+	
+	/** Column name Processed */
+    public static final String COLUMNNAME_Processed = "Processed";
+
+	/** Set Processed.
+	  * The document has been processed
+	  */
+	public void setProcessed (boolean Processed);
+
+	/** Get Processed.
+	  * The document has been processed
+	  */
+	public boolean isProcessed();
+
+    /** Column name Product */
+    public static final String COLUMNNAME_Product = "Product";
+
+	/** Set New Product Description	  */
+	public void setProduct (String Product);
+
+	/** Get New Product Description	  */
+	public String getProduct();
+
+    /** Column name Qty */
+    public static final String COLUMNNAME_Qty = "Qty";
+
+	/** Set Quantity.
+	  * Quantity
+	  */
+	public void setQty (BigDecimal Qty);
+
+	/** Get Quantity.
+	  * Quantity
+	  */
+	public BigDecimal getQty();
+
+    /** Column name Size */
+    public static final String COLUMNNAME_Size = "Size";
+
+	/** Set Size	  */
+	public void setSize (String Size);
+
+	/** Get Size	  */
+	public String getSize();
 }

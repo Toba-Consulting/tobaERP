@@ -178,7 +178,7 @@ public class MMatchPO extends X_M_MatchPO
 		//
 		String sql = "SELECT * FROM M_MatchPO m"
 			+ " INNER JOIN M_InOutLine l ON (m.M_InOutLine_ID=l.M_InOutLine_ID) "
-			+ "WHERE l.M_InOut_ID=?"; 
+			+ "WHERE l.M_InOut_ID=? AND Reversal_ID IS NULL";
 		ArrayList<MMatchPO> list = new ArrayList<MMatchPO>();
 		PreparedStatement pstmt = null;
 		ResultSet rs = null;
@@ -1017,7 +1017,8 @@ public class MMatchPO extends X_M_MatchPO
 					
 					if (mpi[i].getQty().compareTo(getQty()) == 0)  // same quantity
 					{
-						setC_InvoiceLine_ID(mpi[i].getC_InvoiceLine_ID());
+						if(getReversal_ID() == 0) 
+							setC_InvoiceLine_ID(mpi[i].getC_InvoiceLine_ID());
 						break;
 					}
 					else // create MatchPO record for PO-Invoice if different quantity
@@ -1025,6 +1026,9 @@ public class MMatchPO extends X_M_MatchPO
 						MInvoiceLine il = new MInvoiceLine(getCtx(), mpi[i].getC_InvoiceLine_ID(), get_TrxName());						
 						MMatchPO match = new MMatchPO(il, getDateTrx(), mpi[i].getQty());
 						match.setC_OrderLine_ID(getC_OrderLine_ID());
+						//@TommyAng (Reversed MatchPO shouldn't have C_InvoiceLine_ID) 
+						if(match.getReversal_ID()>0) 
+							match.setC_InvoiceLine_ID(null); 
 						if (!match.save())
 						{
 							String msg = "Failed to create match po";

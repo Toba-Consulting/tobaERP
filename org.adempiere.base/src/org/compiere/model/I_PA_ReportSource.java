@@ -493,4 +493,108 @@ public interface I_PA_ReportSource
 	  * User defined accounting Element
 	  */
 	public int getUserElement2_ID();
+	
+	/** Column name UserElement3_ID */
+    public static final String COLUMNNAME_UserElement3_ID = "UserElement3_ID";
+
+	/** Set User Column 3.
+	  * User defined accounting Element
+	  */
+	public void setUserElement3_ID (int UserElement3_ID);
+
+	/** Get User Column 3.
+	  * User defined accounting Element
+	  */
+	public int getUserElement3_ID();
+
+    /** Column name UserElement4_ID */
+    public static final String COLUMNNAME_UserElement4_ID = "UserElement4_ID";
+
+	/** Set User Column 4.
+	  * User defined accounting Element
+	  */
+	public void setUserElement4_ID (int UserElement4_ID);
+
+	/** Get User Column 4.
+	  * User defined accounting Element
+	  */
+	public int getUserElement4_ID();
+
+    /** Column name UserElement5_ID */
+    public static final String COLUMNNAME_UserElement5_ID = "UserElement5_ID";
+
+	/** Set User Column 5.
+	  * User defined accounting Element
+	  */
+	public void setUserElement5_ID (int UserElement5_ID);
+
+	/** Get User Column 5.
+	  * User defined accounting Element
+	  */
+	public int getUserElement5_ID();
+
+    /** Column name UserElement6_ID */
+    public static final String COLUMNNAME_UserElement6_ID = "UserElement6_ID";
+
+	/** Set User Column 6.
+	  * User defined accounting Element
+	  */
+	public void setUserElement6_ID (int UserElement6_ID);
+
+	/** Get User Column 6.
+	  * User defined accounting Element
+	  */
+	public int getUserElement6_ID();
+
+    /** Column name UserElement7_ID */
+    public static final String COLUMNNAME_UserElement7_ID = "UserElement7_ID";
+
+	/** Set User Column 7.
+	  * User defined accounting Element
+	  */
+	public void setUserElement7_ID (int UserElement7_ID);
+
+	/** Get User Column 7.
+	  * User defined accounting Element
+	  */
+	public int getUserElement7_ID();
+
+    /** Column name UserElement8_ID */
+    public static final String COLUMNNAME_UserElement8_ID = "UserElement8_ID";
+
+	/** Set User Column 8.
+	  * User defined accounting Element
+	  */
+	public void setUserElement8_ID (int UserElement8_ID);
+
+	/** Get User Column 8.
+	  * User defined accounting Element
+	  */
+	public int getUserElement8_ID();
+
+    /** Column name UserElement9_ID */
+    public static final String COLUMNNAME_UserElement9_ID = "UserElement9_ID";
+
+	/** Set User Column 9.
+	  * User defined accounting Element
+	  */
+	public void setUserElement9_ID (int UserElement9_ID);
+
+	/** Get User Column 9.
+	  * User defined accounting Element
+	  */
+	public int getUserElement9_ID();
+	
+	/** Column name UserElement10_ID */
+    public static final String COLUMNNAME_UserElement10_ID = "UserElement10_ID";
+
+	/** Set User Column 10.
+	  * User defined accounting Element
+	  */
+	public void setUserElement10_ID (int UserElement10_ID);
+
+	/** Get User Column 10.
+	  * User defined accounting Element
+	  */
+	public int getUserElement10_ID();
 }

@@ -47,7 +47,7 @@ public class MatchPOReverse extends SvrProcess {
 		MMatchPO po = new MMatchPO (getCtx(), p_M_MatchPO_ID, get_TrxName());
 		if (po.get_ID() != p_M_MatchPO_ID)
 			throw new AdempiereException("@NotFound@ @M_MatchPO_ID@ " + p_M_MatchPO_ID);
-		if (po.isProcessed())
+		if (po.isPosted())
 		{		
 			Timestamp reversalDate = Env.getContextAsDate(getCtx(), Env.DATE);
 			if (reversalDate == null) {

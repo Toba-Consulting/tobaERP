@@ -31,6 +31,11 @@ import org.compiere.util.Env;
 import org.compiere.util.Msg;
 import org.compiere.util.Util;
 import org.idempiere.cache.ImmutablePOSupport;
+import org.taowi.model.MBPCInvAcctByCurrency;
+import org.taowi.model.MBPGInvAcctByCurrency;
+import org.taowi.model.MBPVInvAcctByCurrency;
+import org.taowi.model.X_C_BP_C_InvAcctByCurrency;
+import org.taowi.model.X_C_BP_V_InvAcctByCurrency;
 
 /**
  *	Business Partner Model
@@ -1013,6 +1018,47 @@ public class MBPartner extends X_C_BPartner implements ImmutablePOSupport
 							: getC_BP_Group_ID());
 			insert_Accounting("C_BP_Customer_Acct", "C_BP_Group_Acct", msgacc.toString());
 			insert_Accounting("C_BP_Vendor_Acct", "C_BP_Group_Acct",msgacc.toString());
+			
+			//@David
+			String sqlWhereAcctSchemaIDs="EXISTS(SELECT 1 FROM C_BPG_InvAcctByCurrency WHERE C_BP_Group_ID="+getC_BP_Group_ID()+
+					" AND C_BPG_InvAcctByCurrency.C_AcctSchema_ID=C_AcctSchema.C_AcctSchema_ID)";
+			int [] C_AcctSchema_IDs = new Query(getCtx(), MAcctSchema.Table_Name, sqlWhereAcctSchemaIDs, get_TrxName()).setOnlyActiveRecords(true).getIDs();
+			for (int C_AcctSchema_ID : C_AcctSchema_IDs) {
+
+				String sqlWhereCurrencyIDs="EXISTS(SELECT 1 FROM C_BPG_InvAcctByCurrency WHERE C_BP_Group_ID="+getC_BP_Group_ID()+
+										" AND C_AcctSchema_ID="+C_AcctSchema_ID+
+										" AND C_BPG_InvAcctByCurrency.C_Currency_ID=C_Currency.C_Currency_ID)";
+				int [] C_Currency_IDs = new Query(getCtx(), MCurrency.Table_Name, sqlWhereCurrencyIDs, get_TrxName()).getIDs();
+				for (int C_Currency_ID : C_Currency_IDs) {
+				
+				
+					String sqlWhereBPGroupCurAcct="C_BP_Group_ID="+getC_BP_Group_ID()+" AND C_AcctSchema_ID="+C_AcctSchema_ID+" AND C_Currency_ID="+C_Currency_ID;
+					int bpGroupCurAcct_ID = new Query(getCtx(), MBPGInvAcctByCurrency.Table_Name, sqlWhereBPGroupCurAcct, get_TrxName()).setOnlyActiveRecords(true).firstId();;
+					MBPGInvAcctByCurrency bpGroupCurAcct = new MBPGInvAcctByCurrency(getCtx(), bpGroupCurAcct_ID, get_TrxName());
+				
+					MBPCInvAcctByCurrency custAcctCur = new MBPCInvAcctByCurrency(getCtx(), 0, get_TrxName());
+					custAcctCur.setC_BPartner_ID(getC_BPartner_ID());
+					custAcctCur.setC_AcctSchema_ID(C_AcctSchema_ID);
+					custAcctCur.setC_Currency_ID(C_Currency_ID);
+					custAcctCur.setAD_Org_ID(0);
+					custAcctCur.setC_Receivable_Acct(bpGroupCurAcct.getC_Receivable_Acct());
+					custAcctCur.setUnEarnedRevenue_Acct(bpGroupCurAcct.getUnEarnedRevenue_Acct());
+					custAcctCur.setC_Prepayment_Acct(bpGroupCurAcct.getC_Prepayment_Acct());
+					custAcctCur.saveEx();
+				
+					MBPVInvAcctByCurrency vendAcctCur = new MBPVInvAcctByCurrency(getCtx(), 0, get_TrxName());
+					vendAcctCur.setC_BPartner_ID(getC_BPartner_ID());
+					vendAcctCur.setC_AcctSchema_ID(C_AcctSchema_ID);
+					vendAcctCur.setC_Currency_ID(C_Currency_ID);
+					vendAcctCur.setAD_Org_ID(0);
+					vendAcctCur.setV_Liability_Acct(bpGroupCurAcct.getV_Liability_Acct());
+					vendAcctCur.setNotInvoicedReceipts_Acct(bpGroupCurAcct.getNotInvoicedReceipts_Acct());
+					vendAcctCur.setV_Prepayment_Acct(bpGroupCurAcct.getV_Prepayment_Acct());
+					vendAcctCur.saveEx();
+				
+				}
+			}
+			//@David End
 		}
 		if (newRecord || is_ValueChanged(COLUMNNAME_Value))
 			update_Tree(MTree_Base.TREETYPE_BPartner);
@@ -1058,6 +1104,27 @@ public class MBPartner extends X_C_BPartner implements ImmutablePOSupport
 
 		makeImmutable();
 		return this;
+	}
+	
+	@Override
+	protected boolean beforeDelete() {
+		
+		boolean success=true;
+		
+		String sqlWhere="C_BPartner_ID="+getC_BPartner_ID();
+		int bpCustCurAcctIDs[] = new Query(getCtx(), X_C_BP_C_InvAcctByCurrency.Table_Name, sqlWhere, get_TrxName()).getIDs();
+		for (int bpCustCurAcctID : bpCustCurAcctIDs) {
+			X_C_BP_C_InvAcctByCurrency bpCurr = new X_C_BP_C_InvAcctByCurrency(getCtx(), bpCustCurAcctID, get_TrxName());
+			bpCurr.deleteEx(false, get_TrxName());
+		}
+		
+		int bpVendCurAcctIDs[] = new Query(getCtx(), X_C_BP_V_InvAcctByCurrency.Table_Name, sqlWhere, get_TrxName()).getIDs();
+		for (int bpVendCurAcctID : bpVendCurAcctIDs) {
+			X_C_BP_V_InvAcctByCurrency vendCurr = new X_C_BP_V_InvAcctByCurrency(getCtx(), bpVendCurAcctID, get_TrxName());
+			vendCurr.deleteEx(false, get_TrxName());
+		}
+		
+		return success;
 	}
 
 }	//	MBPartner

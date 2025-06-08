@@ -446,7 +446,6 @@ public class MInvoiceLine extends X_C_InvoiceLine
 		if (log.isLoggable(Level.FINE)) log.fine("M_PriceList_ID=" + M_PriceList_ID);
 		m_productPricing = Core.getProductPricing();
 		m_productPricing.setInvoiceLine(this, get_TrxName());
-		m_productPricing.setM_PriceList_ID(M_PriceList_ID);
 		//
 		setPriceActual (m_productPricing.getPriceStd());
 		setPriceList (m_productPricing.getPriceList());
@@ -460,6 +459,10 @@ public class MInvoiceLine extends X_C_InvoiceLine
 		//
 		if (getC_UOM_ID() == 0)
 			setC_UOM_ID(m_productPricing.getC_UOM_ID());
+		
+		//@win
+		//	Calculate Discount
+		setDiscount(m_productPricing.getDiscount());
 		//
 		m_priceSet = true;
 	}	//	setPrice
@@ -552,7 +555,51 @@ public class MInvoiceLine extends X_C_InvoiceLine
 	public void setLineNetAmt ()
 	{
 		//	Calculations & Rounding
+		//@TommyAng
+		//BigDecimal bd = getPriceActual().multiply(getQtyInvoiced());
 		BigDecimal bd = getPriceEntered().multiply(getQtyEntered());
+		//end @TommyAng
+		boolean documentLevel = getTax().isDocumentLevel();
+
+		//	juddm: Tax Exempt & Tax Included in Price List & not Document Level - Adjust Line Amount
+		//  http://sourceforge.net/tracker/index.php?func=detail&aid=1733602&group_id=176962&atid=879332
+		if (isTaxIncluded() && !documentLevel)	{
+			BigDecimal taxStdAmt = Env.ZERO, taxThisAmt = Env.ZERO;
+			
+			MTax invoiceTax = getTax();
+			MTax stdTax = null;
+			
+			if (getProduct() == null)
+			{
+				if (getCharge() != null)	// Charge 
+				{
+					stdTax = new MTax (getCtx(), 
+							((MTaxCategory) getCharge().getC_TaxCategory()).getDefaultTax().getC_Tax_ID(),
+							get_TrxName());
+				}
+					
+			}
+			else	// Product
+				stdTax = new MTax (getCtx(), 
+							((MTaxCategory) getProduct().getC_TaxCategory()).getDefaultTax().getC_Tax_ID(), 
+							get_TrxName());
+
+			if (stdTax != null)
+			{
+				
+				if (log.isLoggable(Level.FINE)) log.fine("stdTax rate is " + stdTax.getRate());
+				if (log.isLoggable(Level.FINE)) log.fine("invoiceTax rate is " + invoiceTax.getRate());
+				
+				taxThisAmt = taxThisAmt.add(invoiceTax.calculateTax(bd, isTaxIncluded(), getPrecision()));
+				taxStdAmt = taxStdAmt.add(stdTax.calculateTax(bd, isTaxIncluded(), getPrecision()));
+				
+				bd = bd.subtract(taxStdAmt).add(taxThisAmt);
+				
+				if (log.isLoggable(Level.FINE)) log.fine("Price List includes Tax and Tax Changed on Invoice Line: New Tax Amt: " 
+						+ taxThisAmt + " Standard Tax Amt: " + taxStdAmt + " Line Net Amt: " + bd);	
+			}
+		}
+		
 		int precision = getPrecision();
 		if (bd.scale() > precision)
 			bd = bd.setScale(precision, RoundingMode.HALF_UP);
@@ -887,7 +934,6 @@ public class MInvoiceLine extends X_C_InvoiceLine
 		// Re-set invoice header (need to update m_IsSOTrx flag) - phib [ 1686773 ]
 		setInvoice(getParent());
 
-	  if (!parentComplete && !isReversal) {  // do not change things when parent is complete
 		//	Charge
 		if (getC_Charge_ID() != 0)
 		{
@@ -941,6 +987,11 @@ public class MInvoiceLine extends X_C_InvoiceLine
 
 		//	Calculations & Rounding
 		setLineNetAmt();
+		
+		//@win 
+		setDiscount(); 
+		//@win 
+		
 		// TaxAmt recalculations should be done if the TaxAmt is zero
 		// or this is an Invoice(Customer) - teo_sarca, globalqss [ 1686773 ]
 		if (m_IsSOTrx || getTaxAmt().compareTo(Env.ZERO) == 0)
@@ -956,7 +1007,15 @@ public class MInvoiceLine extends X_C_InvoiceLine
 				return false;
 			}
 		}
-	  }
+		
+		/* 
+		 *	stephan 
+		 *	TAOWI-897 check tax in invoice line must be same with tax header 
+		 */ 
+		if(getParent().getC_Tax_ID() == 0) 
+			return true; 
+		else if(newRecord && getParent().getC_Tax_ID() != getC_Tax_ID()) 
+			setC_Tax_ID(getParent().getC_Tax_ID()); 
 		
 		return true;
 	}	//	beforeSave
@@ -1146,7 +1205,7 @@ public class MInvoiceLine extends X_C_InvoiceLine
 					{
 						double result = getLineNetAmt().multiply(base).doubleValue();
 						result /= total.doubleValue();
-						lca.setAmt(result, getParent().getC_Currency().getStdPrecision());
+						lca.setAmt(result, getParent().getC_Currency().getCostingPrecision());
 					}
 					if (!lca.save()){
 						msgreturn = new StringBuilder("Cannot save line Allocation = ").append(lca);
@@ -1279,7 +1338,7 @@ public class MInvoiceLine extends X_C_InvoiceLine
 			{
 				double result = getLineNetAmt().multiply(base).doubleValue();
 				result /= total.doubleValue();
-				lca.setAmt(result, getParent().getC_Currency().getStdPrecision());
+				lca.setAmt(result, getParent().getC_Currency().getCostingPrecision());
 			}
 			if (!lca.save()){
 				msgreturn = new StringBuilder("Cannot save line Allocation = ").append(lca);
@@ -1437,6 +1496,38 @@ public class MInvoiceLine extends X_C_InvoiceLine
 	public void clearParent()
 	{
 		this.m_parent = null;
+	}
+	
+	/** 
+	 *	Set Discount 
+	 */ 
+	public void setDiscount() 
+	{ 
+		BigDecimal list = getPriceList(); 
+		//	No List Price 
+		if (Env.ZERO.compareTo(list) == 0) 
+			return; 
+		BigDecimal discount = list.subtract(getPriceActual()) 
+				.multiply(Env.ONEHUNDRED) 
+				.divide(list, getPrecision(), RoundingMode.HALF_UP); 
+		//setDiscount(discount); 
+		// @Stephan FBI-453 
+		if(discount.compareTo(Env.ZERO)<0) 
+			setDiscount(Env.ZERO); 
+		else 
+			setDiscount(discount); 
+		// end FBI-453 
+ 
+	}	//	setDiscount 
+ 
+	public MMatchInv[] getMatchInvoice() { 
+ 
+		List<MMatchInv> list = new Query(getCtx(), I_M_MatchInv.Table_Name,  
+				I_M_MatchInv.COLUMNNAME_C_InvoiceLine_ID +"=?", get_TrxName()) 
+				.setParameters(get_ID()) 
+				.list(); 
+		return list.toArray(new MMatchInv[list.size()]); 
+ 
 	}
 
 }	//	MInvoiceLine

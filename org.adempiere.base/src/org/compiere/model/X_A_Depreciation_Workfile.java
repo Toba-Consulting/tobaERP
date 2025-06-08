@@ -1056,4 +1056,45 @@ public class X_A_Depreciation_Workfile extends PO implements I_A_Depreciation_Wo
 			 return Env.ZERO;
 		return bd;
 	}
+	
+	/** Set A_Period_Start.
+		@param A_Period_Start A_Period_Start	  */
+	public void setA_Period_Start (int A_Period_Start)
+	{
+		set_Value (COLUMNNAME_A_Period_Start, Integer.valueOf(A_Period_Start));
+	}
+	
+	/** Get A_Period_Start.
+		@return A_Period_Start	  */
+	public int getA_Period_Start () 
+	{
+		Integer ii = (Integer)get_Value(COLUMNNAME_A_Period_Start);
+		if (ii == null)
+			 return 0;
+		return ii.intValue();
+	}
+	
+	/** Set Valid.
+		@param IsValid 
+		Element is valid
+	  */
+	public void setIsValid (boolean IsValid)
+	{
+		set_Value (COLUMNNAME_IsValid, Boolean.valueOf(IsValid));
+	}
+	
+	/** Get Valid.
+		@return Element is valid
+	  */
+	public boolean isValid () 
+	{
+		Object oo = get_Value(COLUMNNAME_IsValid);
+		if (oo != null) 
+		{
+			 if (oo instanceof Boolean) 
+				 return ((Boolean)oo).booleanValue(); 
+			return "Y".equals(oo);
+		}
+		return false;
+	}
 }

@@ -29,12 +29,15 @@ import java.util.logging.Level;
 import org.adempiere.exceptions.AdempiereException;
 import org.adempiere.exceptions.PeriodClosedException;
 import org.compiere.process.DocAction;
+import org.compiere.process.DocOptions;
 import org.compiere.process.DocumentEngine;
 import org.compiere.util.CLogger;
 import org.compiere.util.DB;
 import org.compiere.util.Env;
 import org.compiere.util.Msg;
 import org.compiere.util.Util;
+import org.taowi.model.MBPCInvAcctByCurrency;
+import org.taowi.model.MBPVInvAcctByCurrency;
 
 /**
  *  Allocation Model.
@@ -50,7 +53,7 @@ import org.compiere.util.Util;
  *				<li>BF [ 2880182 ] Error you can allocate a payment to invoice that was paid
  *				<li> https://sourceforge.net/p/adempiere/bugs/2181/
 */
-public class MAllocationHdr extends X_C_AllocationHdr implements DocAction
+public class MAllocationHdr extends X_C_AllocationHdr implements DocAction, DocOptions 
 {
 	/**
 	 * generated serial id
@@ -469,11 +472,13 @@ public class MAllocationHdr extends X_C_AllocationHdr implements DocAction
 			MAllocationLine line = m_lines[i];
 			approval = approval.add(line.getWriteOffAmt()).add(line.getDiscountAmt());
 			//	Make sure there is BP
+			//	@ tegar - Bank/cash Transfer
+			/*
 			if (line.getC_BPartner_ID() == 0)
 			{
 				m_processMsg = "No Business Partner";
 				return DocAction.STATUS_Invalid;
-			}
+			}*/
 
 			// IDEMPIERE-1850 - validate date against related docs
 			if (line.getC_Invoice_ID() > 0) {
@@ -490,6 +495,76 @@ public class MAllocationHdr extends X_C_AllocationHdr implements DocAction
 			}
 		}
 		setApprovalAmt(approval);
+		
+		//@David
+		MAllocationLine [] lines = getLines(true);
+		int C_Invoice_ID=0;
+		int C_Payment_ID=0;
+		for (MAllocationLine line : lines) {
+			if (line.getC_Invoice_ID()!=0){
+				C_Invoice_ID=line.getC_Invoice_ID();
+				break;
+			}
+            else if(line.getC_Payment_ID()!=0){
+                C_Payment_ID=line.getC_Payment_ID();
+                break;
+            }
+		}
+		
+        if (!(C_Invoice_ID==0 && C_Payment_ID==0)) {
+			
+			int C_BPartner_ID=0;
+			MDocType docType=null;
+			if (C_Invoice_ID!=0) {
+				MInvoice inv = new MInvoice(getCtx(), C_Invoice_ID, get_TrxName());
+				C_BPartner_ID=inv.getC_BPartner_ID();
+				docType=(MDocType)inv.getC_DocType();
+			}
+            else{
+                MPayment payment = new MPayment(getCtx(), C_Payment_ID, get_TrxName());
+                C_BPartner_ID=payment.getC_BPartner_ID();
+                docType=(MDocType)payment.getC_DocType();
+            }
+			
+			MAcctSchema [] ass = MAcctSchema.getClientAcctSchema(getCtx(), getAD_Client_ID());
+			String sqlWhereCustomAcctCur="C_BPartner_ID="+C_BPartner_ID+" AND C_AcctSchema_ID=? AND C_Currency_ID=?";
+			String customAcctTableName=null;
+			if (docType.getDocBaseType().equals(MDocType.DOCBASETYPE_ARInvoice) ||
+	                docType.getDocBaseType().equals(MDocType.DOCBASETYPE_ARCreditMemo) ||
+	                docType.getDocBaseType().equals(MDocType.DOCBASETYPE_ARReceipt)){
+				customAcctTableName=MBPCInvAcctByCurrency.Table_Name;
+			}
+			else if (docType.getDocBaseType().equals(MDocType.DOCBASETYPE_APInvoice) ||
+                    docType.getDocBaseType().equals(MDocType.DOCBASETYPE_APCreditMemo)||
+                    docType.getDocBaseType().equals(MDocType.DOCBASETYPE_APPayment)){
+					customAcctTableName=MBPVInvAcctByCurrency.Table_Name;
+			}
+		
+			for (MAcctSchema as : ass) {
+			
+				int invoiceCurrency_ID=getC_Currency_ID();
+				int accountingSchemaCurrency_ID=as.getC_Currency_ID();					
+				Timestamp cutOffDate = MSysConfig.getTimestampValue("Custom_Acct_By_BP_Currency_Cutoff_Date");
+				ArrayList<Object> params;
+			
+				if(accountingSchemaCurrency_ID!=invoiceCurrency_ID && getDateAcct().after(cutOffDate)){
+					params = new ArrayList<Object>();
+					params.add(as.getC_AcctSchema_ID());
+					params.add(invoiceCurrency_ID);
+				
+					boolean match = new Query(getCtx(), customAcctTableName, sqlWhereCustomAcctCur, get_TrxName())
+					.setParameters(params)
+					.setOnlyActiveRecords(true)
+					.match();
+				
+					if (!match) {
+						String curName=DB.getSQLValueString(get_TrxName(), "SELECT ISO_Code FROM C_Currency WHERE C_Currency_ID=?", invoiceCurrency_ID);
+						throw new AdempiereException("Business Partner don't have required custom acct record for Acct Schema = "+as.getName()+" Currency = "+curName);
+					}
+				}
+			}
+		}
+		//@David End
 		//
 		m_processMsg = ModelValidationEngine.get().fireDocValidate(this, ModelValidator.TIMING_AFTER_PREPARE);
 		if (m_processMsg != null)
@@ -546,6 +621,9 @@ public class MAllocationHdr extends X_C_AllocationHdr implements DocAction
 		if (m_processMsg != null)
 			return DocAction.STATUS_Invalid;
 		
+		//	@tegar validation set allocationdate
+		SetDefinitionAllocationDate();
+		
 		//	Implicit Approval
 		if (!isApproved())
 			approveIt();
@@ -570,6 +648,8 @@ public class MAllocationHdr extends X_C_AllocationHdr implements DocAction
 			return DocAction.STATUS_Invalid;
 		}
 
+		createMatchAllocation();
+		
 		setProcessed(true);
 		setDocAction(DOCACTION_Close);
 		return DocAction.STATUS_Completed;
@@ -922,6 +1002,17 @@ public class MAllocationHdr extends X_C_AllocationHdr implements DocAction
 			m_processMsg = reversal.getDocumentNo();
 			addDescription("(" + reversal.getDocumentNo() + "<-)");
 			
+			// @TommyAng
+			String sqlDelete = "DELETE FROM T_MatchAllocation WHERE C_AllocationHDR_ID="
+					+ getC_AllocationHdr_ID();
+			int no = DB.executeUpdate(sqlDelete, get_TrxName());
+			log.info("Deleted Match Allocation #" + no);
+			
+			sqlDelete = "DELETE FROM T_MatchAllocation WHERE C_AllocationHDR_ID="
+					+ reversal.get_ID();
+			no = DB.executeUpdate(sqlDelete, get_TrxName());
+			log.info("Deleted Match Allocation #" + no);
+			// end @TommyAng
 		}
 		else
 		{
@@ -1109,5 +1200,757 @@ public class MAllocationHdr extends X_C_AllocationHdr implements DocAction
 			description = Env.getContext(getCtx(), Env.AD_USER_NAME); // just to be sure
 
 		return description;
+	}
+	
+	@Override
+	public int customizeValidActions(String docStatus, Object processing,
+			String orderType, String isSOTrx, int AD_Table_ID,
+			String[] docAction, String[] options, int index) {
+		
+		for (int i = 0; i < options.length; i++) {
+			options[i] = null;
+		}
+
+		index = 0;
+
+		if (docStatus.equals(DocAction.STATUS_Drafted)) {
+			options[index++] = DocAction.ACTION_Complete;
+			options[index++] = DocAction.ACTION_Void;
+		} else if (docStatus.equals(DocAction.STATUS_InProgress)) {
+			options[index++] = DocAction.ACTION_Complete;
+			options[index++] = DocAction.ACTION_Void;
+		} else if (docStatus.equals(DocAction.STATUS_Completed)) {
+			options[index++] = DocAction.ACTION_Reverse_Accrual;
+		} else if (docStatus.equals(DocAction.STATUS_Invalid)) {
+			options[index++] = DocAction.ACTION_Complete;
+			options[index++] = DocAction.ACTION_Void;
+		}
+
+		
+		return index;
+	}
+	
+	//@tegar set Allocationdate when giro transaction
+	private void SetDefinitionAllocationDate(){
+		if (!MSysConfig.getBooleanValue(MSysConfig.GIRO_ALLOCATE_ON_MATURITY_DATE, true, getAD_Client_ID()))
+			return;
+			
+		int C_Payment_ID = 0;
+		int C_Invoice_ID = 0;
+		int C_AllocationLine_ID = 0;
+		MPayment payment = null;
+
+		StringBuilder sql = new StringBuilder();
+		
+		sql.append(" SELECT C_AllocationLine_ID ");
+		sql.append(" FROM C_AllocationLine ");
+		sql.append(" WHERE C_AllocationHdr_ID = ? ");
+		
+		C_AllocationLine_ID = DB.getSQLValueEx(get_TrxName(), sql.toString(), getC_AllocationHdr_ID());
+
+		MAllocationLine line = new MAllocationLine(getCtx(), C_AllocationLine_ID, get_TrxName());
+		C_Invoice_ID = line.getC_Invoice_ID();
+		C_Payment_ID = line.getC_Payment_ID();
+		
+		if (C_Payment_ID > 0)
+			payment = new MPayment(getCtx(), C_Payment_ID, get_TrxName());
+		
+				
+		if (C_Invoice_ID> 0 && C_Payment_ID > 0 
+				&& payment.isReceipt() 
+				&& payment.getTenderType().equals(MPayment.TENDERTYPE_Giro)){
+			
+			setDateAcct(payment.getMaturityDate());
+			setDateTrx(payment.getMaturityDate());
+			saveEx();
+		}
+	}
+	
+	/**
+	 * @author TommyAng
+	 * source : Allocation Line
+	 * include : Invoice (Customer), Invoice (Vendor), AR Credit Memo, AP Credit Memo, AR Receipt, AP Payment
+	 * return new MatchAllocation
+	 */
+	private void createMatchAllocation(){
+		
+		//Split Up ID and Amount Based On Amount, as ArrayList
+		
+		//Invoice
+		ArrayList<Integer> plusInvoiceID = new ArrayList<Integer>();
+		ArrayList<Integer> minInvoiceID = new ArrayList<Integer>();
+		
+		ArrayList<BigDecimal> plusAmount = new ArrayList<BigDecimal>();
+		ArrayList<BigDecimal> minAmount = new ArrayList<BigDecimal>();
+		
+		ArrayList<BigDecimal> pDiscountAmt = new ArrayList<BigDecimal>();
+		ArrayList<BigDecimal> nDiscountAmt = new ArrayList<BigDecimal>();
+		
+		ArrayList<BigDecimal> pWriteOffAmt = new ArrayList<BigDecimal>();
+		ArrayList<BigDecimal> nWriteOffAmt = new ArrayList<BigDecimal>();
+		//
+		
+		//Payment
+		ArrayList<Integer> paymentID = new ArrayList<Integer>();
+		ArrayList<Integer> receiptID = new ArrayList<Integer>();
+		
+		ArrayList<BigDecimal> paymentAmount = new ArrayList<BigDecimal>();
+		ArrayList<BigDecimal> receiptAmount = new ArrayList<BigDecimal>();
+		//
+		
+		//Charge
+		int chargeID = 0;
+		BigDecimal chargeAmount = Env.ZERO;
+		//
+		
+		int plusI = 0, minI = 0, pay = 0, rec = 0, charge = 0, count = 0, matched = 0;
+				
+		//Line loop to get record
+		//1. If Line only have Invoice ID without Payment ID and Amount is +
+		//2. If Line only have Invoice ID without Payment ID and Amount is -
+		//3. If Line only have Payment ID without Invoice ID and Payment is AP Payment
+		//4. If Line only have Payment ID without Invoice ID and Payment is AR Receipt
+		//5. If Line is Charge
+		//6. If Line have both Invoice ID and Payment ID and Payment is AP Payment
+		//7. If Line have both Invoice ID and Payment ID and Payment is AR Receipt
+		for(MAllocationLine line : getLines(true)){
+			
+			if(line.getC_Payment_ID()==0 && line.getC_Invoice_ID()>0 && line.getAmount().compareTo(Env.ZERO)>0){					//1
+				plusInvoiceID.add(line.getC_Invoice_ID());
+				plusAmount.add(line.getAmount());
+				pDiscountAmt.add(line.getDiscountAmt());
+				pWriteOffAmt.add(line.getWriteOffAmt());
+				plusI++;
+			}
+			else if(line.getC_Payment_ID()==0 && line.getC_Invoice_ID()>0 && line.getAmount().compareTo(Env.ZERO)<0){				//2
+				minInvoiceID.add(line.getC_Invoice_ID());
+				minAmount.add(line.getAmount());
+				nDiscountAmt.add(line.getDiscountAmt());
+				nWriteOffAmt.add(line.getWriteOffAmt());
+				minI++;
+			}			
+			else if(line.getC_Invoice_ID()==0 && line.getC_Payment_ID()>0 && line.getC_Payment().getC_DocType().getDocBaseType().equals("APP")){				//3
+				paymentID.add(line.getC_Payment_ID());
+				paymentAmount.add(line.getAmount().abs());
+				pay++;
+			}
+			else if(line.getC_Invoice_ID()==0 && line.getC_Payment_ID()>0 && line.getC_Payment().getC_DocType().getDocBaseType().equals("ARR")){				//4
+				receiptID.add(line.getC_Payment_ID());
+				receiptAmount.add(line.getAmount().abs().negate());
+				rec++;
+			}
+			else if(line.getC_Charge_ID()>0){																						//5
+				chargeID = line.getC_Charge_ID();
+				chargeAmount = line.getAmount();
+				charge++;
+			}else if(line.getAmount().compareTo(Env.ZERO)!=0){
+				X_T_MatchAllocation match = new X_T_MatchAllocation(getCtx(), 0, get_TrxName());
+				match.set_CustomColumn("C_AllocationHdr_ID", get_ID());
+				
+				//invoice
+				match.set_CustomColumn("C_Invoice_ID", line.getC_Invoice_ID());
+				match.set_CustomColumn("DiscountAmt", line.getDiscountAmt());
+				match.set_CustomColumn("WriteOffAmt", line.getWriteOffAmt());
+				
+				MInvoice invoice = new MInvoice(getCtx(), line.getC_Invoice_ID(), get_TrxName());
+				match.set_CustomColumn("C_DocType_ID", invoice.getC_DocType_ID());
+				
+				//payment
+				match.set_CustomColumn("C_Payment_ID", line.getC_Payment_ID());
+				
+				MPayment payment = new MPayment(getCtx(), line.getC_Payment_ID(), get_TrxName());
+				match.set_CustomColumn("Match_DocType_ID", payment.getC_DocType_ID());
+
+				match.set_ValueOfColumn("DateAllocated", getCreated());
+				match.set_CustomColumn("AllocationAmt", line.getAmount().abs());					
+				match.saveEx();
+				matched++;
+				
+				/*
+				if(line.getC_Payment().getC_DocType().getDocBaseType().equals("APP")){												//6
+					
+					//match.set_CustomColumn("P_Payment_ID", line.getC_Payment_ID());
+					//match.set_CustomColumn("P_Amount", line.getAmount().abs());
+					//match.set_CustomColumn("N_Invoice_ID", line.getC_Invoice_ID());
+					//match.set_CustomColumn("N_Amount", line.getAmount().abs().negate());
+					match.set_CustomColumn("C_DiscountAmt", line.getDiscountAmt());
+					match.set_CustomColumn("C_WriteOffAmt", line.getWriteOffAmt());
+					
+					//MPayment pPayment = new MPayment(getCtx(), line.getC_Payment_ID(), get_TrxName());
+					//match.set_CustomColumn("P_DocType_ID", pPayment.getC_DocType_ID());
+					
+					//MInvoice nInvoice = new MInvoice(getCtx(), line.getC_Invoice_ID(), get_TrxName());
+					//match.set_CustomColumn("N_DocType_ID", nInvoice.getC_DocType_ID());
+					
+				}else if(line.getC_Payment().getC_DocType().getDocBaseType().equals("ARR")){										//7
+					
+					//match.set_CustomColumn("N_Payment_ID", line.getC_Payment_ID());
+					//match.set_CustomColumn("N_Amount", line.getAmount().abs().negate());
+					//match.set_CustomColumn("P_Invoice_ID", line.getC_Invoice_ID());
+					//match.set_CustomColumn("P_Amount", line.getAmount().abs());
+					match.set_CustomColumn("P_DiscountAmt", line.getDiscountAmt());
+					match.set_CustomColumn("P_WriteOffAmt", line.getWriteOffAmt());
+					
+					//MPayment nPayment = new MPayment(getCtx(), line.getC_Payment_ID(), get_TrxName());
+					//match.set_CustomColumn("N_DocType_ID", nPayment.getC_DocType_ID());
+										
+					//MInvoice pInvoice = new MInvoice(getCtx(), line.getC_Invoice_ID(), get_TrxName());
+					//match.set_CustomColumn("P_DocType_ID", pInvoice.getC_DocType_ID());
+					
+				}
+				*/
+			}
+			count++;
+		}
+		
+		int total = plusI+minI+pay+rec+charge;
+		count -= matched;
+		
+		BigDecimal tempPaymentAmt = Env.ZERO;
+		BigDecimal tempInvoiceAmt = Env.ZERO;
+		
+		//Loop for pInvoice
+		for(int i = 0;i<plusI;i++){
+			tempInvoiceAmt = plusAmount.get(i);
+			
+			if(!plusInvoiceID.isEmpty() && !minInvoiceID.isEmpty()){
+								
+				for(int j = 0;j<minInvoiceID.size();j++){
+					if(j==0 && minAmount.get(j).compareTo(Env.ZERO)<0){
+						//match
+						X_T_MatchAllocation match = new X_T_MatchAllocation(getCtx(), 0, get_TrxName());
+						match.set_CustomColumn("C_AllocationHdr_ID", get_ID());
+						
+						//invoice
+						match.set_CustomColumn("C_Invoice_ID", plusInvoiceID.get(i));
+						match.set_CustomColumn("DiscountAmt", pDiscountAmt.get(i));
+						match.set_CustomColumn("WriteOffAmt", pWriteOffAmt.get(i));
+						
+						MInvoice pInvoice = new MInvoice(getCtx(), plusInvoiceID.get(i), get_TrxName());
+						match.set_CustomColumn("C_DocType_ID", pInvoice.getC_DocType_ID());
+						
+						//match.set_CustomColumn("P_Invoice_ID", plusInvoiceID.get(i));
+						//match.set_CustomColumn("P_Amount", plusAmount.get(i));
+						//match.set_CustomColumn("N_Invoice_ID", minInvoiceID.get(j));
+						//match.set_CustomColumn("N_Amount", minAmount.get(j));
+						
+						//invoice1
+						match.set_CustomColumn("Match_Invoice_ID", minInvoiceID.get(j));
+						match.set_CustomColumn("Match_DiscountAmt", nDiscountAmt.get(j));
+						match.set_CustomColumn("Match_WriteOffAmt", nWriteOffAmt.get(j));
+						
+						MInvoice nInvoice = new MInvoice(getCtx(), minInvoiceID.get(j), get_TrxName());
+						match.set_CustomColumn("Match_DocType_ID", nInvoice.getC_DocType_ID());
+						
+						if(tempInvoiceAmt.compareTo(minAmount.get(j).abs())>0)
+							match.set_CustomColumn("AllocationAmt", minAmount.get(j).abs());	
+						else
+							match.set_CustomColumn("AllocationAmt", tempInvoiceAmt);
+						
+						match.set_ValueOfColumn("DateAllocated", getCreated());
+						match.saveEx();
+						
+						//match1
+						X_T_MatchAllocation match1 = new X_T_MatchAllocation(getCtx(), 0, get_TrxName());
+						match1.set_CustomColumn("C_AllocationHdr_ID", get_ID());
+						
+						//invoice
+						match1.set_CustomColumn("C_Invoice_ID", minInvoiceID.get(j));
+						match1.set_CustomColumn("C_DocType_ID", nInvoice.getC_DocType_ID());
+						match1.set_CustomColumn("DiscountAmt", nDiscountAmt.get(j));
+						match1.set_CustomColumn("WriteOffAmt", nWriteOffAmt.get(j));
+						
+						//invoice1
+						match1.set_CustomColumn("Match_Invoice_ID", plusInvoiceID.get(i));
+						match1.set_CustomColumn("Match_DocType_ID", pInvoice.getC_DocType_ID());
+						match1.set_CustomColumn("Match_DiscountAmt", pDiscountAmt.get(i));
+						match1.set_CustomColumn("Match_WriteOffAmt", pWriteOffAmt.get(i));
+						
+						//match1.set_CustomColumn("P_Invoice_ID", plusInvoiceID.get(i));
+						//match1.set_CustomColumn("P_Amount", plusAmount.get(i));
+						//match1.set_CustomColumn("N_Invoice_ID", minInvoiceID.get(j));
+						//match1.set_CustomColumn("N_Amount", minAmount.get(j));
+						
+						if(tempInvoiceAmt.compareTo(minAmount.get(j).abs())>0)
+							match1.set_CustomColumn("AllocationAmt", minAmount.get(j).abs());	
+						else
+							match1.set_CustomColumn("AllocationAmt", tempInvoiceAmt);
+						
+						
+						
+						match1.set_ValueOfColumn("DateAllocated", getCreated());
+						match1.saveEx();
+						//
+						pDiscountAmt.set(i, Env.ZERO);
+						pWriteOffAmt.set(i, Env.ZERO);
+						nDiscountAmt.set(j, Env.ZERO);
+						nWriteOffAmt.set(j, Env.ZERO);
+						
+					}
+					
+					
+					if(j!=0 && tempInvoiceAmt.compareTo(Env.ZERO)>0 
+							&& minAmount.get(j).compareTo(Env.ZERO)<0){
+						//match
+						X_T_MatchAllocation match = new X_T_MatchAllocation(getCtx(), 0, get_TrxName());
+						match.set_CustomColumn("C_AllocationHdr_ID", get_ID());
+						
+						//invoice
+						match.set_CustomColumn("C_Invoice_ID", plusInvoiceID.get(i));
+						match.set_CustomColumn("DiscountAmt", pDiscountAmt.get(i));
+						match.set_CustomColumn("WriteOffAmt", pWriteOffAmt.get(i));
+						
+						MInvoice pInvoice = new MInvoice(getCtx(), plusInvoiceID.get(i), get_TrxName());
+						match.set_CustomColumn("C_DocType_ID", pInvoice.getC_DocType_ID());
+						
+						//invoice1
+						match.set_CustomColumn("Match_Invoice_ID", minInvoiceID.get(j));
+						match.set_CustomColumn("Match_DiscountAmt", nDiscountAmt.get(j));
+						match.set_CustomColumn("Match_WriteOffAmt", nWriteOffAmt.get(j));
+						
+						MInvoice nInvoice = new MInvoice(getCtx(), minInvoiceID.get(j), get_TrxName());
+						match.set_CustomColumn("Match_DocType_ID", nInvoice.getC_DocType_ID());
+						
+						//match.set_CustomColumn("P_Invoice_ID", plusInvoiceID.get(i));
+						//match.set_CustomColumn("P_Amount", plusAmount.get(i));
+						//match.set_CustomColumn("N_Invoice_ID", minInvoiceID.get(j));
+						//match.set_CustomColumn("N_Amount", minAmount.get(j));
+						
+						if(tempInvoiceAmt.compareTo(minAmount.get(j).abs())>0)
+							match.set_CustomColumn("AllocationAmt", minAmount.get(j).abs());	
+						else
+							match.set_CustomColumn("AllocationAmt", tempInvoiceAmt);
+						
+						match.set_ValueOfColumn("DateAllocated", getCreated());
+						match.saveEx();
+						
+						//match1				
+						X_T_MatchAllocation match1 = new X_T_MatchAllocation(getCtx(), 0, get_TrxName());
+						match1.set_CustomColumn("C_AllocationHdr_ID", get_ID());
+						
+						
+						//invoice
+						match1.set_CustomColumn("C_Invoice_ID", minInvoiceID.get(j));
+						match1.set_CustomColumn("DiscountAmt", nDiscountAmt.get(j));
+						match1.set_CustomColumn("WriteOffAmt", nWriteOffAmt.get(j));
+						match1.set_CustomColumn("C_DocType_ID", nInvoice.getC_DocType_ID());
+						
+						//invoice1
+						match1.set_CustomColumn("Match_Invoice_ID", plusInvoiceID.get(i));
+						match1.set_CustomColumn("Match_DocType_ID", pInvoice.getC_DocType_ID());
+						match1.set_CustomColumn("Match_DiscountAmt", pDiscountAmt.get(i));
+						match1.set_CustomColumn("Match_WriteOffAmt", pWriteOffAmt.get(i));
+						
+						//match1.set_CustomColumn("P_Invoice_ID", plusInvoiceID.get(i));
+						//match1.set_CustomColumn("P_Amount", plusAmount.get(i));
+						//match1.set_CustomColumn("N_Invoice_ID", minInvoiceID.get(j));
+						//match1.set_CustomColumn("N_Amount", minAmount.get(j));
+						
+						//MInvoice pInvoice = new MInvoice(getCtx(), plusInvoiceID.get(i), get_TrxName());
+						//match1.set_CustomColumn("N_DocType_ID", pInvoice.getC_DocType_ID());
+						
+						//MInvoice nInvoice = new MInvoice(getCtx(), minInvoiceID.get(j), get_TrxName());
+						//match1.set_CustomColumn("P_DocType_ID", nInvoice.getC_DocType_ID());
+						
+						if(tempInvoiceAmt.compareTo(minAmount.get(j).abs())>0)
+							match1.set_CustomColumn("AllocationAmt", minAmount.get(j).abs());	
+						else
+							match1.set_CustomColumn("AllocationAmt", tempInvoiceAmt);
+						
+						match1.set_ValueOfColumn("DateAllocated", getCreated());
+						match1.saveEx();
+						//
+						pDiscountAmt.set(i, Env.ZERO);
+						pWriteOffAmt.set(i, Env.ZERO);
+						nDiscountAmt.set(j, Env.ZERO);
+						nWriteOffAmt.set(j, Env.ZERO);
+													
+					}
+					
+					tempInvoiceAmt = tempInvoiceAmt.add(minAmount.get(j));
+					
+					if(tempInvoiceAmt.compareTo(Env.ZERO)>0){
+						minAmount.set(j, Env.ZERO);
+					}else if(tempInvoiceAmt.compareTo(Env.ZERO)<0){
+						plusAmount.set(i, Env.ZERO);
+						minAmount.set(j, tempInvoiceAmt);
+						break;
+					}else if(tempInvoiceAmt.compareTo(Env.ZERO)==0){
+						plusAmount.set(i, Env.ZERO);
+						minAmount.set(j, Env.ZERO);
+						break;
+					}
+				}
+				
+			}
+			
+			BigDecimal totalMinAmount = Env.ZERO;
+			for(int k=0; k<minInvoiceID.size(); k++)
+			{
+				totalMinAmount = totalMinAmount.add(minAmount.get(k));
+			}
+			
+			if(totalMinAmount.compareTo(Env.ZERO)==0 && chargeID>0 && tempInvoiceAmt.compareTo(Env.ZERO)>0 && chargeAmount.compareTo(Env.ZERO)>0){					
+				X_T_MatchAllocation match = new X_T_MatchAllocation(getCtx(), 0, get_TrxName());
+				match.set_CustomColumn("C_AllocationHdr_ID", get_ID());
+				
+				match.set_CustomColumn("C_Invoice_ID", plusInvoiceID.get(i));
+				match.set_CustomColumn("DiscountAmt", pDiscountAmt.get(i));
+				match.set_CustomColumn("WriteOffAmt", pWriteOffAmt.get(i));
+				
+				MInvoice pInvoice = new MInvoice(getCtx(), plusInvoiceID.get(i), get_TrxName());
+				match.set_CustomColumn("C_DocType_ID", pInvoice.getC_DocType_ID());
+				
+				//match.set_CustomColumn("P_Invoice_ID", plusInvoiceID.get(i));
+				//match.set_CustomColumn("P_Amount", tempInvoiceAmt);
+				match.set_CustomColumn("C_Charge_ID", chargeID);
+				//match.set_CustomColumn("N_Amount", tempInvoiceAmt.abs().negate());
+				
+				match.set_CustomColumn("AllocationAmt", tempInvoiceAmt.abs());
+				match.set_ValueOfColumn("DateAllocated", getCreated());
+				match.saveEx();
+				
+				chargeAmount = chargeAmount.add(tempInvoiceAmt);
+				
+				pDiscountAmt.set(i, Env.ZERO);
+				pWriteOffAmt.set(i, Env.ZERO);
+				
+			} else if(!plusInvoiceID.isEmpty() && minInvoiceID.isEmpty() && chargeID>0){
+				X_T_MatchAllocation match = new X_T_MatchAllocation(getCtx(), 0, get_TrxName());
+				match.set_CustomColumn("C_AllocationHdr_ID", get_ID());
+				match.set_CustomColumn("C_Invoice_ID", plusInvoiceID.get(i));
+				match.set_CustomColumn("DiscountAmt", pDiscountAmt.get(i));
+				match.set_CustomColumn("WriteOffAmt", pWriteOffAmt.get(i));
+				
+				MInvoice pInvoice = new MInvoice(getCtx(), plusInvoiceID.get(i), get_TrxName());
+				match.set_CustomColumn("C_DocType_ID", pInvoice.getC_DocType_ID());
+				
+				//match.set_CustomColumn("P_Invoice_ID", plusInvoiceID.get(i));
+				//match.set_CustomColumn("P_Amount", tempInvoiceAmt);
+				match.set_CustomColumn("C_Charge_ID", chargeID);
+				//match.set_CustomColumn("N_Amount", tempInvoiceAmt.abs().negate());
+				
+				//MInvoice pInvoice = new MInvoice(getCtx(), plusInvoiceID.get(i), get_TrxName());
+				//match.set_CustomColumn("P_DocType_ID", pInvoice.getC_DocType_ID());
+				
+				match.set_CustomColumn("AllocationAmt", chargeAmount.abs());
+				match.set_ValueOfColumn("DateAllocated", getCreated());
+				match.saveEx();
+				
+				chargeAmount = chargeAmount.add(tempInvoiceAmt);
+				
+				pDiscountAmt.set(i, Env.ZERO);
+				pWriteOffAmt.set(i, Env.ZERO);
+				
+			} /*else if(plusInvoiceID.isEmpty() && !minInvoiceID.isEmpty() && chargeID>0){
+				X_T_MatchAllocation match = new X_T_MatchAllocation(getCtx(), 0, get_TrxName());
+				match.set_CustomColumn("C_AllocationHdr_ID", get_ID());
+				match.set_CustomColumn("N_Invoice_ID", minInvoiceID.get(0));
+				match.set_CustomColumn("N_Amount", minAmount.get(0));
+				match.set_CustomColumn("C_Charge_ID", chargeID);
+				match.set_CustomColumn("P_Amount", chargeAmount);
+				
+				MInvoice nInvoice = new MInvoice(getCtx(), minInvoiceID.get(0), get_TrxName());
+				match.set_CustomColumn("N_DocType_ID", nInvoice.getC_DocType_ID());
+				
+				match.set_CustomColumn("AllocationAmt", chargeAmount.abs());
+				
+				match.set_CustomColumn("N_DiscountAmt", nDiscountAmt.get(0));
+				match.set_CustomColumn("N_WriteOffAmt", nWriteOffAmt.get(0));
+				
+				nDiscountAmt.set(0, Env.ZERO);
+				nWriteOffAmt.set(0, Env.ZERO);
+				
+				match.saveEx();
+			}*/
+		}
+		//End pInvoice Loop
+		
+		//Loop for Payment
+		for(int i = 0;i<pay;i++){
+			tempPaymentAmt = paymentAmount.get(i);
+			
+			if(!paymentID.isEmpty() && !receiptID.isEmpty()){
+				
+				for(int j = 0;j<receiptID.size();j++){
+					
+					if(j==0 && receiptAmount.get(j).compareTo(Env.ZERO)<0){
+						//match
+						X_T_MatchAllocation match = new X_T_MatchAllocation(getCtx(), 0, get_TrxName());
+						match.set_CustomColumn("C_AllocationHdr_ID", get_ID());
+						
+						//payment
+						match.set_CustomColumn("C_Payment_ID", paymentID.get(i));
+						
+						MPayment pPayment = new MPayment(getCtx(), paymentID.get(i), get_TrxName());
+						match.set_CustomColumn("C_DocType_ID", pPayment.getC_DocType_ID());
+						
+						//receipt
+						match.set_CustomColumn("Match_Payment_ID", receiptID.get(j));
+						
+						MPayment nPayment = new MPayment(getCtx(), receiptID.get(j), get_TrxName());
+						match.set_CustomColumn("Match_DocType_ID", nPayment.getC_DocType_ID());
+						//match.set_CustomColumn("P_Payment_ID", paymentID.get(i));
+						//match.set_CustomColumn("P_Amount", paymentAmount.get(i));
+						//match.set_CustomColumn("N_Payment_ID", receiptID.get(j));
+						//match.set_CustomColumn("N_Amount", receiptAmount.get(j));
+						
+						if(tempPaymentAmt.compareTo(receiptAmount.get(j).abs())>0)
+							match.set_CustomColumn("AllocationAmt", receiptAmount.get(j).abs());	
+						else
+							match.set_CustomColumn("AllocationAmt", tempPaymentAmt);
+													
+						match.set_ValueOfColumn("DateAllocated", getCreated());							
+						match.saveEx();
+						
+						//match1
+						X_T_MatchAllocation match1 = new X_T_MatchAllocation(getCtx(), 0, get_TrxName());
+						match1.set_CustomColumn("C_AllocationHdr_ID", get_ID());
+						
+						//receipt
+						match1.set_CustomColumn("C_Payment_ID", receiptID.get(j));
+						match1.set_CustomColumn("C_DocType_ID", nPayment.getC_DocType_ID());
+						
+						//payment
+						match1.set_CustomColumn("Match_Payment_ID", paymentID.get(i));
+						match1.set_CustomColumn("Match_DocType_ID", pPayment.getC_DocType_ID());
+						
+						//match.set_CustomColumn("P_Payment_ID", paymentID.get(i));
+						//match.set_CustomColumn("P_Amount", paymentAmount.get(i));
+						//match.set_CustomColumn("N_Payment_ID", receiptID.get(j));
+						//match.set_CustomColumn("N_Amount", receiptAmount.get(j));
+						
+						if(tempPaymentAmt.compareTo(receiptAmount.get(j).abs())>0)
+							match1.set_CustomColumn("AllocationAmt", receiptAmount.get(j).abs());	
+						else
+							match1.set_CustomColumn("AllocationAmt", tempPaymentAmt);
+													
+						match1.set_ValueOfColumn("DateAllocated", getCreated());							
+						match1.saveEx();
+					}
+					
+					
+					if(j!=0 && tempPaymentAmt.compareTo(Env.ZERO)>0 
+							&& receiptAmount.get(j).compareTo(Env.ZERO)<0){
+						//match
+						X_T_MatchAllocation match = new X_T_MatchAllocation(getCtx(), 0, get_TrxName());
+						match.set_CustomColumn("C_AllocationHdr_ID", get_ID());
+						
+						//payment
+						match.set_CustomColumn("C_Payment_ID", paymentID.get(i));
+						
+						MPayment pPayment = new MPayment(getCtx(), paymentID.get(i), get_TrxName());
+						match.set_CustomColumn("C_DocType_ID", pPayment.getC_DocType_ID());
+						
+						//receipt
+						match.set_CustomColumn("Match_Payment_ID", receiptID.get(j));
+						
+						MPayment nPayment = new MPayment(getCtx(), receiptID.get(j), get_TrxName());
+						match.set_CustomColumn("Match_DocType_ID", nPayment.getC_DocType_ID());
+						//match.set_CustomColumn("P_Payment_ID", paymentID.get(i));
+						//match.set_CustomColumn("P_Amount", tempPaymentAmt);
+						//match.set_CustomColumn("N_Payment_ID", receiptID.get(j));
+						//match.set_CustomColumn("N_Amount", receiptAmount.get(j));
+						
+						if(tempPaymentAmt.compareTo(receiptAmount.get(j).abs())>0)
+							match.set_CustomColumn("AllocationAmt", receiptAmount.get(j).abs());	
+						else
+							match.set_CustomColumn("AllocationAmt", tempPaymentAmt);
+													
+						match.set_ValueOfColumn("DateAllocated", getCreated());							
+						match.saveEx();
+						
+						//match1
+						X_T_MatchAllocation match1 = new X_T_MatchAllocation(getCtx(), 0, get_TrxName());
+						match1.set_CustomColumn("C_AllocationHdr_ID", get_ID());
+						
+						//receipt
+						match1.set_CustomColumn("C_Payment_ID", receiptID.get(j));
+						match1.set_CustomColumn("C_DocType_ID", nPayment.getC_DocType_ID());
+						
+						//payment
+						match1.set_CustomColumn("Match_Payment_ID", paymentID.get(i));
+						match1.set_CustomColumn("Match_DocType_ID", pPayment.getC_DocType_ID());
+						
+						//match.set_CustomColumn("P_Payment_ID", paymentID.get(i));
+						//match.set_CustomColumn("P_Amount", tempPaymentAmt);
+						//match.set_CustomColumn("N_Payment_ID", receiptID.get(j));
+						//match.set_CustomColumn("N_Amount", receiptAmount.get(j));
+							
+						if(tempPaymentAmt.compareTo(receiptAmount.get(j).abs())>0)
+							match1.set_CustomColumn("AllocationAmt", receiptAmount.get(j).abs());	
+						else
+							match1.set_CustomColumn("AllocationAmt", tempPaymentAmt);
+													
+						match1.set_ValueOfColumn("DateAllocated", getCreated());
+						match1.saveEx();
+					}
+					
+					tempPaymentAmt = tempPaymentAmt.add(receiptAmount.get(j));
+					
+					if(tempPaymentAmt.compareTo(Env.ZERO)>0){
+						receiptAmount.set(j, Env.ZERO);
+					}else if(tempPaymentAmt.compareTo(Env.ZERO)<0){
+						paymentAmount.set(i, Env.ZERO);
+						receiptAmount.set(j, tempPaymentAmt);
+						break;
+					}else if(tempPaymentAmt.compareTo(Env.ZERO)==0){
+						paymentAmount.set(i, Env.ZERO);
+						receiptAmount.set(j, Env.ZERO);
+						break;
+					}
+				}
+			}
+			
+			BigDecimal totalReceiptAmount = Env.ZERO;
+			for(int k=0; k<minInvoiceID.size(); k++)
+			{
+				totalReceiptAmount = totalReceiptAmount.add(minAmount.get(k));
+			}
+						
+			if(totalReceiptAmount.compareTo(Env.ZERO)==0 && chargeID>0 && tempPaymentAmt.compareTo(Env.ZERO)>0 && chargeAmount.compareTo(Env.ZERO)>0){					
+				X_T_MatchAllocation match = new X_T_MatchAllocation(getCtx(), 0, get_TrxName());
+				match.set_CustomColumn("C_AllocationHdr_ID", get_ID());
+				
+				//payment
+				match.set_CustomColumn("C_Payment_ID", paymentID.get(i));
+				
+				MPayment pPayment = new MPayment(getCtx(), paymentID.get(i), get_TrxName());
+				match.set_CustomColumn("C_DocType_ID", pPayment.getC_DocType_ID());
+				//match.set_CustomColumn("P_Payment_ID", paymentID.get(i));
+				//match.set_CustomColumn("P_Amount", tempPaymentAmt);
+				
+				//charge
+				match.set_CustomColumn("C_Charge_ID", chargeID);
+				//match.set_CustomColumn("N_Amount", tempPaymentAmt.abs().negate());
+				
+				match.set_CustomColumn("AllocationAmt", tempPaymentAmt.abs());
+				match.set_ValueOfColumn("DateAllocated", getCreated());				
+				match.saveEx();
+				
+				chargeAmount = chargeAmount.abs().subtract(tempPaymentAmt.abs());
+									
+			} else if(!paymentID.isEmpty() && receiptID.isEmpty() && chargeID>0){
+				X_T_MatchAllocation match = new X_T_MatchAllocation(getCtx(), 0, get_TrxName());
+				match.set_CustomColumn("C_AllocationHdr_ID", get_ID());
+				
+				//payment
+				match.set_CustomColumn("C_Payment_ID", paymentID.get(i));
+				
+				MPayment pPayment = new MPayment(getCtx(), paymentID.get(i), get_TrxName());
+				match.set_CustomColumn("C_DocType_ID", pPayment.getC_DocType_ID());
+				//match.set_CustomColumn("P_Payment_ID", paymentID.get(i));
+				//match.set_CustomColumn("P_Amount", tempPaymentAmt);
+				
+				//charge
+				match.set_CustomColumn("C_Charge_ID", chargeID);
+				//match.set_CustomColumn("N_Amount", tempPaymentAmt.abs().negate());
+				
+				match.set_CustomColumn("AllocationAmt", tempPaymentAmt.abs());
+				match.set_ValueOfColumn("DateAllocated", getCreated());				
+				match.saveEx();
+				
+				chargeAmount = chargeAmount.abs().subtract(tempPaymentAmt.abs());
+					
+			}/* else if(paymentID.isEmpty() && !receiptID.isEmpty() && chargeID>0){
+				X_T_MatchAllocation match = new X_T_MatchAllocation(getCtx(), 0, get_TrxName());
+				match.set_CustomColumn("C_AllocationHdr_ID", get_ID());
+				match.set_CustomColumn("N_Payment_ID", receiptID.get(0));
+				match.set_CustomColumn("N_Amount", receiptAmount.get(0));
+				match.set_CustomColumn("C_Charge_ID", chargeID);
+				match.set_CustomColumn("P_Amount", chargeAmount);
+				
+				MPayment nPayment = new MPayment(getCtx(), receiptID.get(0), get_TrxName());
+				match.set_CustomColumn("N_DocType_ID", nPayment.getC_DocType_ID());
+				
+				match.set_CustomColumn("AllocationAmt", chargeAmount.abs());
+				
+				match.saveEx();	
+			}*/
+			
+		}
+		//End Payment Loop
+			
+		//Loop for nInvoice
+		for(int i=0; i<minI; i++)
+		{
+			BigDecimal tempnInvoiceAmt = minAmount.get(i);
+			
+			if(tempnInvoiceAmt.compareTo(Env.ZERO)<0 && chargeID>0 && chargeAmount.compareTo(Env.ZERO)<0){
+				X_T_MatchAllocation match = new X_T_MatchAllocation(getCtx(), 0, get_TrxName());
+				match.set_CustomColumn("C_AllocationHdr_ID", get_ID());
+				
+				//invoice
+				match.set_CustomColumn("C_Invoice_ID", minInvoiceID.get(i));
+				match.set_CustomColumn("DiscountAmt", nDiscountAmt.get(i));
+				match.set_CustomColumn("WriteOffAmt", nWriteOffAmt.get(i));
+				
+				MInvoice nInvoice = new MInvoice(getCtx(), minInvoiceID.get(i), get_TrxName());
+				match.set_CustomColumn("C_DocType_ID", nInvoice.getC_DocType_ID());
+				
+				//match.set_CustomColumn("N_Invoice_ID", minInvoiceID.get(i));
+				//match.set_CustomColumn("N_Amount", tempnInvoiceAmt.abs().negate());
+				
+				//charge
+				match.set_CustomColumn("C_Charge_ID", chargeID);
+				//match.set_CustomColumn("P_Amount", tempnInvoiceAmt.abs());
+				
+				match.set_CustomColumn("AllocationAmt", tempnInvoiceAmt.abs());
+				match.set_ValueOfColumn("DateAllocated", getCreated());
+				match.saveEx();
+				
+				chargeAmount = chargeAmount.add(tempnInvoiceAmt);
+				
+				nDiscountAmt.set(0, Env.ZERO);
+				nWriteOffAmt.set(0, Env.ZERO);
+				
+			}
+		}
+		//End nInvoice Loop	
+		
+		//Loop for Receipt
+		for(int i=0; i<rec; i++)
+		{
+			BigDecimal tempReceiptAmt = receiptAmount.get(i);
+			
+			if(tempReceiptAmt.compareTo(Env.ZERO)!=0 && chargeID>0 && chargeAmount.compareTo(Env.ZERO)<0){
+				X_T_MatchAllocation match = new X_T_MatchAllocation(getCtx(), 0, get_TrxName());
+				match.set_CustomColumn("C_AllocationHdr_ID", get_ID());
+				
+				//receipt
+				match.set_CustomColumn("C_Payment_ID", receiptID.get(i));
+				
+				MPayment nPayment = new MPayment(getCtx(), receiptID.get(i), get_TrxName());
+				match.set_CustomColumn("C_DocType_ID", nPayment.getC_DocType_ID());
+				//match.set_CustomColumn("N_Payment_ID", receiptID.get(i));
+				//match.set_CustomColumn("N_Amount", tempReceiptAmt.abs().negate());
+				
+				//charge
+				match.set_CustomColumn("C_Charge_ID", chargeID);
+				//match.set_CustomColumn("P_Amount", tempReceiptAmt.abs());
+				
+				
+				match.set_CustomColumn("AllocationAmt", tempReceiptAmt.abs());
+				match.set_ValueOfColumn("DateAllocated", getCreated());
+				match.saveEx();	
+				
+				chargeAmount = chargeAmount.abs().negate().add(tempPaymentAmt.abs());
+				
+			}
+		}
+		//End Receipt Loop
+		
+		plusInvoiceID.clear();
+		minInvoiceID.clear();
+		paymentID.clear();
+		receiptID.clear();
+		plusAmount.clear();
+		minAmount.clear();
+		paymentAmount.clear();
+		receiptAmount.clear();
+		pDiscountAmt.clear();
+		nDiscountAmt.clear();
+		pWriteOffAmt.clear();
+		nWriteOffAmt.clear();
 	}
 }   //  MAllocation

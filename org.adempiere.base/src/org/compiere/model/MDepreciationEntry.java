@@ -33,6 +33,7 @@ import java.util.logging.Level;
 
 import org.adempiere.exceptions.AdempiereException;
 import org.compiere.process.DocAction;
+import org.compiere.process.DocOptions;
 import org.compiere.process.DocumentEngine;
 import org.compiere.util.DB;
 import org.compiere.util.TimeUtil;
@@ -46,8 +47,7 @@ import org.idempiere.fa.exceptions.AssetException;
  * Depreciation Entry
  * @author Teo Sarca, SC ARHIPAC SERVICE SRL
  */
-public class MDepreciationEntry extends X_A_Depreciation_Entry
-implements DocAction
+public class MDepreciationEntry extends X_A_Depreciation_Entry implements DocAction, DocOptions
 {
 	/**
 	 * generated serial id 
@@ -85,8 +85,8 @@ implements DocAction
 		MAcctSchema acctSchema = MClient.get(getCtx()).getAcctSchema();
 		setC_AcctSchema_ID(acctSchema.get_ID());
 		setC_Currency_ID(acctSchema.getC_Currency_ID());
-		setA_Entry_Type (A_ENTRY_TYPE_Depreciation); // TODO: workaround
-		setPostingType (POSTINGTYPE_Actual);	// A
+		setA_Entry_Type (A_ENTRY_TYPE_Depreciation);
+		setPostingType (POSTINGTYPE_Actual);
 		setProcessed (false);
 		setProcessing (false);
 		setPosted(false);
@@ -105,7 +105,8 @@ implements DocAction
 	@Override
 	protected boolean beforeSave(boolean newRecord)
 	{
-		setC_Period_ID();
+		if (getC_Period() == null) 
+			setC_Period_ID();
 		return true;
 	}
 
@@ -236,6 +237,7 @@ implements DocAction
 	public boolean unlockIt()
 	{
 		if (log.isLoggable(Level.INFO)) log.info("unlockIt - " + toString());
+		setProcessing(false);
 		return true;
 	}	//	unlockIt
 	
@@ -360,6 +362,7 @@ implements DocAction
 	public boolean closeIt()
 	{
 		setDocAction(DOCACTION_None);
+		setDocStatus(DocAction.STATUS_Closed);
 		return true;
 	}
 	
@@ -378,7 +381,56 @@ implements DocAction
 	@Override
 	public boolean reActivateIt()
 	{
-		return false;
+		if (log.isLoggable(Level.INFO)) log.info(toString());
+		// Before reActivate
+		m_processMsg = ModelValidationEngine.get().fireDocValidate(this,ModelValidator.TIMING_BEFORE_REACTIVATE);
+		if (m_processMsg != null)
+			return false;	
+		
+		MPeriod.testPeriodOpen(getCtx(), getDateAcct(), getC_DocType_ID(), getAD_Org_ID());
+		MFactAcct.deleteEx(MDepreciationEntry.Table_ID, get_ID(), get_TrxName());
+		
+		final ArrayList<Exception> errors = new ArrayList<Exception>();
+		final Iterator<MDepreciationExp> it = getLinesIterator(false);
+		//
+		while(it.hasNext())
+		{
+			try
+			{
+				Trx.run(get_TrxName(), new TrxRunnable(){
+					
+					public void run(String trxName)
+					{
+						MDepreciationExp depexp = it.next();
+						// Check if is in Period
+						//@phie change typo
+						depexp.unProcess();
+						//end @phie
+					}});
+			}
+			catch (Exception e)
+			{
+				log.log(Level.SEVERE, e.getLocalizedMessage(), e);
+				errors.add(e);
+			}
+		}
+		//
+		if (errors.size() > 0)
+		{
+			throw new AssetArrayException(errors);
+		}
+
+		setPosted(false);
+		setProcessed(false);
+		setDocAction(DOCACTION_Complete);
+		setDocStatus(DocAction.STATUS_InProgress);
+		
+		// After reActivate
+		m_processMsg = ModelValidationEngine.get().fireDocValidate(this,ModelValidator.TIMING_AFTER_REACTIVATE);
+		if (m_processMsg != null)
+			return false;
+		
+		return true;
 	}	//	reActivateIt
 		
 	@Override
@@ -417,14 +469,26 @@ implements DocAction
 		return getDocumentNo();
 	}
 	
-	/**
-	 * Delect Fact_Acct entries for this record
-	 * @param depexp
-	 */
-	public static void deleteFacts(MDepreciationExp depexp)
-	{
-		final String sql = "DELETE FROM Fact_Acct WHERE AD_Table_ID=? AND Record_ID=? AND Line_ID=?";
-		Object[] params = new Object[]{Table_ID, depexp.getA_Depreciation_Entry_ID(), depexp.get_ID()};
-		DB.executeUpdateEx(sql, params, depexp.get_TrxName());
+	@Override
+	public int customizeValidActions(String docStatus, Object processing,
+			String orderType, String isSOTrx, int AD_Table_ID,
+			String[] docAction, String[] options, int index) {
+		
+		for (int i = 0; i < options.length; i++) {
+			options[i] = null;
+		}
+
+		index = 0;
+
+		if (docStatus.equals(DocAction.STATUS_Drafted)) {
+			options[index++] = DocAction.ACTION_Complete;
+		} else if (docStatus.equals(DocAction.STATUS_InProgress)) {
+			options[index++] = DocAction.ACTION_Complete;
+		} else if (docStatus.equals(DocAction.STATUS_Completed)) {
+			options[index++] = DocAction.ACTION_ReActivate;
+		} else if (docStatus.equals(DocAction.STATUS_Invalid)) {
+			options[index++] = DocAction.ACTION_Complete;
+		}
+		return index;
 	}
 }

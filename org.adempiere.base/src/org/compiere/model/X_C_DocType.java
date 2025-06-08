@@ -475,6 +475,10 @@ public class X_C_DocType extends PO implements I_C_DocType, I_Persistent
 	public static final String DOCBASETYPE_PurchaseRequisition = "POR";
 	/** Sales Order = SOO */
 	public static final String DOCBASETYPE_SalesOrder = "SOO";
+	/** Fixed Asset Transfer = FAT */
+	public static final String DOCBASETYPE_FixedAssetTransfer = "FAT";
+	/** RfQ = RFQ */
+	public static final String DOCBASETYPE_RfQ = "RFQ";
 	/** Set Document Base Type.
 		@param DocBaseType Logical type of document
 	*/
@@ -528,6 +532,8 @@ public class X_C_DocType extends PO implements I_C_DocType, I_Persistent
 	public static final String DOCSUBTYPEINV_InternalUseInventory = "IU";
 	/** Physical Inventory = PI */
 	public static final String DOCSUBTYPEINV_PhysicalInventory = "PI";
+	/** Misc Receipt = MR */
+	public static final String DOCSUBTYPEINV_MiscReceipt = "MR";
 	/** Set Inv Sub Type.
 		@param DocSubTypeInv Inventory Sub Type
 	*/
@@ -580,6 +586,30 @@ public class X_C_DocType extends PO implements I_C_DocType, I_Persistent
 		return (String)get_Value(COLUMNNAME_DocSubTypeSO);
 	}
 
+	/** Blanket Purchase Order = BP */
+	public static final String DOCSUBTYPEPO_BlankedPurchaseOrder = "BP";
+	/** POS Purchase Order = PS */
+	public static final String DOCSUBTYPEPO_POSPurchaseOrder = "PS";
+	/** Standard Purchase Order = SP */
+	public static final String DOCSUBTYPEPO_StandardPurchaseOrder = "SP";
+	/** Set SO Sub Type.
+	@param DocSubTypeSO 
+	Sales Order Sub Type
+	  */
+	public void setDocSubTypePO (String DocSubTypePO)
+	{
+	
+		set_Value (COLUMNNAME_DocSubTypePO, DocSubTypePO);
+	}
+	
+	/** Get SO Sub Type.
+		@return Sales Order Sub Type
+	  */
+	public String getDocSubTypePO () 
+	{
+		return (String)get_Value(COLUMNNAME_DocSubTypePO);
+	}
+	
 	/** Set Document Copies.
 		@param DocumentCopies Number of copies to be printed
 	*/
@@ -615,6 +645,29 @@ public class X_C_DocType extends PO implements I_C_DocType, I_Persistent
 		return (String)get_Value(COLUMNNAME_DocumentNote);
 	}
 
+	/** GenerateWithholding AD_Reference_ID=300002 */
+	public static final int GENERATEWITHHOLDING_AD_Reference_ID=300002;
+	/** Yes = Y */
+	public static final String GENERATEWITHHOLDING_Yes = "Y";
+	/** No = N */
+	public static final String GENERATEWITHHOLDING_No = "N";
+	/** Auto = A */
+	public static final String GENERATEWITHHOLDING_Auto = "A";
+	/** Set Generate Withholding.
+		@param GenerateWithholding Generate Withholding	  */
+	public void setGenerateWithholding (String GenerateWithholding)
+	{
+
+		set_Value (COLUMNNAME_GenerateWithholding, GenerateWithholding);
+	}
+
+	/** Get Generate Withholding.
+		@return Generate Withholding	  */
+	public String getGenerateWithholding () 
+	{
+		return (String)get_Value(COLUMNNAME_GenerateWithholding);
+	}
+	
 	public org.compiere.model.I_GL_Category getGL_Category() throws RuntimeException
 	{
 		return (org.compiere.model.I_GL_Category)MTable.get(getCtx(), org.compiere.model.I_GL_Category.Table_ID)

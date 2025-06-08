@@ -550,4 +550,32 @@ public class X_R_RequestType extends PO implements I_R_RequestType, I_Persistent
 			 return 0;
 		return ii.intValue();
 	}
+	
+	/** ReqBaseType AD_Reference_ID=218 */
+	public static final int REQBASETYPE_AD_Reference_ID=218;
+	/** Procure = P */
+	public static final String REQBASETYPE_Procure = "P";
+	/** Replenish = R */
+	public static final String REQBASETYPE_Replenish = "R";
+	/** Cash = C */
+	public static final String REQBASETYPE_Cash = "C";
+	/** Misc = M */
+	public static final String REQBASETYPE_Misc = "M";
+	/** Set Request Base Type.
+		@param ReqBaseType 
+		Logical type of request
+	  */
+	public void setReqBaseType (String ReqBaseType)
+	{
+
+		set_Value (COLUMNNAME_ReqBaseType, ReqBaseType);
+	}
+
+	/** Get Request Base Type.
+		@return Logical type of request
+	  */
+	public String getReqBaseType () 
+	{
+		return (String)get_Value(COLUMNNAME_ReqBaseType);
+	}
 }

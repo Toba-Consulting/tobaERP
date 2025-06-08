@@ -370,16 +370,7 @@ public interface I_C_InvoiceLine
 	  */
 	public boolean isDescription();
 
-    /** Column name IsFixedAssetInvoice */
-    public static final String COLUMNNAME_IsFixedAssetInvoice = "IsFixedAssetInvoice";
-
-	/** Set Is Fixed Asset Invoice	  */
-	public void setIsFixedAssetInvoice (boolean IsFixedAssetInvoice);
-
-	/** Get Is Fixed Asset Invoice	  */
-	public boolean isFixedAssetInvoice();
-
-    /** Column name IsPrinted */
+	/** Column name IsPrinted */
     public static final String COLUMNNAME_IsPrinted = "IsPrinted";
 
 	/** Set Printed.
@@ -688,4 +679,26 @@ public interface I_C_InvoiceLine
 	public int getUser2_ID();
 
 	public org.compiere.model.I_C_ElementValue getUser2() throws RuntimeException;
+	
+	/** Column name Discount */
+    public static final String COLUMNNAME_Discount = "Discount";
+
+	/** Set Discount %.
+	  * Discount in percent
+	  */
+	public void setDiscount (BigDecimal Discount);
+
+	/** Get Discount %.
+	  * Discount in percent
+	  */
+	public BigDecimal getDiscount();
+	
+	/** Column name IsTrackAsAsset */
+    public static final String COLUMNNAME_IsTrackAsAsset = "IsTrackAsAsset";
+
+	/** Set Track As Asset	  */
+	public void setIsTrackAsAsset (boolean IsTrackAsAsset);
+
+	/** Get Track As Asset	  */
+	public boolean isTrackAsAsset();
 }

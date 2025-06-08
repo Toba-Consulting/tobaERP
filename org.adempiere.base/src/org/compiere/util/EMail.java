@@ -24,6 +24,7 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Date;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.Properties;
@@ -51,6 +52,7 @@ import org.compiere.model.MSMTP;
 import org.compiere.model.MSysConfig;
 
 import com.sun.mail.smtp.SMTPMessage;
+import com.sun.mail.smtp.SMTPTransport;
 
 /**
  *	EMail delivery and receive support for iDempiere<br/>
@@ -300,6 +302,10 @@ public final class EMail implements Serializable
 		props.put("mail.store.protocol", "smtp");
 		props.put("mail.transport.protocol", "smtp");
 		props.put("mail.host", m_smtpHost);
+		//@win integrate mailgun 
+		if (m_smtpHost.equals("smtp.mailgun.org")) 
+			props.put("mail.smtps.auth", "true"); 
+		//@win integrate mailgun 
 		//Timeout for sending the email defaulted to 20 seconds if not defined in a SysConfig Key
 		props.put("mail.smtp.timeout", MSysConfig.getIntValue(MSysConfig.MAIL_SMTP_TIMEOUT, 20000, Env.getAD_Client_ID(m_ctx)));
 		int mail_smtp_connectiontimeout = MSysConfig.getIntValue(MSysConfig.MAIL_SMTP_CONNECTIONTIMEOUT, -1, Env.getAD_Client_ID(m_ctx));
@@ -429,7 +435,14 @@ public final class EMail implements Serializable
 			//
 			setContent();
 			m_msg.saveChanges();
-			t = session.getTransport("smtp");
+			//@win enable mailgun 
+			if (m_smtpHost.equals("smtp.mailgun.org")) { 
+				t = session.getTransport("smtps"); 
+			} else {
+				t = session.getTransport("smtp"); 
+			}
+			//t = session.getTransport("smtp"); 
+			//end @win enable mailgun 
 			if (m_auth != null) {
 				t.connect(m_smtpHost, m_smtpPort, m_auth.getPasswordAuthentication().getUserName(), m_auth.getPasswordAuthentication().getPassword());
 			} else {
@@ -1315,5 +1328,30 @@ public final class EMail implements Serializable
 
 	public void setForTenantSmtp(boolean forceTenantSmtp) {
 		m_forceUseTenantSmtp = forceTenantSmtp;	
+	}
+	
+	private void mailGun(String from, String to, String pass, String subject){ 
+        Properties prop = System.getProperties(); 
+        prop.put("mail.smtp.host", "smtp.mailgun.org"); 
+        prop.put("mail.smtps.auth", "true"); 
+        Session session = Session.getInstance(prop, null); 
+        Message msg = new MimeMessage(session); 
+        try{ 
+            msg.setFrom(new InternetAddress(from)); 
+            msg.setRecipients(Message.RecipientType.TO,  
+                    InternetAddress.parse(to, false)); 
+            msg.setText(subject); 
+            msg.setSentDate(new Date()); 
+            SMTPTransport t = (SMTPTransport)session.getTransport("smtps"); 
+            t.connect("smtp.mailgun.com",  
+                    "postmaster@sandboxb2d3c43c91fc49abb912b24f720cbff5.mailgun.org", 
+                    "fab3a3059281500889c994cf7d624988"); 
+            t.sendMessage(msg, msg.getAllRecipients()); 
+            log.log(Level.SEVERE, "Response: " +t.getLastServerResponse()); 
+            t.close(); 
+        } 
+        catch(Exception e){ 
+            System.out.println("Error MailGun: "+e); 
+        } 
 	}
 }	//	EMail

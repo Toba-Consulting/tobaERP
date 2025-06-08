@@ -1049,7 +1049,7 @@ public class MSequence extends X_AD_Sequence
 		String prm_TABLE = TableName;
 		String prm_ALTKEY = "";  // TODO: generate alt-key based on key of table
 		String prm_COMMENT = Env.getContext(Env.getCtx(), I_AD_UserPreference.COLUMNNAME_MigrationScriptComment);
-		String prm_PROJECT = new String("Adempiere");
+		String prm_PROJECT = new String("taowi");
 
 		return getNextID_HTTP(TableName, website, prm_USER,
 				prm_PASSWORD, prm_TABLE, prm_ALTKEY, prm_COMMENT, prm_PROJECT);

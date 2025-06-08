@@ -189,6 +189,17 @@ import org.compiere.util.Util;
 			return false;
 		}
 
+		//@win add validation to check date acct in statement line must be within period start and end date
+		if (newRecord || is_ValueChanged(MBankStatementLine.COLUMNNAME_DateAcct)) { 
+			MPeriod period = MPeriod.get(p_ctx, getParent().getDateAcct(), getAD_Org_ID(), get_TrxName()); 
+			 
+			if (getDateAcct().before(period.getStartDate()) || getDateAcct().after(period.getEndDate()))  { 
+				log.saveError("DateAcctNotInPeriod", Msg.translate(getCtx(), "C_BankStatementLine")); 
+				return false; 
+			} 
+		}
+		//@win end
+		
 		// Make sure date is on the same period as header if used for posting
 		if (newRecord || is_ValueChanged(COLUMNNAME_DateAcct)) {
 			if (!isDateConsistentIfUsedForPosting()) {

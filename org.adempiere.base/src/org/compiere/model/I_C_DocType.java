@@ -253,6 +253,19 @@ public interface I_C_DocType
 	  */
 	public String getDocSubTypeSO();
 
+	/** Column name DocSubTypePO */
+    public static final String COLUMNNAME_DocSubTypePO = "DocSubTypePO";
+
+	/** Set PO Sub Type.
+	  * Purchase Order Sub Type
+	  */
+	public void setDocSubTypePO (String DocSubTypePO);
+
+	/** Get PO Sub Type.
+	  * Purchase Order Sub Type
+	  */
+	public String getDocSubTypePO();
+	
     /** Column name DocumentCopies */
     public static final String COLUMNNAME_DocumentCopies = "DocumentCopies";
 
@@ -553,4 +566,13 @@ public interface I_C_DocType
 	  * User who updated this records
 	  */
 	public int getUpdatedBy();
+	
+	/** Column name GenerateWithholding */
+    public static final String COLUMNNAME_GenerateWithholding = "GenerateWithholding";
+
+	/** Set Generate Withholding	  */
+	public void setGenerateWithholding (String GenerateWithholding);
+
+	/** Get Generate Withholding	  */
+	public String getGenerateWithholding();
 }

@@ -1582,4 +1582,369 @@ public class X_R_Request extends PO implements I_R_Request, I_Persistent
 	{
 		return (String)get_Value(COLUMNNAME_TaskStatus);
 	}
+	
+	public org.compiere.model.I_C_BPartner_Location getC_BPartner_Location() throws RuntimeException
+    {
+		return (org.compiere.model.I_C_BPartner_Location)MTable.get(getCtx(), org.compiere.model.I_C_BPartner_Location.Table_Name)
+			.getPO(getC_BPartner_Location_ID(), get_TrxName());	}
+
+	/** Set Partner Location.
+		@param C_BPartner_Location_ID 
+		Identifies the (ship to) address for this Business Partner
+	  */
+	public void setC_BPartner_Location_ID (int C_BPartner_Location_ID)
+	{
+		if (C_BPartner_Location_ID < 1) 
+			set_Value (COLUMNNAME_C_BPartner_Location_ID, null);
+		else 
+			set_Value (COLUMNNAME_C_BPartner_Location_ID, Integer.valueOf(C_BPartner_Location_ID));
+	}
+
+	/** Get Partner Location.
+		@return Identifies the (ship to) address for this Business Partner
+	  */
+	public int getC_BPartner_Location_ID () 
+	{
+		Integer ii = (Integer)get_Value(COLUMNNAME_C_BPartner_Location_ID);
+		if (ii == null)
+			 return 0;
+		return ii.intValue();
+	}
+	
+	public org.compiere.model.I_C_Currency getC_Currency() throws RuntimeException
+    {
+		return (org.compiere.model.I_C_Currency)MTable.get(getCtx(), org.compiere.model.I_C_Currency.Table_Name)
+			.getPO(getC_Currency_ID(), get_TrxName());	}
+
+	/** Set Currency.
+		@param C_Currency_ID 
+		The Currency for this record
+	  */
+	public void setC_Currency_ID (int C_Currency_ID)
+	{
+		if (C_Currency_ID < 1) 
+			set_Value (COLUMNNAME_C_Currency_ID, null);
+		else 
+			set_Value (COLUMNNAME_C_Currency_ID, Integer.valueOf(C_Currency_ID));
+	}
+
+	/** Get Currency.
+		@return The Currency for this record
+	  */
+	public int getC_Currency_ID () 
+	{
+		Integer ii = (Integer)get_Value(COLUMNNAME_C_Currency_ID);
+		if (ii == null)
+			 return 0;
+		return ii.intValue();
+	}
+	
+	/** Set Date Ordered.
+		@param DateOrdered 
+		Date of Order
+	  */
+	public void setDateOrdered (Timestamp DateOrdered)
+	{
+		set_ValueNoCheck (COLUMNNAME_DateOrdered, DateOrdered);
+	}
+	
+	/** Get Date Ordered.
+		@return Date of Order
+	  */
+	public Timestamp getDateOrdered () 
+	{
+		return (Timestamp)get_Value(COLUMNNAME_DateOrdered);
+	}
+	
+	/** Set Description.
+		@param Description 
+		Optional short description of the record
+	  */
+	public void setDescription (String Description)
+	{
+		set_Value (COLUMNNAME_Description, Description);
+	}
+	
+	/** Get Description.
+		@return Optional short description of the record
+	  */
+	public String getDescription () 
+	{
+		return (String)get_Value(COLUMNNAME_Description);
+	}
+	
+	/** Set Due Date (Request).
+		@param DueDate_Request 
+		The date in which the request should be acted on.
+	  */
+	public void setDueDate_Request (Timestamp DueDate_Request)
+	{
+		set_Value (COLUMNNAME_DueDate_Request, DueDate_Request);
+	}
+	
+	/** Get Due Date (Request).
+		@return The date in which the request should be acted on.
+	  */
+	public Timestamp getDueDate_Request () 
+	{
+		return (Timestamp)get_Value(COLUMNNAME_DueDate_Request);
+	}
+	
+	/** Set Approved.
+		@param IsApproved 
+		Indicates if this document requires approval
+	  */
+	public void setIsApproved (boolean IsApproved)
+	{
+		set_ValueNoCheck (COLUMNNAME_IsApproved, Boolean.valueOf(IsApproved));
+	}
+	
+	/** Get Approved.
+		@return Indicates if this document requires approval
+	  */
+	public boolean isApproved () 
+	{
+		Object oo = get_Value(COLUMNNAME_IsApproved);
+		if (oo != null) 
+		{
+			 if (oo instanceof Boolean) 
+				 return ((Boolean)oo).booleanValue(); 
+			return "Y".equals(oo);
+		}
+		return false;
+	}
+	
+	/** Set IsSettled.
+		@param IsSettled 
+		Indicates whether the document has to be settled or no
+	  */
+	public void setIsSettled (boolean IsSettled)
+	{
+		set_Value (COLUMNNAME_IsSettled, Boolean.valueOf(IsSettled));
+	}
+	
+	/** Get IsSettled.
+		@return Indicates whether the document has to be settled or no
+	  */
+	public boolean isSettled () 
+	{
+		Object oo = get_Value(COLUMNNAME_IsSettled);
+		if (oo != null) 
+		{
+			 if (oo instanceof Boolean) 
+				 return ((Boolean)oo).booleanValue(); 
+			return "Y".equals(oo);
+		}
+		return false;
+	}
+	
+	/** MiscType AD_Reference_ID=300028 */
+	public static final int MISCTYPE_AD_Reference_ID=300028;
+	/** Packing = PC */
+	public static final String MISCTYPE_Packing = "PC";
+	/** Booking = BO */
+	public static final String MISCTYPE_Booking = "BO";
+	/** Inventory Code = IN */
+	public static final String MISCTYPE_InventoryCode = "IN";
+	/** Others = OT  */
+	public static final String MISCTYPE_Others = "OT ";
+	/** Sales Pricing = SP */
+	public static final String MISCTYPE_SalesPricing = "SP";
+	/** Set Misc Type.
+		@param MiscType Misc Type	  */
+	public void setMiscType (String MiscType)
+	{
+
+		set_ValueNoCheck (COLUMNNAME_MiscType, MiscType);
+	}
+
+	/** Get Misc Type.
+		@return Misc Type	  */
+	public String getMiscType () 
+	{
+		return (String)get_Value(COLUMNNAME_MiscType);
+	}
+	
+	public org.compiere.model.I_M_Warehouse getM_Warehouse() throws RuntimeException
+    {
+		return (org.compiere.model.I_M_Warehouse)MTable.get(getCtx(), org.compiere.model.I_M_Warehouse.Table_Name)
+			.getPO(getM_Warehouse_ID(), get_TrxName());	}
+
+	/** Set Warehouse.
+		@param M_Warehouse_ID 
+		Storage Warehouse and Service Point
+	  */
+	public void setM_Warehouse_ID (int M_Warehouse_ID)
+	{
+		if (M_Warehouse_ID < 1) 
+			set_Value (COLUMNNAME_M_Warehouse_ID, null);
+		else 
+			set_Value (COLUMNNAME_M_Warehouse_ID, Integer.valueOf(M_Warehouse_ID));
+	}
+
+	/** Get Warehouse.
+		@return Storage Warehouse and Service Point
+	  */
+	public int getM_Warehouse_ID () 
+	{
+		Integer ii = (Integer)get_Value(COLUMNNAME_M_Warehouse_ID);
+		if (ii == null)
+			 return 0;
+		return ii.intValue();
+	}
+
+	public org.compiere.model.I_M_Warehouse getM_WarehouseTo() throws RuntimeException
+    {
+		return (org.compiere.model.I_M_Warehouse)MTable.get(getCtx(), org.compiere.model.I_M_Warehouse.Table_Name)
+			.getPO(getM_WarehouseTo_ID(), get_TrxName());	}
+
+	/** Set Warehouse To.
+		@param M_WarehouseTo_ID Warehouse To	  */
+	public void setM_WarehouseTo_ID (int M_WarehouseTo_ID)
+	{
+		if (M_WarehouseTo_ID < 1) 
+			set_Value (COLUMNNAME_M_WarehouseTo_ID, null);
+		else 
+			set_Value (COLUMNNAME_M_WarehouseTo_ID, Integer.valueOf(M_WarehouseTo_ID));
+	}
+
+	/** Get Warehouse To.
+		@return Warehouse To	  */
+	public int getM_WarehouseTo_ID () 
+	{
+		Integer ii = (Integer)get_Value(COLUMNNAME_M_WarehouseTo_ID);
+		if (ii == null)
+			 return 0;
+		return ii.intValue();
+	}
+	
+	/** Set Print Button.
+		@param PrintButton Print Button	  */
+	public void setPrintButton (String PrintButton)
+	{
+		set_Value (COLUMNNAME_PrintButton, PrintButton);
+	}
+	
+	/** Get Print Button.
+		@return Print Button	  */
+	public String getPrintButton () 
+	{
+		return (String)get_Value(COLUMNNAME_PrintButton);
+	}
+	
+	/** ProcureType AD_Reference_ID=300027 */
+	public static final int PROCURETYPE_AD_Reference_ID=300027;
+	/** Material = M */
+	public static final String PROCURETYPE_Material = "M";
+	/** Price = P */
+	public static final String PROCURETYPE_Price = "P";
+	/** Set Procure Type.
+		@param ProcureType Procure Type	  */
+	public void setProcureType (String ProcureType)
+	{
+
+		set_ValueNoCheck (COLUMNNAME_ProcureType, ProcureType);
+	}
+
+	/** Get Procure Type.
+		@return Procure Type	  */
+	public String getProcureType () 
+	{
+		return (String)get_Value(COLUMNNAME_ProcureType);
+	}
+	
+	public org.compiere.model.I_AD_User getR_AssignedTo() throws RuntimeException
+    {
+		return (org.compiere.model.I_AD_User)MTable.get(getCtx(), org.compiere.model.I_AD_User.Table_Name)
+			.getPO(getR_AssignedTo_ID(), get_TrxName());	}
+
+	/** Set Assigned To.
+		@param R_AssignedTo_ID Assigned To	  */
+	public void setR_AssignedTo_ID (int R_AssignedTo_ID)
+	{
+		if (R_AssignedTo_ID < 1) 
+			set_Value (COLUMNNAME_R_AssignedTo_ID, null);
+		else 
+			set_Value (COLUMNNAME_R_AssignedTo_ID, Integer.valueOf(R_AssignedTo_ID));
+	}
+
+	/** Get Assigned To.
+		@return Assigned To	  */
+	public int getR_AssignedTo_ID () 
+	{
+		Integer ii = (Integer)get_Value(COLUMNNAME_R_AssignedTo_ID);
+		if (ii == null)
+			 return 0;
+		return ii.intValue();
+	}
+	
+	/** ReqBaseType AD_Reference_ID=218 */
+	public static final int REQBASETYPE_AD_Reference_ID=218;
+	/** Procure = P */
+	public static final String REQBASETYPE_Procure = "P";
+	/** Replenish = R */
+	public static final String REQBASETYPE_Replenish = "R";
+	/** Cash = C */
+	public static final String REQBASETYPE_Cash = "C";
+	/** Misc = M */
+	public static final String REQBASETYPE_Misc = "M";
+	/** Set Request Base Type.
+		@param ReqBaseType 
+		Logical type of request
+	  */
+	public void setReqBaseType (String ReqBaseType)
+	{
+
+		set_ValueNoCheck (COLUMNNAME_ReqBaseType, ReqBaseType);
+	}
+
+	/** Get Request Base Type.
+		@return Logical type of request
+	  */
+	public String getReqBaseType () 
+	{
+		return (String)get_Value(COLUMNNAME_ReqBaseType);
+	}
+	
+	public org.compiere.model.I_AD_User getR_RequestedBy() throws RuntimeException
+    {
+		return (org.compiere.model.I_AD_User)MTable.get(getCtx(), org.compiere.model.I_AD_User.Table_Name)
+			.getPO(getR_RequestedBy_ID(), get_TrxName());	}
+
+	/** Set Requested By.
+		@param R_RequestedBy_ID Requested By	  */
+	public void setR_RequestedBy_ID (int R_RequestedBy_ID)
+	{
+		if (R_RequestedBy_ID < 1) 
+			set_Value (COLUMNNAME_R_RequestedBy_ID, null);
+		else 
+			set_Value (COLUMNNAME_R_RequestedBy_ID, Integer.valueOf(R_RequestedBy_ID));
+	}
+
+	/** Get Requested By.
+		@return Requested By	  */
+	public int getR_RequestedBy_ID () 
+	{
+		Integer ii = (Integer)get_Value(COLUMNNAME_R_RequestedBy_ID);
+		if (ii == null)
+			 return 0;
+		return ii.intValue();
+	}
+	
+	/** Set Settlement Date.
+		@param SettlementDate 
+		Settlement Date indicates the date of cash advance settlement
+	  */
+	public void setSettlementDate (Timestamp SettlementDate)
+	{
+		set_Value (COLUMNNAME_SettlementDate, SettlementDate);
+	}
+	
+	/** Get Settlement Date.
+		@return Settlement Date indicates the date of cash advance settlement
+	  */
+	public Timestamp getSettlementDate () 
+	{
+		return (Timestamp)get_Value(COLUMNNAME_SettlementDate);
+	}
 }

@@ -360,12 +360,13 @@ public class UseLifeImpl
 			if (isCalloutActive()) {
 				return NO_ERROR;
 			}
-			
+			/*
 			int A_Asset_Group_ID = -1;
 			if (value != null && value instanceof Number) {
 				A_Asset_Group_ID = ((Number)value).intValue();
 			}
 			MAssetGroup.updateAsset(SetGetUtil.wrap(mTab), A_Asset_Group_ID);
+			*/
 			return NO_ERROR;
 		}		
 	} //	class Callout

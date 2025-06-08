@@ -862,6 +862,8 @@ public class MPeriod extends X_C_Period implements ImmutablePOSupport
 	{
 		if (!success)
 			return success;
+		
+		/*
 		if (newRecord)
 		{
 		//	SELECT Value FROM AD_Ref_List WHERE AD_Reference_ID=183
@@ -881,6 +883,8 @@ public class MPeriod extends X_C_Period implements ImmutablePOSupport
 			}
 			if (log.isLoggable(Level.FINE)) log.fine("PeriodControl #" + count);
 		}
+		*/
+		
 		return success;
 	}	//	afterSave
 		

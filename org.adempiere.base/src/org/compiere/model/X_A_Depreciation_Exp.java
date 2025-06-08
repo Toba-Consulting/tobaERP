@@ -503,6 +503,8 @@ public class X_A_Depreciation_Exp extends PO implements I_A_Depreciation_Exp, I_
 	public static final String A_ENTRY_TYPE_Splits = "SPL";
 	/** Transfers = TRN */
 	public static final String A_ENTRY_TYPE_Transfers = "TRN";
+	/** Adjustment = ADJ */
+	public static final String A_ENTRY_TYPE_Adjustment = "ADJ";
 	/** Set Entry Type.
 		@param A_Entry_Type Entry Type
 	*/
@@ -834,6 +836,26 @@ public class X_A_Depreciation_Exp extends PO implements I_A_Depreciation_Exp, I_
 	public int getUseLifeMonths_F()
 	{
 		Integer ii = (Integer)get_Value(COLUMNNAME_UseLifeMonths_F);
+		if (ii == null)
+			 return 0;
+		return ii.intValue();
+	}
+	
+	/** Set Year.
+		@param CalendarYear 
+		Calendar Year
+	  */
+	public void setCalendarYear (int CalendarYear)
+	{
+		set_Value (COLUMNNAME_CalendarYear, Integer.valueOf(CalendarYear));
+	}
+	
+	/** Get Year.
+		@return Calendar Year
+	  */
+	public int getCalendarYear () 
+	{
+		Integer ii = (Integer)get_Value(COLUMNNAME_CalendarYear);
 		if (ii == null)
 			 return 0;
 		return ii.intValue();

@@ -646,4 +646,65 @@ public interface I_M_Movement
 	public int getUser2_ID();
 
 	public org.compiere.model.I_C_ElementValue getUser2() throws RuntimeException;
+	
+	/** Column name M_Locator_ID */
+    public static final String COLUMNNAME_M_Locator_ID = "M_Locator_ID";
+
+	/** Set Locator.
+	  * Warehouse Locator
+	  */
+	public void setM_Locator_ID (int M_Locator_ID);
+
+	/** Get Locator.
+	  * Warehouse Locator
+	  */
+	public int getM_Locator_ID();
+
+	public I_M_Locator getM_Locator() throws RuntimeException;
+
+    /** Column name M_LocatorTo_ID */
+    public static final String COLUMNNAME_M_LocatorTo_ID = "M_LocatorTo_ID";
+
+	/** Set Locator To.
+	  * Location inventory is moved to
+	  */
+	public void setM_LocatorTo_ID (int M_LocatorTo_ID);
+
+	/** Get Locator To.
+	  * Location inventory is moved to
+	  */
+	public int getM_LocatorTo_ID();
+
+	public I_M_Locator getM_LocatorTo() throws RuntimeException;
+	
+	/** Column name MoveType */
+    public static final String COLUMNNAME_MoveType = "MoveType";
+
+	/** Set Move Type	  */
+	public void setMoveType (String MoveType);
+
+	/** Get Move Type	  */
+	public String getMoveType();
+
+    /** Column name M_WarehouseZone_ID */
+    public static final String COLUMNNAME_M_WarehouseZone_ID = "M_WarehouseZone_ID";
+
+	/** Set Warehouse Zone	  */
+	public void setM_WarehouseZone_ID (int M_WarehouseZone_ID);
+
+	/** Get Warehouse Zone	  */
+	public int getM_WarehouseZone_ID();
+
+	public I_M_WarehouseZone getM_WarehouseZone() throws RuntimeException;
+
+    /** Column name M_WarehouseZoneTo_ID */
+    public static final String COLUMNNAME_M_WarehouseZoneTo_ID = "M_WarehouseZoneTo_ID";
+
+	/** Set WH Zone To	  */
+	public void setM_WarehouseZoneTo_ID (int M_WarehouseZoneTo_ID);
+
+	/** Get WH Zone To	  */
+	public int getM_WarehouseZoneTo_ID();
+
+	public I_M_WarehouseZone getM_WarehouseZoneTo() throws RuntimeException;
 }

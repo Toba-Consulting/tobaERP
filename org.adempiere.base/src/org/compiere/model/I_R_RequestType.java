@@ -338,4 +338,17 @@ public interface I_R_RequestType
 	  * User who updated this records
 	  */
 	public int getUpdatedBy();
+	
+	/** Column name ReqBaseType */
+    public static final String COLUMNNAME_ReqBaseType = "ReqBaseType";
+
+	/** Set Request Base Type.
+	  * Logical type of request
+	  */
+	public void setReqBaseType (String ReqBaseType);
+
+	/** Get Request Base Type.
+	  * Logical type of request
+	  */
+	public String getReqBaseType();
 }

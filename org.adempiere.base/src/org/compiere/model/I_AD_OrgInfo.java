@@ -359,4 +359,33 @@ public interface I_AD_OrgInfo
 	  * User who updated this records
 	  */
 	public int getUpdatedBy();
+	
+	/** Column name LCO_ISIC_ID */
+    public static final String COLUMNNAME_LCO_ISIC_ID = "LCO_ISIC_ID";
+
+	/** Set ISIC	  */
+	public void setLCO_ISIC_ID (int LCO_ISIC_ID);
+
+	/** Get ISIC	  */
+	public int getLCO_ISIC_ID();
+
+    /** Column name LCO_TaxPayerType_ID */
+    public static final String COLUMNNAME_LCO_TaxPayerType_ID = "LCO_TaxPayerType_ID";
+
+	/** Set Tax Payer Type	  */
+	public void setLCO_TaxPayerType_ID (int LCO_TaxPayerType_ID);
+
+	/** Get Tax Payer Type	  */
+	public int getLCO_TaxPayerType_ID();
+	
+	/** Column name Transit_Warehouse_ID */
+    public static final String COLUMNNAME_Transit_Warehouse_ID = "Transit_Warehouse_ID";
+
+	/** Set Warehouse In Transit	  */
+	public void setTransit_Warehouse_ID (int Transit_Warehouse_ID);
+
+	/** Get Warehouse In Transit	  */
+	public int getTransit_Warehouse_ID();
+
+	public org.compiere.model.I_M_Warehouse getTransit_Warehouse() throws RuntimeException;
 }

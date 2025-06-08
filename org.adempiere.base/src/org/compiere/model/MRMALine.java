@@ -368,7 +368,10 @@ public class MRMALine extends X_M_RMALine
             this.setAmt(getUnitAmt());
             
             if (newRecord && getQty().signum() == 0)
-                this.setQty(originalQty);
+            	//@Stephan, set qty to 0, requestBy:Anin,Hadi
+            	//this.setQty(originalQty);
+                this.setQty(Env.ZERO);
+            	//end
         }
         
         // Set tax

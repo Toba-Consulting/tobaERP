@@ -1126,6 +1126,14 @@ public abstract class PO
 	 */
 	public final void set_ValueOfColumn(String columnName, Object value)
 	{
+		//@win add validation
+		boolean isRefInt = (p_info.getColumnDisplayType(get_ColumnIndex(columnName)) == DisplayType.Table) ||
+				(p_info.getColumnDisplayType(get_ColumnIndex(columnName)) == DisplayType.TableDir) ||
+				(p_info.getColumnDisplayType(get_ColumnIndex(columnName)) == DisplayType.Search);
+		if (isRefInt && value instanceof Integer && ((Integer) value).intValue() < 1) {
+			value = null;
+		}
+		
 		set_ValueOfColumnReturningBoolean(columnName, value);
 	}
 
@@ -1197,6 +1205,13 @@ public abstract class PO
 		// [ 1845793 ] PO.set_CustomColumn not updating correctly m_newValues
 		// this is for columns not in PO - verify and call proper method if exists
 		int poIndex = get_ColumnIndex(columnName);
+		//@win add validation
+		boolean isRefInt = (p_info.getColumnDisplayType(poIndex) == DisplayType.Table) ||
+				(p_info.getColumnDisplayType(poIndex) == DisplayType.TableDir) ||
+				(p_info.getColumnDisplayType(poIndex) == DisplayType.Search);
+		if (isRefInt && value instanceof Integer && ((Integer) value).intValue()<1)
+			value = null;
+		//end @win add validation
 		if (poIndex > 0) {
 			// is not custom column - it exists in the PO
 			return set_Value(columnName, value);
@@ -2350,7 +2365,7 @@ public abstract class PO
 			return false;
 		checkImmutable();
 		checkValidContext();
-		checkCrossTenant(true);
+		//	checkCrossTenant(true);
 		checkRecordIDCrossTenant();
 		checkRecordUUCrossTenant();
 
@@ -2420,7 +2435,7 @@ public abstract class PO
 		}
 		catch (Exception e)
 		{
-			log.log(Level.WARNING, "beforeSave - " + toString(), e);
+			log.log(Level.WARNING, "beforeSave - " + toString(), e.toString());
 			String msg = DBException.getDefaultDBExceptionMessage(e);
 			log.saveError(msg != null ? msg : "Error", e, false);
 			if (localTrx != null)

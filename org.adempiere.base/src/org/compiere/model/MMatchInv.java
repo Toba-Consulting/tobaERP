@@ -84,7 +84,7 @@ public class MMatchInv extends X_M_MatchInv
 		if (C_InvoiceLine_ID <= 0)
 			return new MMatchInv[]{};
 		//
-		String whereClause = "C_InvoiceLine_ID=?";
+		String whereClause = "C_InvoiceLine_ID=? AND Reversal_ID IS NULL";
 		List<MMatchInv> list = new Query(ctx, I_M_MatchInv.Table_Name, whereClause, trxName)
 		.setParameters(C_InvoiceLine_ID)
 		.list();
@@ -104,7 +104,7 @@ public class MMatchInv extends X_M_MatchInv
 			return new MMatchInv[]{};
 		//
 		final String whereClause = "EXISTS (SELECT 1 FROM M_InOutLine l"
-			+" WHERE M_MatchInv.M_InOutLine_ID=l.M_InOutLine_ID AND l.M_InOut_ID=?)"; 
+				+" WHERE M_MatchInv.M_InOutLine_ID=l.M_InOutLine_ID AND l.M_InOut_ID=?) AND Reversal_ID IS NULL";
 		List<MMatchInv> list = new Query(ctx, I_M_MatchInv.Table_Name, whereClause, trxName)
 		.setParameters(M_InOut_ID)
 		.list();
@@ -203,6 +203,29 @@ public class MMatchInv extends X_M_MatchInv
 		setProcessed(true);		//	auto
 	}	//	MMatchInv
 		
+	/** 
+	 * 	@author stephan 
+	 * 	Invoice Line Constructor 
+	 *	@param iLine invoice line 
+	 *	@param dateTrx optional date 
+	 *	@param qty matched quantity 
+	 *	@param match type 
+	 */ 
+	public MMatchInv (MInvoiceLine iLine, Timestamp dateTrx, BigDecimal qty, String type) 
+	{ 
+		this (iLine.getCtx(), 0, iLine.get_TrxName()); 
+		setClientOrg(iLine); 
+		setC_InvoiceLine_ID(iLine.getC_InvoiceLine_ID()); 
+		setM_InOutLine_ID(iLine.getM_InOutLine_ID()); 
+		if (dateTrx != null) 
+			setDateTrx (dateTrx); 
+		setM_Product_ID (iLine.getM_Product_ID()); 
+		setM_AttributeSetInstance_ID(iLine.getM_AttributeSetInstance_ID()); 
+		setQty (qty); 
+		setProcessed(true);		//	auto 
+		setMatchType(type); 
+	}	//	MMatchInv 
+	
 	/**
 	 * 	Before Save
 	 *	@param newRecord new
@@ -370,7 +393,7 @@ public class MMatchInv extends X_M_MatchInv
 			return new MMatchInv[]{};
 		}
 		//
-		final String whereClause = MMatchInv.COLUMNNAME_M_InOutLine_ID+"=?";
+		final String whereClause = MMatchInv.COLUMNNAME_M_InOutLine_ID+"=? AND Reversal_ID IS NULL";
 		List<MMatchInv> list = new Query(ctx, I_M_MatchInv.Table_Name, whereClause, trxName)
 		.setParameters(M_InOutLine_ID)
 		.list();

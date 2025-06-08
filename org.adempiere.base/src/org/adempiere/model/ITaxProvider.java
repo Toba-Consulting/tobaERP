@@ -17,6 +17,7 @@ import org.compiere.model.MInvoice;
 import org.compiere.model.MInvoiceLine;
 import org.compiere.model.MOrder;
 import org.compiere.model.MOrderLine;
+import org.compiere.model.MQuotationLine;
 import org.compiere.model.MRMA;
 import org.compiere.model.MRMALine;
 import org.compiere.model.MTaxProvider;
@@ -63,6 +64,14 @@ public interface ITaxProvider {
 	 */
 	public boolean updateHeaderTax(MTaxProvider provider, MOrderLine line);
 
+	//Stephan 
+	public boolean updateQuotationTax(MTaxProvider provider, MQuotationLine line); 
+	
+	public boolean recalculateTax(MTaxProvider provider, MQuotationLine line, boolean newRecord);
+	
+	public boolean updateHeaderTax(MTaxProvider provider, MQuotationLine line);
+	// end Stephan
+	
 	/**
 	 * Calculate invoice tax total
 	 * @param provider

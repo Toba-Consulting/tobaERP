@@ -2164,6 +2164,8 @@ public class X_C_Payment extends PO implements I_C_Payment, I_Persistent
 	public static final String TENDERTYPE_Account = "T";
 	/** Cash = X */
 	public static final String TENDERTYPE_Cash = "X";
+	/** Giro = G */
+	public static final String TENDERTYPE_Giro = "G";
 	/** Set Tender type.
 		@param TenderType Method of Payment
 	*/
@@ -2298,6 +2300,93 @@ public class X_C_Payment extends PO implements I_C_Payment, I_Persistent
 	public BigDecimal getWriteOffAmt()
 	{
 		BigDecimal bd = (BigDecimal)get_Value(COLUMNNAME_WriteOffAmt);
+		if (bd == null)
+			 return Env.ZERO;
+		return bd;
+	}
+	
+	/** Set AppliedAmt.
+	@param AppliedAmt AppliedAmt	  */
+	public void setAppliedAmt (BigDecimal AppliedAmt)
+	{
+		set_Value (COLUMNNAME_AppliedAmt, AppliedAmt);
+	}
+	
+	/** Get AppliedAmt.
+		@return AppliedAmt	  */
+	public BigDecimal getAppliedAmt () 
+	{
+		BigDecimal bd = (BigDecimal)get_Value(COLUMNNAME_AppliedAmt);
+		if (bd == null)
+			 return Env.ZERO;
+		return bd;
+	}
+	
+	/** Set Giro No.
+	@param GiroNo Giro No	  */
+	public void setGiroNo (String GiroNo)
+	{
+		set_Value (COLUMNNAME_GiroNo, GiroNo);
+	}
+	
+	/** Get Giro No.
+	@return Giro No	  */
+	public String getGiroNo () 
+	{
+		return (String)get_Value(COLUMNNAME_GiroNo);
+	}
+	
+	/** GiroStatus AD_Reference_ID=300033 */
+	public static final int GIROSTATUS_AD_Reference_ID=300033;
+	/** Receiving = RCV */
+	public static final String GIROSTATUS_Receiving = "RCV";
+	/** Remitted = RMT */
+	public static final String GIROSTATUS_Remitted = "RMT";
+	/** Bounced = BON */
+	public static final String GIROSTATUS_Bounced = "BON";
+	/** Transfered = TRF */
+	public static final String GIROSTATUS_Transfered = "TRF";
+	/** Set Giro Status.
+		@param GiroStatus Giro Status	  */
+	public void setGiroStatus (String GiroStatus)
+	{
+	
+		set_Value (COLUMNNAME_GiroStatus, GiroStatus);
+	}
+	
+	/** Get Giro Status.
+		@return Giro Status	  */
+	public String getGiroStatus () 
+	{
+		return (String)get_Value(COLUMNNAME_GiroStatus);
+	}
+	
+	/** Set Maturity Date.
+	@param MaturityDate Maturity Date	  */
+	public void setMaturityDate (Timestamp MaturityDate)
+	{
+		set_Value (COLUMNNAME_MaturityDate, MaturityDate);
+	}
+	
+	/** Get Maturity Date.
+		@return Maturity Date	  */
+	public Timestamp getMaturityDate () 
+	{
+		return (Timestamp)get_Value(COLUMNNAME_MaturityDate);
+	}
+	
+	/** Set User Rate.
+	@param UserRate User Rate	  */
+	public void setUserRate (BigDecimal UserRate)
+	{
+		set_Value (COLUMNNAME_UserRate, UserRate);
+	}
+	
+	/** Get User Rate.
+		@return User Rate	  */
+	public BigDecimal getUserRate () 
+	{
+		BigDecimal bd = (BigDecimal)get_Value(COLUMNNAME_UserRate);
 		if (bd == null)
 			 return Env.ZERO;
 		return bd;

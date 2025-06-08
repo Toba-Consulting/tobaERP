@@ -542,10 +542,12 @@ public class CLogMgt
 		//
 		sb.append(getMsg("Date")).append(eq)        .append(Env.getContext(Env.getCtx(), Env.DATE)).append(NL);
 		sb.append(getMsg("Printer")).append(eq)     .append(Env.getContext(Env.getCtx(), "#Printer")).append(NL);
+		/* commented by @win
 		// Show Implementation Vendor / Version - teo_sarca, [ 1622855 ]
 		sb.append(getMsg("ImplementationVendor")).append(eq).append(org.compiere.Adempiere.getImplementationVendor()).append(NL);
 		sb.append(getMsg("ImplementationVersion")).append(eq).append(org.compiere.Adempiere.getImplementationVersion()).append(NL);
 		//
+		*/
 		sb.append("iDempiereHome = ").append(Adempiere.getAdempiereHome()).append(NL);
 		sb.append("iDempiereProperties = ").append(Ini.getPropertyFileName()).append(NL);
 		sb.append(Env.getLanguage(Env.getCtx())).append(NL);

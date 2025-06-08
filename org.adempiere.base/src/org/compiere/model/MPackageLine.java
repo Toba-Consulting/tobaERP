@@ -99,4 +99,14 @@ public class MPackageLine extends X_M_PackageLine
 		setQty (line.getMovementQty());
 	}	//	setInOutLine
 	
+	/** 
+	 * @author edwinang 
+	 * @param line 
+	 */ 
+	public void setMovementLine (MMovementLine line) 
+	{ 
+		set_ValueOfColumn("M_MovementLine_ID", line.getM_MovementLine_ID()); 
+		setQty (line.getMovementQty()); 
+	}	//	setInOutLine 
+	
 }	//	MPackageLine

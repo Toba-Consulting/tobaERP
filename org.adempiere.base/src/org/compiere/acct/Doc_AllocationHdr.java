@@ -100,7 +100,7 @@ public class Doc_AllocationHdr extends Doc
 	 *	@param alloc header
 	 *  @return DocLine Array
 	 */
-	private DocLine[] loadLines(MAllocationHdr alloc)
+	protected DocLine[] loadLines(MAllocationHdr alloc)
 	{
 		ArrayList<DocLine> list = new ArrayList<DocLine>();
 		MAllocationLine[] lines = alloc.getLines(false);
@@ -296,7 +296,15 @@ public class Doc_AllocationHdr extends Doc
 					acct_unallocated_cash =  getPaymentAcct(as, line.getC_Payment_ID());
 				else if (line.getC_CashLine_ID() != 0)
 					acct_unallocated_cash =  getCashAcct(as, line.getC_CashLine_ID());
-				MAccount acct_receivable = getAccount(Doc.ACCTTYPE_C_Receivable, as);
+				
+				//@David
+				//MAccount acct_receivable = getAccount(Doc.ACCTTYPE_C_Receivable, as);
+				MAccount acct_receivable;
+				if (!useCustomBPAcctByCurrency(as.getC_Currency_ID(),getC_Currency_ID()))
+					acct_receivable = getAccount(Doc.ACCTTYPE_C_Receivable, as);
+				else
+					acct_receivable = getAccount(Doc.ACCTTYPE_C_Receivable_ByCurrency, as);
+				//@David End
 
 				if ((!as.isPostIfClearingEqual()) && acct_unallocated_cash != null && acct_unallocated_cash.equals(acct_receivable) && (!isInterOrg)) {
 
@@ -354,9 +362,19 @@ public class Doc_AllocationHdr extends Doc
 				//	AR Invoice Amount	CR
 				if (as.isAccrual())
 				{
+					/*
 					if (bpAcctAr == null)
 						bpAcctAr = getAccount(Doc.ACCTTYPE_C_Receivable, as);
 					bpAcct = bpAcctAr;
+					*/
+					
+					//@David
+					if (!useCustomBPAcctByCurrency(as.getC_Currency_ID(),getC_Currency_ID()))
+						bpAcct = getAccount(Doc.ACCTTYPE_C_Receivable, as);
+					else
+						bpAcct = getAccount(Doc.ACCTTYPE_C_Receivable_ByCurrency, as);
+					//@David End
+					
 					fl = fact.createLine (line, bpAcct,
 						getC_Currency_ID(), null, allocationSource);		//	payment currency
 					if (fl != null)
@@ -389,7 +407,16 @@ public class Doc_AllocationHdr extends Doc
 					acct_payment_select = getPaymentAcct(as, line.getC_Payment_ID());
 				else if (line.getC_CashLine_ID() != 0)
 					acct_payment_select = getCashAcct(as, line.getC_CashLine_ID());
-				MAccount acct_liability = getAccount(Doc.ACCTTYPE_V_Liability, as);
+				
+				//@David
+				//MAccount acct_liability = getAccount(Doc.ACCTTYPE_V_Liability, as);
+				MAccount acct_liability;
+				if (!useCustomBPAcctByCurrency(as.getC_Currency_ID(),getC_Currency_ID())) 
+					acct_liability = getAccount(Doc.ACCTTYPE_V_Liability, as);
+				else
+					acct_liability = getAccount(Doc.ACCTTYPE_V_Liability_ByCurrency, as);
+				//@David End
+				
 				boolean isUsingClearing = true;
 
 				// Save original allocation source for realized gain & loss purposes
@@ -409,9 +436,19 @@ public class Doc_AllocationHdr extends Doc
 				//	AP Invoice Amount	DR
 				if (as.isAccrual())
 				{
+					/*
 					if (bpAcctAp == null)
 						bpAcctAp = getAccount(Doc.ACCTTYPE_V_Liability, as);
 					bpAcct = bpAcctAp;
+					*/
+					
+					//@David
+					if (!useCustomBPAcctByCurrency(as.getC_Currency_ID(),getC_Currency_ID()))  
+						bpAcct = getAccount(Doc.ACCTTYPE_V_Liability, as); 
+					else 
+						bpAcct = getAccount(Doc.ACCTTYPE_V_Liability_ByCurrency, as); 
+					//@David End 
+					
 					fl = fact.createLine (line, bpAcct,
 						getC_Currency_ID(), allocationSource, null);		//	payment currency
 					if (fl != null)
@@ -646,6 +683,14 @@ public class Doc_AllocationHdr extends Doc
 				&& factLine.getM_Product_ID() == prevFactLine.getM_Product_ID()
 				&& factLine.getUserElement1_ID() == prevFactLine.getUserElement1_ID()
 				&& factLine.getUserElement2_ID() == prevFactLine.getUserElement2_ID()
+				&& factLine.getUserElement3_ID() == prevFactLine.getUserElement3_ID()
+				&& factLine.getUserElement4_ID() == prevFactLine.getUserElement4_ID()
+				&& factLine.getUserElement5_ID() == prevFactLine.getUserElement5_ID()
+				&& factLine.getUserElement6_ID() == prevFactLine.getUserElement6_ID()
+				&& factLine.getUserElement7_ID() == prevFactLine.getUserElement7_ID()
+				&& factLine.getUserElement8_ID() == prevFactLine.getUserElement8_ID()
+				&& factLine.getUserElement9_ID() == prevFactLine.getUserElement9_ID()
+				&& factLine.getUserElement10_ID() == prevFactLine.getUserElement10_ID()
 				&& factLine.getUser1_ID() == prevFactLine.getUser1_ID()
 				&& factLine.getUser2_ID() == prevFactLine.getUser2_ID());
 	}
@@ -705,11 +750,13 @@ public class Doc_AllocationHdr extends Doc
 		setC_BankAccount_ID(0);
 		//	Doc.ACCTTYPE_UnallocatedCash (AR) or C_Prepayment
 		//	or Doc.ACCTTYPE_PaymentSelect (AP) or V_Prepayment
-		int accountType = Doc.ACCTTYPE_UnallocatedCash;
+		int accountType = 0;
+		accountType = Doc.ACCTTYPE_UnallocatedCash;
 		//
 		int C_Charge_ID = 0;
 		
-		String sql = "SELECT p.C_BankAccount_ID, d.DocBaseType, p.IsReceipt, p.IsPrepayment, p.C_Charge_ID "
+		String m_tendertype = ""; 
+		String sql = "SELECT p.C_BankAccount_ID, d.DocBaseType, p.IsReceipt, p.IsPrepayment, p.TenderType, p.GiroStatus "
 				+ "FROM C_Payment p INNER JOIN C_DocType d ON (p.C_DocType_ID=d.C_DocType_ID) "
 				+ "WHERE C_Payment_ID=?";
 		PreparedStatement pstmt = null;
@@ -721,6 +768,7 @@ public class Doc_AllocationHdr extends Doc
 			rs = pstmt.executeQuery ();
 			if (rs.next ())
 			{
+				m_tendertype = rs.getString(5);
 				setC_BankAccount_ID(rs.getInt(1));
 				C_Charge_ID = rs.getInt(5);				// Charge
 				if (DOCTYPE_APPayment.equals(rs.getString(2)))
@@ -729,9 +777,21 @@ public class Doc_AllocationHdr extends Doc
 				if ("Y".equals(rs.getString(4)))		//	Prepayment
 				{
 					if ("Y".equals(rs.getString(3)))	//	Receipt
-						accountType = Doc.ACCTTYPE_C_Prepayment;
-					else
-						accountType = Doc.ACCTTYPE_V_Prepayment;
+						//@David 
+						//accountType = Doc.ACCTTYPE_C_Prepayment; 
+						if (!useCustomBPAcctByCurrency(as.getC_Currency_ID(),getC_Currency_ID()))  
+							accountType = Doc.ACCTTYPE_C_Prepayment; 
+						else 
+							accountType = Doc.ACCTTYPE_C_Prepayment_ByCurrency; 
+						//@David End 
+					else 
+						//@David 
+						//accountType = Doc.ACCTTYPE_V_Prepayment; 
+						if (!useCustomBPAcctByCurrency(as.getC_Currency_ID(),getC_Currency_ID()))  
+							accountType = Doc.ACCTTYPE_V_Prepayment; 
+						else 
+							accountType = Doc.ACCTTYPE_V_Prepayment_ByCurrency; 
+						//@David End 
 				}
 			}
  		}

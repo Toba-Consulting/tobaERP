@@ -919,4 +919,200 @@ public interface I_R_Request
 	  * User who updated this records
 	  */
 	public int getUpdatedBy();
+	
+	/** Column name C_BPartner_Location_ID */
+    public static final String COLUMNNAME_C_BPartner_Location_ID = "C_BPartner_Location_ID";
+
+	/** Set Partner Location.
+	  * Identifies the (ship to) address for this Business Partner
+	  */
+	public void setC_BPartner_Location_ID (int C_BPartner_Location_ID);
+
+	/** Get Partner Location.
+	  * Identifies the (ship to) address for this Business Partner
+	  */
+	public int getC_BPartner_Location_ID();
+
+	public org.compiere.model.I_C_BPartner_Location getC_BPartner_Location() throws RuntimeException;
+	
+	/** Column name C_Currency_ID */
+    public static final String COLUMNNAME_C_Currency_ID = "C_Currency_ID";
+
+	/** Set Currency.
+	  * The Currency for this record
+	  */
+	public void setC_Currency_ID (int C_Currency_ID);
+
+	/** Get Currency.
+	  * The Currency for this record
+	  */
+	public int getC_Currency_ID();
+
+	public org.compiere.model.I_C_Currency getC_Currency() throws RuntimeException;
+	
+	/** Column name DateOrdered */
+    public static final String COLUMNNAME_DateOrdered = "DateOrdered";
+
+	/** Set Date Ordered.
+	  * Date of Order
+	  */
+	public void setDateOrdered (Timestamp DateOrdered);
+
+	/** Get Date Ordered.
+	  * Date of Order
+	  */
+	public Timestamp getDateOrdered();
+	
+	/** Column name Description */
+    public static final String COLUMNNAME_Description = "Description";
+
+	/** Set Description.
+	  * Optional short description of the record
+	  */
+	public void setDescription (String Description);
+
+	/** Get Description.
+	  * Optional short description of the record
+	  */
+	public String getDescription();
+	
+	/** Column name DueDate_Request */
+    public static final String COLUMNNAME_DueDate_Request = "DueDate_Request";
+
+	/** Set Due Date (Request).
+	  * The date in which the request should be acted on.
+	  */
+	public void setDueDate_Request (Timestamp DueDate_Request);
+
+	/** Get Due Date (Request).
+	  * The date in which the request should be acted on.
+	  */
+	public Timestamp getDueDate_Request();
+	
+	/** Column name IsApproved */
+    public static final String COLUMNNAME_IsApproved = "IsApproved";
+
+	/** Set Approved.
+	  * Indicates if this document requires approval
+	  */
+	public void setIsApproved (boolean IsApproved);
+
+	/** Get Approved.
+	  * Indicates if this document requires approval
+	  */
+	public boolean isApproved();
+	
+	/** Column name IsSettled */
+    public static final String COLUMNNAME_IsSettled = "IsSettled";
+
+	/** Set IsSettled.
+	  * Indicates whether the document has to be settled or no
+	  */
+	public void setIsSettled (boolean IsSettled);
+
+	/** Get IsSettled.
+	  * Indicates whether the document has to be settled or no
+	  */
+	public boolean isSettled();
+	
+	/** Column name MiscType */
+    public static final String COLUMNNAME_MiscType = "MiscType";
+
+	/** Set Misc Type	  */
+	public void setMiscType (String MiscType);
+
+	/** Get Misc Type	  */
+	public String getMiscType();
+	
+	/** Column name M_Warehouse_ID */
+    public static final String COLUMNNAME_M_Warehouse_ID = "M_Warehouse_ID";
+
+	/** Set Warehouse.
+	  * Storage Warehouse and Service Point
+	  */
+	public void setM_Warehouse_ID (int M_Warehouse_ID);
+
+	/** Get Warehouse.
+	  * Storage Warehouse and Service Point
+	  */
+	public int getM_Warehouse_ID();
+
+	public org.compiere.model.I_M_Warehouse getM_Warehouse() throws RuntimeException;
+
+    /** Column name M_WarehouseTo_ID */
+    public static final String COLUMNNAME_M_WarehouseTo_ID = "M_WarehouseTo_ID";
+
+	/** Set Warehouse To	  */
+	public void setM_WarehouseTo_ID (int M_WarehouseTo_ID);
+
+	/** Get Warehouse To	  */
+	public int getM_WarehouseTo_ID();
+
+	public org.compiere.model.I_M_Warehouse getM_WarehouseTo() throws RuntimeException;
+	
+	/** Column name PrintButton */
+    public static final String COLUMNNAME_PrintButton = "PrintButton";
+
+	/** Set Print Button	  */
+	public void setPrintButton (String PrintButton);
+
+	/** Get Print Button	  */
+	public String getPrintButton();
+	
+	/** Column name ProcureType */
+    public static final String COLUMNNAME_ProcureType = "ProcureType";
+
+	/** Set Procure Type	  */
+	public void setProcureType (String ProcureType);
+
+	/** Get Procure Type	  */
+	public String getProcureType();
+	
+	/** Column name R_AssignedTo_ID */
+    public static final String COLUMNNAME_R_AssignedTo_ID = "R_AssignedTo_ID";
+
+	/** Set Assigned To	  */
+	public void setR_AssignedTo_ID (int R_AssignedTo_ID);
+
+	/** Get Assigned To	  */
+	public int getR_AssignedTo_ID();
+
+	public org.compiere.model.I_AD_User getR_AssignedTo() throws RuntimeException;
+	
+	/** Column name ReqBaseType */
+    public static final String COLUMNNAME_ReqBaseType = "ReqBaseType";
+
+	/** Set Request Base Type.
+	  * Logical type of request
+	  */
+	public void setReqBaseType (String ReqBaseType);
+
+	/** Get Request Base Type.
+	  * Logical type of request
+	  */
+	public String getReqBaseType();
+	
+	/** Column name R_RequestedBy_ID */
+    public static final String COLUMNNAME_R_RequestedBy_ID = "R_RequestedBy_ID";
+
+	/** Set Requested By	  */
+	public void setR_RequestedBy_ID (int R_RequestedBy_ID);
+
+	/** Get Requested By	  */
+	public int getR_RequestedBy_ID();
+
+	public org.compiere.model.I_AD_User getR_RequestedBy() throws RuntimeException;
+	
+	/** Column name SettlementDate */
+    public static final String COLUMNNAME_SettlementDate = "SettlementDate";
+
+	/** Set Settlement Date.
+	  * Settlement Date indicates the date of cash advance settlement
+	  */
+	public void setSettlementDate (Timestamp SettlementDate);
+
+	/** Get Settlement Date.
+	  * Settlement Date indicates the date of cash advance settlement
+	  */
+	public Timestamp getSettlementDate();
 }

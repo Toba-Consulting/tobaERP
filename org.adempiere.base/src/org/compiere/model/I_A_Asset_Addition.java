@@ -617,4 +617,68 @@ public interface I_A_Asset_Addition
 	  * User who updated this records
 	  */
 	public int getUpdatedBy();
+	
+	/** Column name A_Asset_Group_ID */
+    public static final String COLUMNNAME_A_Asset_Group_ID = "A_Asset_Group_ID";
+
+	/** Set Asset Group.
+	  * Group of Assets
+	  */
+	public void setA_Asset_Group_ID (int A_Asset_Group_ID);
+
+	/** Get Asset Group.
+	  * Group of Assets
+	  */
+	public int getA_Asset_Group_ID();
+
+	public org.compiere.model.I_A_Asset_Group getA_Asset_Group() throws RuntimeException;
+	
+	/** Column name A_NewAsset_Name */
+    public static final String COLUMNNAME_A_NewAsset_Name = "A_NewAsset_Name";
+
+	/** Set New Asset Name	  */
+	public void setA_NewAsset_Name (String A_NewAsset_Name);
+
+	/** Get New Asset Name	  */
+	public String getA_NewAsset_Name();
+
+    /** Column name A_NewAsset_Value */
+    public static final String COLUMNNAME_A_NewAsset_Value = "A_NewAsset_Value";
+
+	/** Set New Asset Value	  */
+	public void setA_NewAsset_Value (String A_NewAsset_Value);
+
+	/** Get New Asset Value	  */
+	public String getA_NewAsset_Value();
+	
+	 /** Column name IsAdjustAccmDepr */
+    public static final String COLUMNNAME_IsAdjustAccmDepr = "IsAdjustAccmDepr";
+
+	/** Set Adjust Accm Depreciation ?	  */
+	public void setIsAdjustAccmDepr (boolean IsAdjustAccmDepr);
+
+	/** Get Adjust Accm Depreciation ?	  */
+	public boolean isAdjustAccmDepr();
+
+    /** Column name IsAdjustUseLife */
+    public static final String COLUMNNAME_IsAdjustUseLife = "IsAdjustUseLife";
+
+	/** Set Adjust Use Life (Year) ?	  */
+	public void setIsAdjustUseLife (boolean IsAdjustUseLife);
+
+	/** Get Adjust Use Life (Year) ?	  */
+	public boolean isAdjustUseLife();
+	
+	/** Column name UseLifeYears */
+    public static final String COLUMNNAME_UseLifeYears = "UseLifeYears";
+
+	/** Set Usable Life - Years.
+	  * Years of the usable life of the asset
+	  */
+	public void setUseLifeYears (int UseLifeYears);
+
+	/** Get Usable Life - Years.
+	  * Years of the usable life of the asset
+	  */
+	public int getUseLifeYears();
 }

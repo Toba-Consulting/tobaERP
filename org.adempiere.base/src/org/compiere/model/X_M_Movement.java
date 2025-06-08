@@ -1155,4 +1155,135 @@ public class X_M_Movement extends PO implements I_M_Movement, I_Persistent
 			 return 0;
 		return ii.intValue();
 	}
+	
+	public I_M_Locator getM_Locator() throws RuntimeException
+    {
+		return (I_M_Locator)MTable.get(getCtx(), I_M_Locator.Table_Name)
+			.getPO(getM_Locator_ID(), get_TrxName());	}
+
+	/** Set Locator.
+		@param M_Locator_ID 
+		Warehouse Locator
+	  */
+	public void setM_Locator_ID (int M_Locator_ID)
+	{
+		if (M_Locator_ID < 1) 
+			set_ValueNoCheck (COLUMNNAME_M_Locator_ID, null);
+		else 
+			set_ValueNoCheck (COLUMNNAME_M_Locator_ID, Integer.valueOf(M_Locator_ID));
+	}
+
+	/** Get Locator.
+		@return Warehouse Locator
+	  */
+	public int getM_Locator_ID () 
+	{
+		Integer ii = (Integer)get_Value(COLUMNNAME_M_Locator_ID);
+		if (ii == null)
+			 return 0;
+		return ii.intValue();
+	}
+
+	public I_M_Locator getM_LocatorTo() throws RuntimeException
+    {
+		return (I_M_Locator)MTable.get(getCtx(), I_M_Locator.Table_Name)
+			.getPO(getM_LocatorTo_ID(), get_TrxName());	}
+
+	/** Set Locator To.
+		@param M_LocatorTo_ID 
+		Location inventory is moved to
+	  */
+	public void setM_LocatorTo_ID (int M_LocatorTo_ID)
+	{
+		if (M_LocatorTo_ID < 1) 
+			set_ValueNoCheck (COLUMNNAME_M_LocatorTo_ID, null);
+		else 
+			set_ValueNoCheck (COLUMNNAME_M_LocatorTo_ID, Integer.valueOf(M_LocatorTo_ID));
+	}
+
+	/** Get Locator To.
+		@return Location inventory is moved to
+	  */
+	public int getM_LocatorTo_ID () 
+	{
+		Integer ii = (Integer)get_Value(COLUMNNAME_M_LocatorTo_ID);
+		if (ii == null)
+			 return 0;
+		return ii.intValue();
+	}
+	
+	/** MoveType AD_Reference_ID=300021 */
+	public static final int MOVETYPE_AD_Reference_ID=300021;
+	/** Intra-Warehouse = INW */
+	public static final String MOVETYPE_Intra_Warehouse = "INW";
+	/** Inter-Warehouse = ITW */
+	public static final String MOVETYPE_Inter_Warehouse = "ITW";
+	/** Inbound = INB */
+	public static final String MOVETYPE_Inbound = "INB";
+	/** Outbond = OTB */
+	public static final String MOVETYPE_Outbond = "OTB";
+	/** Set Move Type.
+		@param MoveType Move Type	  */
+	public void setMoveType (String MoveType)
+	{
+
+		set_Value (COLUMNNAME_MoveType, MoveType);
+	}
+
+	/** Get Move Type.
+		@return Move Type	  */
+	public String getMoveType () 
+	{
+		return (String)get_Value(COLUMNNAME_MoveType);
+	}
+
+	public I_M_WarehouseZone getM_WarehouseZone() throws RuntimeException
+    {
+		return (I_M_WarehouseZone)MTable.get(getCtx(), I_M_WarehouseZone.Table_Name)
+			.getPO(getM_WarehouseZone_ID(), get_TrxName());	}
+
+	/** Set Warehouse Zone.
+		@param M_WarehouseZone_ID Warehouse Zone	  */
+	public void setM_WarehouseZone_ID (int M_WarehouseZone_ID)
+	{
+		if (M_WarehouseZone_ID < 1) 
+			set_ValueNoCheck (COLUMNNAME_M_WarehouseZone_ID, null);
+		else 
+			set_ValueNoCheck (COLUMNNAME_M_WarehouseZone_ID, Integer.valueOf(M_WarehouseZone_ID));
+	}
+
+	/** Get Warehouse Zone.
+		@return Warehouse Zone	  */
+	public int getM_WarehouseZone_ID () 
+	{
+		Integer ii = (Integer)get_Value(COLUMNNAME_M_WarehouseZone_ID);
+		if (ii == null)
+			 return 0;
+		return ii.intValue();
+	}
+
+	public I_M_WarehouseZone getM_WarehouseZoneTo() throws RuntimeException
+    {
+		return (I_M_WarehouseZone)MTable.get(getCtx(), I_M_WarehouseZone.Table_Name)
+			.getPO(getM_WarehouseZoneTo_ID(), get_TrxName());	}
+
+	/** Set WH Zone To.
+		@param M_WarehouseZoneTo_ID WH Zone To	  */
+	public void setM_WarehouseZoneTo_ID (int M_WarehouseZoneTo_ID)
+	{
+		if (M_WarehouseZoneTo_ID < 1) 
+			set_ValueNoCheck (COLUMNNAME_M_WarehouseZoneTo_ID, null);
+		else 
+			set_ValueNoCheck (COLUMNNAME_M_WarehouseZoneTo_ID, Integer.valueOf(M_WarehouseZoneTo_ID));
+	}
+
+	/** Get WH Zone To.
+		@return WH Zone To	  */
+	public int getM_WarehouseZoneTo_ID () 
+	{
+		Integer ii = (Integer)get_Value(COLUMNNAME_M_WarehouseZoneTo_ID);
+		if (ii == null)
+			 return 0;
+		return ii.intValue();
+	}
 }

@@ -232,4 +232,15 @@ public interface I_M_Locator
 	  * Z dimension, e.g., Level
 	  */
 	public String getZ();
+	
+	/** Column name M_WarehouseZone_ID */
+    public static final String COLUMNNAME_M_WarehouseZone_ID = "M_WarehouseZone_ID";
+
+	/** Set Warehouse Zone	  */
+	public void setM_WarehouseZone_ID (int M_WarehouseZone_ID);
+
+	/** Get Warehouse Zone	  */
+	public int getM_WarehouseZone_ID();
+
+	public I_M_WarehouseZone getM_WarehouseZone() throws RuntimeException;
 }

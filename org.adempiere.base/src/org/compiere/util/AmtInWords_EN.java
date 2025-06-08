@@ -170,7 +170,10 @@ public class AmtInWords_EN implements AmtInWords
 			if (pos == i) //	we are done
 			{
 				String cents = oldamt.substring (i + 1);
-				sb.append (' ').append (cents).append ("/100");
+				String cent = convert(Long.parseLong(cents));
+				sb.append(" Point ");
+				sb.append(cent);
+				//sb.append (' ').append (cents).append ("/100");
 				break;
 			}
 		}

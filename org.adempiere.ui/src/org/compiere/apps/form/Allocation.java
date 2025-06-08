@@ -24,6 +24,7 @@ import org.adempiere.exceptions.AdempiereException;
 import org.compiere.minigrid.IMiniTable;
 import org.compiere.model.MAllocationHdr;
 import org.compiere.model.MAllocationLine;
+import org.compiere.model.MBPartner;
 import org.compiere.model.MDocType;
 import org.compiere.model.MInvoice;
 import org.compiere.model.MPayment;
@@ -64,13 +65,13 @@ public class Allocation
 	protected Timestamp allocDate = null;
 
 	//  Index	changed if multi-currency
-	private int         i_payment = 7;
+	private int         i_payment = 8;
 	//
-	private int         i_open = 6;
-	private int         i_discount = 7;
-	private int         i_writeOff = 8; 
-	private int         i_applied = 9;
-	private int 		i_overUnder = 10;
+	private int         i_open = 7;
+	private int         i_discount = 8;
+	private int         i_writeOff = 9; 
+	private int         i_applied = 10;
+	private int 		i_overUnder = 11;
 	
 	protected int         	m_AD_Org_ID = 0;
 
@@ -174,16 +175,21 @@ public class Allocation
 		paymentTable.setColumnClass(i++, Boolean.class, false);         //  0-Selection
 		paymentTable.setColumnClass(i++, Timestamp.class, true);        //  1-TrxDate
 		paymentTable.setColumnClass(i++, String.class, true);           //  2-Value
+		paymentTable.setColumnClass(i++, String.class, true);			//  3-DocStatus
 		if (isMultiCurrency)
 		{
-			paymentTable.setColumnClass(i++, String.class, true);       //  3-Currency
-			paymentTable.setColumnClass(i++, BigDecimal.class, true);   //  4-PayAmt
+			paymentTable.setColumnClass(i++, String.class, true);       //  4-Currency
+			paymentTable.setColumnClass(i++, BigDecimal.class, true);   //  5-PayAmt
 		}
-		paymentTable.setColumnClass(i++, BigDecimal.class, true);       //  5-ConvAmt
-		paymentTable.setColumnClass(i++, BigDecimal.class, true);       //  6-ConvOpen
-		paymentTable.setColumnClass(i++, BigDecimal.class, false);      //  7-Allocated
+		paymentTable.setColumnClass(i++, BigDecimal.class, true);       //  6-ConvAmt
+		paymentTable.setColumnClass(i++, BigDecimal.class, true);       //  7-ConvOpen
+		paymentTable.setColumnClass(i++, BigDecimal.class, false);      //  8-Allocated
+		
+		//@tegar
+		paymentTable.setColumnClass(i++, String.class, true); 	     	//  9-Doct Type
+		//end
 		//
-		i_payment = isMultiCurrency ? 7 : 5;
+		i_payment = isMultiCurrency ? 8 : 6;
 		
 
 		//  Table UI
@@ -226,6 +232,7 @@ public class Allocation
 		columnNames.add(Msg.getMsg(Env.getCtx(), "Select"));
 		columnNames.add(Msg.translate(Env.getCtx(), "Date"));
 		columnNames.add(Util.cleanAmp(Msg.translate(Env.getCtx(), "DocumentNo")));
+		columnNames.add(Util.cleanAmp(Msg.translate(Env.getCtx(), "DocStatus")));
 		if (isMultiCurrency)
 		{
 			columnNames.add(Msg.getMsg(Env.getCtx(), "TrxCurrency"));
@@ -237,6 +244,9 @@ public class Allocation
 		columnNames.add(Msg.getMsg(Env.getCtx(), "WriteOff"));
 		columnNames.add(Msg.getMsg(Env.getCtx(), "AppliedAmt"));
 		columnNames.add(Msg.getMsg(Env.getCtx(), "OverUnderAmt"));
+		//@tegar
+		columnNames.add(Msg.getMsg(Env.getCtx(), "DocType"));
+		//end
 		
 		return columnNames;
 	}
@@ -252,17 +262,19 @@ public class Allocation
 		invoiceTable.setColumnClass(i++, Boolean.class, false);         //  0-Selection
 		invoiceTable.setColumnClass(i++, Timestamp.class, true);        //  1-TrxDate
 		invoiceTable.setColumnClass(i++, String.class, true);           //  2-Value
+		invoiceTable.setColumnClass(i++, String.class,true);			//  3-DocStatus
 		if (isMultiCurrency)
 		{
-			invoiceTable.setColumnClass(i++, String.class, true);       //  3-Currency
-			invoiceTable.setColumnClass(i++, BigDecimal.class, true);   //  4-Amt
+			invoiceTable.setColumnClass(i++, String.class, true);       //  4-Currency
+			invoiceTable.setColumnClass(i++, BigDecimal.class, true);   //  5-Amt
 		}
-		invoiceTable.setColumnClass(i++, BigDecimal.class, true);       //  5-ConvAmt
-		invoiceTable.setColumnClass(i++, BigDecimal.class, true);       //  6-ConvAmt Open
-		invoiceTable.setColumnClass(i++, BigDecimal.class, false);      //  7-Conv Discount
-		invoiceTable.setColumnClass(i++, BigDecimal.class, false);      //  8-Conv WriteOff
-		invoiceTable.setColumnClass(i++, BigDecimal.class, false);      //  9-Conv OverUnder
-		invoiceTable.setColumnClass(i++, BigDecimal.class, true);		//	10-Conv Applied
+		invoiceTable.setColumnClass(i++, BigDecimal.class, true);       //  6-ConvAmt
+		invoiceTable.setColumnClass(i++, BigDecimal.class, true);       //  7-ConvAmt Open
+		invoiceTable.setColumnClass(i++, BigDecimal.class, false);      //  8-Conv Discount
+		invoiceTable.setColumnClass(i++, BigDecimal.class, false);      //  9-Conv WriteOff
+		invoiceTable.setColumnClass(i++, BigDecimal.class, false);      //  10-Conv OverUnder
+		invoiceTable.setColumnClass(i++, BigDecimal.class, true);		//	11-Conv Applied
+		invoiceTable.setColumnClass(i++, String.class, true);			//	12-Doctype
 		//  Table UI
 		invoiceTable.autoSize();
 	}
@@ -273,11 +285,11 @@ public class Allocation
 	 */
 	protected void prepareForCalculate(boolean isMultiCurrency)
 	{
-		i_open = isMultiCurrency ? 6 : 4;
-		i_discount = isMultiCurrency ? 7 : 5;
-		i_writeOff = isMultiCurrency ? 8 : 6;
-		i_applied = isMultiCurrency ? 9 : 7;
-		i_overUnder = isMultiCurrency ? 10 : 8;
+		i_open = isMultiCurrency ? 7 : 5;
+		i_discount = isMultiCurrency ? 8 : 6;
+		i_writeOff = isMultiCurrency ? 9 : 7;
+		i_applied = isMultiCurrency ? 10 : 8;
+		i_overUnder = isMultiCurrency ? 11 : 9;
 	}   //  loadBPartner
 	
 	/**
@@ -358,7 +370,9 @@ public class Allocation
 					applied = applied.subtract(discount);
 					writeOff = Env.ZERO;  //  to be sure
 					overUnder = Env.ZERO;
-					totalDiff = Env.ZERO;
+					//@win - TAOWI-253
+					//totalDiff = Env.ZERO;
+					//end @win - TAOWI-253
 
 					if (totalDiff.abs().compareTo(applied.abs()) < 0			// where less is available to allocate than open
 							&& totalDiff.signum() == applied.signum() )     	// and the available amount has the same sign
@@ -550,7 +564,7 @@ public class Allocation
 	 * @param trxName
 	 * @return {@link MAllocationHdr}
 	 */
-	public MAllocationHdr saveData(int m_WindowNo, Timestamp dateTrx, IMiniTable payment, IMiniTable invoice, String trxName)
+	public MAllocationHdr saveData(int m_WindowNo, Timestamp dateTrx, IMiniTable payment, IMiniTable invoice, String trxName, Object Description)
 	{
 		if (m_noInvoices + m_noPayments == 0)
 			return null;
@@ -606,7 +620,10 @@ public class Allocation
 			dateTrx, C_Currency_ID, Env.getContext(Env.getCtx(), Env.AD_USER_NAME), trxName);
 		alloc.setAD_Org_ID(AD_Org_ID);
 		alloc.setC_DocType_ID(m_C_DocType_ID);
-		alloc.setDescription(alloc.getDescriptionForManualAllocation(m_C_BPartner_ID, trxName));
+		//@tegar
+		//alloc.setDescription(alloc.getDescriptionForManualAllocation(m_C_BPartner_ID, trxName));
+		alloc.setDescription(Description+" ("+alloc.getDescriptionForManualAllocation(m_C_BPartner_ID, trxName)+")");
+		//end
 		alloc.saveEx();
 		//	For all invoices
 		BigDecimal unmatchedApplied = Env.ZERO;
@@ -754,6 +771,9 @@ public class Allocation
 			if (log.isLoggable(Level.CONFIG)) log.config("Payment #" + i + (pay.isAllocated() ? " not" : " is") 
 					+ " fully allocated");
 		}
+		MBPartner bpartner = new MBPartner(Env.getCtx(), m_C_BPartner_ID, trxName);
+		bpartner.setTotalOpenBalance();
+		bpartner.saveEx();
 		paymentList.clear();
 		amountList.clear();
 		

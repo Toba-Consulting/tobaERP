@@ -45,10 +45,10 @@ public abstract class CreateFromBatch extends CreateFrom
 	}
 	
 	@Deprecated
-	public String getSQLWhere(Object BPartner, String DocumentNo, Object DateFrom, Object DateTo, 
+	public String getSQLWhere(Object BPartner, String DocumentNo, Timestamp PeriodDateFrom, Timestamp PeriodDateTo, Object DateFrom, Object DateTo, 
 			Object AmtFrom, Object AmtTo, Object DocType, Object TenderType, String AuthCode)
 	{
-		return getSQLWhere((Integer)BPartner, DocumentNo, (Timestamp)DateFrom, (Timestamp)DateTo, 
+		return getSQLWhere((Integer)BPartner, DocumentNo, PeriodDateFrom, PeriodDateTo, (Timestamp)DateFrom, (Timestamp)DateTo, 
 				(BigDecimal)AmtFrom, (BigDecimal)AmtTo, (Integer)DocType, (String)TenderType, AuthCode);
 	}
 	
@@ -65,13 +65,21 @@ public abstract class CreateFromBatch extends CreateFrom
 	 * @param AuthCode
 	 * @return where clause
 	 */
-	protected String getSQLWhere(Integer BPartner, String DocumentNo, Timestamp DateFrom, Timestamp DateTo, 
+	protected String getSQLWhere(Integer BPartner, String DocumentNo, Timestamp PeriodDateFrom, Timestamp PeriodDateTo, Timestamp DateFrom, Timestamp DateTo, 
 			BigDecimal AmtFrom, BigDecimal AmtTo, Integer DocType, String TenderType, String AuthCode)
 	{
 		StringBuilder sql = new StringBuilder();
 		sql.append("WHERE p.Processed='Y' AND p.IsReconciled='N'");
-		sql.append(" AND p.DocStatus IN ('CO','CL','RE','VO') AND p.PayAmt<>0"); 
+		//@win - only reconcile Payment with status CO and CL
+		//sql.append(" AND p.DocStatus IN ('CO','CL','RE','VO') AND p.PayAmt<>0"); 
+		
+		//@edwin handy TAOWI-1350
+		sql.append(" AND p.DocStatus IN ('CO','CL','RE') AND p.PayAmt<>0"); 
+		//@edwin handy end
+		
 		sql.append(" AND p.C_BankAccount_ID = ?");
+		//@win - only select payment with the bank statement period 
+		sql.append(" AND TRUNC(p.DateAcct) BETWEEN ? AND ?");
 	    sql.append(" AND NOT EXISTS (SELECT * FROM C_BankStatementLine l WHERE p.C_Payment_ID=l.C_Payment_ID AND l.StmtAmt <> 0)");
 	    	    
 	    if(DocType != null)
@@ -111,11 +119,11 @@ public abstract class CreateFromBatch extends CreateFrom
 	}
 	
 	@Deprecated
-	void setParameters(PreparedStatement pstmt, Object BankAccount, Object BPartner, String DocumentNo, Object DateFrom, Object DateTo, 
+	void setParameters(PreparedStatement pstmt, Object BankAccount, Timestamp PeriodDateFrom, Timestamp PeriodDateTo, Object BPartner, String DocumentNo, Object DateFrom, Object DateTo, 
 			Object AmtFrom, Object AmtTo, Object DocType, Object TenderType, String AuthCode)
 	throws SQLException
 	{
-		setParameters(pstmt, (Integer)BankAccount, (Integer)BPartner, DocumentNo, (Timestamp)DateFrom, (Timestamp)DateTo, 
+		setParameters(pstmt, (Integer)BankAccount, PeriodDateFrom, PeriodDateTo, (Integer)BPartner, DocumentNo, (Timestamp)DateFrom, (Timestamp)DateTo, 
 				(BigDecimal)AmtFrom, (BigDecimal)AmtTo, (Integer)DocType, (String)TenderType, AuthCode);
 	}
 	
@@ -134,13 +142,15 @@ public abstract class CreateFromBatch extends CreateFrom
 	 * @param AuthCode
 	 * @throws SQLException
 	 */
-	protected void setParameters(PreparedStatement pstmt, Integer BankAccount, Integer BPartner, String DocumentNo, Timestamp DateFrom, Timestamp DateTo, 
+	protected void setParameters(PreparedStatement pstmt, Integer BankAccount, Timestamp PeriodDateFrom, Timestamp PeriodDateTo, Integer BPartner, String DocumentNo, Timestamp DateFrom, Timestamp DateTo, 
 			BigDecimal AmtFrom, BigDecimal AmtTo, Integer DocType, String TenderType, String AuthCode)
 	throws SQLException
 	{
 		int index = 1;
 		
 		pstmt.setInt(index++, BankAccount != null ? BankAccount : (Integer) getGridTab().getValue("C_BankAccount_ID"));
+		pstmt.setTimestamp(index++, PeriodDateFrom);
+		pstmt.setTimestamp(index++, PeriodDateTo);
 		
 		if(DocType != null)
 			pstmt.setInt(index++, DocType);
@@ -197,9 +207,9 @@ public abstract class CreateFromBatch extends CreateFrom
 	
 	@Deprecated
 	protected Vector<Vector<Object>> getBankAccountData(Object BankAccount, Object BPartner, String DocumentNo, 
-			Object DateFrom, Object DateTo, Object AmtFrom, Object AmtTo, Object DocType, Object TenderType, String AuthCode)
+			Timestamp PeriodDateFrom, Timestamp PeriodDateTo, Object DateFrom, Object DateTo, Object AmtFrom, Object AmtTo, Object DocType, Object TenderType, String AuthCode)
 	{
-		return getBankAccountData((Integer)BankAccount, (Integer)BPartner, DocumentNo, (Timestamp)DateFrom, (Timestamp)DateTo, 
+		return getBankAccountData((Integer)BankAccount, (Integer)BPartner, DocumentNo, PeriodDateFrom, PeriodDateTo, (Timestamp)DateFrom, (Timestamp)DateTo, 
 				(BigDecimal)AmtFrom, (BigDecimal)AmtTo, (Integer)DocType, (String)TenderType, AuthCode);
 	}
 	
@@ -218,7 +228,7 @@ public abstract class CreateFromBatch extends CreateFrom
 	 * @return list of transaction records (usually payments) for bank account
 	 */
 	protected abstract Vector<Vector<Object>> getBankAccountData(Integer BankAccount, Integer BPartner, String DocumentNo, 
-			Timestamp DateFrom, Timestamp DateTo, BigDecimal AmtFrom, BigDecimal AmtTo, Integer DocType, String TenderType, String AuthCode);
+			Timestamp PeriodDateFrom, Timestamp PeriodDateTo, Timestamp DateFrom, Timestamp DateTo, BigDecimal AmtFrom, BigDecimal AmtTo, Integer DocType, String TenderType, String AuthCode);
 	
 	@Override
 	public void info(IMiniTable miniTable, IStatusBar statusBar)

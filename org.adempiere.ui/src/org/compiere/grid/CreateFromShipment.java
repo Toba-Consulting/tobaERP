@@ -19,6 +19,7 @@ import java.math.RoundingMode;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Vector;
 import java.util.logging.Level;
@@ -199,7 +200,7 @@ public abstract class CreateFromShipment extends CreateFrom
 				+ " p.M_Locator_ID, loc.Value, " // 5..6
 				+ " COALESCE(l.M_Product_ID,0),COALESCE(p.Name,c.Name), " //	7..8
 				+ " po.VendorProductNo, " // 9
-				+ " l.C_OrderLine_ID,l.Line "	//	10..11
+				+ " l.C_OrderLine_ID,l.Line,l.DatePromised "	//	10..11
 				+ "FROM C_OrderLine l"
 				+ " LEFT OUTER JOIN M_Product_PO po ON (l.M_Product_ID = po.M_Product_ID AND l.C_BPartner_ID = po.C_BPartner_ID) "
 				+ " LEFT OUTER JOIN M_MatchPO m ON (l.C_OrderLine_ID=m.C_OrderLine_ID AND ");
@@ -214,7 +215,9 @@ public abstract class CreateFromShipment extends CreateFrom
 			sql.append(" LEFT OUTER JOIN C_UOM_Trl uom ON (l.C_UOM_ID=uom.C_UOM_ID AND uom.AD_Language='")
 			.append(Env.getAD_Language(Env.getCtx())).append("')");
 		//
-		sql.append(" WHERE l.C_Order_ID=? "			//	#1
+		//	@stephan
+		//	sql.append(" WHERE l.C_Order_ID=? "				//	#1
+			sql.append(" WHERE l.C_Order_ID=? AND l.IsReceipt<>'Y' "			//	#1
 				+ "GROUP BY l.QtyOrdered,CASE WHEN l.QtyOrdered=0 THEN 0 ELSE l.QtyEntered/l.QtyOrdered END, "
 				+ "l.C_UOM_ID,COALESCE(uom.UOMSymbol,uom.Name), p.M_Locator_ID, loc.Value, po.VendorProductNo, "
 				+ "l.M_Product_ID,COALESCE(p.Name,c.Name), l.Line,l.C_OrderLine_ID "
@@ -248,6 +251,7 @@ public abstract class CreateFromShipment extends CreateFrom
 				line.add(pp);                           //  6-OrderLine
 				line.add(null);                         //  7-Ship
 				line.add(null);                         //  8-Invoice
+				line.add(rs.getTimestamp(12));
 				data.add(line);
 			}
 		}
@@ -351,6 +355,7 @@ public abstract class CreateFromShipment extends CreateFrom
 				pp = new KeyNamePair(rs.getInt(1), rs.getString(2));
 				line.add(pp);   //7-RMA
 				line.add(null); //8-invoice
+				line.add(null);
 	            data.add(line);
             }
 	    }
@@ -434,6 +439,7 @@ public abstract class CreateFromShipment extends CreateFrom
 				line.add(null); // 7-Ship
 				pp = new KeyNamePair(rs.getInt(10), rs.getString(11));
 				line.add(pp); // 8-Invoice
+				line.add(null);
 				data.add(line);
 			}
 		}
@@ -523,6 +529,7 @@ public abstract class CreateFromShipment extends CreateFrom
 		miniTable.setColumnClass(6, String.class, true);     //  Order
 		miniTable.setColumnClass(7, String.class, true);     //  Ship
 		miniTable.setColumnClass(8, String.class, true);   //  Invoice
+		miniTable.setColumnClass(9, Timestamp.class, true);
 		
 		//  Table UI
 		miniTable.autoSize();		
@@ -620,6 +627,7 @@ public abstract class CreateFromShipment extends CreateFrom
 	    columnNames.add(Msg.getElement(Env.getCtx(), "C_Order_ID", false));
 	    columnNames.add(Msg.getElement(Env.getCtx(), "M_RMA_ID", false));
 	    columnNames.add(Msg.getElement(Env.getCtx(), "C_Invoice_ID", false));
+	    columnNames.add(Msg.getElement(Env.getCtx(), "DatePromised", false));
 	    
 	    return columnNames;
 	}

@@ -61,19 +61,22 @@ public abstract class CreateFromStatement extends CreateFromBatch
 	 * @return transactions (selection,dateTrx,[c_payment_id,documentNo],[c_currency_id,iso_code],payamt,convertedAmt,bpName)
 	 */
 	@Override
-	protected Vector<Vector<Object>> getBankAccountData(Integer BankAccount, Integer BPartner, String DocumentNo, 
+	protected Vector<Vector<Object>> getBankAccountData(Integer BankAccount, Integer BPartner, String DocumentNo, Timestamp PeriodDateFrom, Timestamp PeriodDateTo, 
 			Timestamp DateFrom, Timestamp DateTo, BigDecimal AmtFrom, BigDecimal AmtTo, Integer DocType, String TenderType, String AuthCode)
 	{
 		Vector<Vector<Object>> data = new Vector<Vector<Object>>();
 		
 		StringBuilder sql = new StringBuilder();
 		sql.append("SELECT p.DateTrx,p.C_Payment_ID,p.DocumentNo, p.C_Currency_ID,c.ISO_Code, p.PayAmt,");
-		sql.append("currencyConvertPayment(p.C_Payment_ID,ba.C_Currency_ID), bp.Name ");
+		sql.append("currencyConvert(p.PayAmt,p.C_Currency_ID,ba.C_Currency_ID,p.DateAcct,p.C_ConversionType_ID,p.AD_Client_ID,p.AD_Org_ID), bp.Name ");
+		//	@Stephan TAOWI-446
+		sql.append(",p.TenderType, p.GiroStatus ");
+		//	end
 		sql.append("FROM C_BankAccount ba");
 		sql.append(" INNER JOIN C_Payment_v p ON (p.C_BankAccount_ID=ba.C_BankAccount_ID)");
 		sql.append(" INNER JOIN C_Currency c ON (p.C_Currency_ID=c.C_Currency_ID)");
 		sql.append(" LEFT OUTER JOIN C_BPartner bp ON (p.C_BPartner_ID=bp.C_BPartner_ID) ");
-		sql.append(getSQLWhere(BPartner, DocumentNo, DateFrom, DateTo, AmtFrom, AmtTo, DocType, TenderType, AuthCode));
+		sql.append(getSQLWhere(BPartner, DocumentNo, PeriodDateFrom, PeriodDateTo, DateFrom, DateTo, AmtFrom, AmtTo, DocType, TenderType, AuthCode));
 		sql.append(" ORDER BY p.DateTrx");
 
 		PreparedStatement pstmt = null;
@@ -81,7 +84,7 @@ public abstract class CreateFromStatement extends CreateFromBatch
 		try
 		{
 			pstmt = DB.prepareStatement(sql.toString(), getTrxName());
-			setParameters(pstmt, BankAccount, BPartner, DocumentNo, DateFrom, DateTo, AmtFrom, AmtTo, DocType, TenderType, AuthCode);
+			setParameters(pstmt, BankAccount, PeriodDateFrom, PeriodDateTo, BPartner, DocumentNo, DateFrom, DateTo, AmtFrom, AmtTo, DocType, TenderType, AuthCode);
 			rs = pstmt.executeQuery();
 			while(rs.next())
 			{

@@ -77,28 +77,21 @@ public class RfQCopyLines extends SvrProcess
 		//	Copy Lines
 		int counter = 0;
 		MRfQLine[] lines = from.getLines();
-		for (int i = 0; i < lines.length; i++)
+		for (MRfQLine line : lines)
 		{
 			MRfQLine newLine = new MRfQLine (to);
-			newLine.setLine(lines[i].getLine());
-			newLine.setDescription(lines[i].getDescription());
-			newLine.setHelp(lines[i].getHelp());
-			newLine.setM_Product_ID(lines[i].getM_Product_ID());
-			newLine.setM_AttributeSetInstance_ID(lines[i].getM_AttributeSetInstance_ID());
-			newLine.setDeliveryDays(lines[i].getDeliveryDays());
-			newLine.saveEx();
+			newLine.setLine(line.getLine());
+			newLine.setDescription(line.getDescription());
+			newLine.setHelp(line.getHelp());
+			newLine.setM_Product_ID(line.getM_Product_ID());
+			newLine.setM_AttributeSetInstance_ID(line.getM_AttributeSetInstance_ID());
+			newLine.setDateWorkStart(line.getDateWorkStart());
+			newLine.setDateWorkComplete(line.getDateWorkComplete());
+			newLine.setDeliveryDays(line.getDeliveryDays());
+			newLine.setQty(line.getQty());
+			newLine.setC_UOM_ID(line.getC_UOM_ID());
+			newLine.setC_Charge_ID(line.getC_Charge_ID());
 			//	Copy Qtys
-			MRfQLineQty[] qtys = lines[i].getQtys();
-			for (int j = 0; j < qtys.length; j++)
-			{
-				MRfQLineQty newQty = new MRfQLineQty (newLine);
-				newQty.setC_UOM_ID(qtys[j].getC_UOM_ID());
-				newQty.setQty(qtys[j].getQty());
-				newQty.setIsOfferQty(qtys[j].isOfferQty());
-				newQty.setIsPurchaseQty(qtys[j].isPurchaseQty());
-				newQty.setMargin(qtys[j].getMargin());
-				newQty.saveEx();
-			}
 			counter++;
 		}	//	copy all lines	
 		

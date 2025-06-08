@@ -78,11 +78,13 @@ public class ProductCategoryAcctCopy extends SvrProcess
 			.append("SET (P_Revenue_Acct,P_Expense_Acct,P_CostAdjustment_Acct,P_InventoryClearing_Acct,P_Asset_Acct,P_COGS_Acct,")
 			.append(" P_PurchasePriceVariance_Acct,P_InvoicePriceVariance_Acct,P_AverageCostVariance_Acct,")
 			.append(" P_TradeDiscountRec_Acct,P_TradeDiscountGrant_Acct,") 
-			.append(" P_RateVariance_Acct,P_LandedCostClearing_Acct)=")
+			//.append(" P_RateVariance_Acct,P_LandedCostClearing_Acct)=")
+			.append(" P_RateVariance_Acct,P_LandedCostClearing_Acct, P_Return_Revenue_Acct, D_COGS_Acct)=")	//TAOWI-817 TAOWI-1060
 		    .append(" (SELECT P_Revenue_Acct,P_Expense_Acct,P_CostAdjustment_Acct,P_InventoryClearing_Acct,P_Asset_Acct,P_COGS_Acct,")
 			.append(" P_PurchasePriceVariance_Acct,P_InvoicePriceVariance_Acct,P_AverageCostVariance_Acct,")
 			.append(" P_TradeDiscountRec_Acct,P_TradeDiscountGrant_Acct,")
-			.append(" P_RateVariance_Acct,P_LandedCostClearing_Acct")
+			//.append(" P_RateVariance_Acct,P_LandedCostClearing_Acct ")
+			.append(" P_RateVariance_Acct,P_LandedCostClearing_Acct, P_Return_Revenue_Acct, D_COGS_Acct ")	//TAOWI-817 TAOWI-1060
 			.append(" FROM M_Product_Category_Acct pca")
 			.append(" WHERE pca.M_Product_Category_ID=").append(p_M_Product_Category_ID)
 			.append(" AND pca.C_AcctSchema_ID=").append(p_C_AcctSchema_ID)
@@ -101,13 +103,15 @@ public class ProductCategoryAcctCopy extends SvrProcess
 			.append(" P_Revenue_Acct, P_Expense_Acct, P_CostAdjustment_Acct, P_InventoryClearing_Acct, P_Asset_Acct, P_CoGs_Acct,")
 			.append(" P_PurchasePriceVariance_Acct, P_InvoicePriceVariance_Acct, P_AverageCostVariance_Acct,")
 			.append(" P_TradeDiscountRec_Acct, P_TradeDiscountGrant_Acct, ")
-			.append(" P_RateVariance_Acct, P_LandedCostClearing_Acct) ")
+			//.append(" P_RateVariance_Acct, P_LandedCostClearing_Acct) ")
+			.append(" P_RateVariance_Acct, P_LandedCostClearing_Acct, P_Return_Revenue_Acct, D_COGS_Acct) ")	//TAOWI-817 TAOWI-1060
 			.append("SELECT p.M_Product_ID, acct.C_AcctSchema_ID,")
 			.append(" p.AD_Client_ID, p.AD_Org_ID, 'Y', getDate(), 0, getDate(), 0,")
 			.append(" acct.P_Revenue_Acct, acct.P_Expense_Acct, acct.P_CostAdjustment_Acct, acct.P_InventoryClearing_Acct, acct.P_Asset_Acct, acct.P_CoGs_Acct,")
 			.append(" acct.P_PurchasePriceVariance_Acct, acct.P_InvoicePriceVariance_Acct, acct.P_AverageCostVariance_Acct,")
 			.append(" acct.P_TradeDiscountRec_Acct, acct.P_TradeDiscountGrant_Acct, ")
-			.append(" acct.P_RateVariance_Acct, acct.P_LandedCostClearing_Acct ")
+			//.append(" acct.P_RateVariance_Acct, acct.P_LandedCostClearing_Acct ")
+			.append(" acct.P_RateVariance_Acct, acct.P_LandedCostClearing_Acct, acct.P_Return_Revenue_Acct, D_COGS_Acct ")	//TAOWI-817 TAOWI-1060
 			.append("FROM M_Product p")
 			.append(" INNER JOIN M_Product_Category_Acct acct ON (acct.M_Product_Category_ID=p.M_Product_Category_ID)")
 			.append("WHERE acct.C_AcctSchema_ID=").append(p_C_AcctSchema_ID)			//	#

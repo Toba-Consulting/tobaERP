@@ -27,6 +27,7 @@ import org.compiere.model.MProcessPara;
 import org.compiere.model.POResultSet;
 import org.compiere.model.Query;
 import org.compiere.util.AdempiereUserError;
+import org.compiere.util.DB;
 import org.compiere.util.Msg;
 import org.compiere.util.Trx;
 
@@ -113,6 +114,14 @@ public class AllocationReset extends SvrProcess
 		{
 			try {
 				MAllocationHdr hdr = new MAllocationHdr(getCtx(), p_C_AllocationHdr_ID, m_trx.getTrxName());
+				
+				// @TommyAng
+				String sqlDelete = "DELETE FROM T_MatchAllocation WHERE C_AllocationHDR_ID="
+						+ hdr.getC_AllocationHdr_ID();
+				int no = DB.executeUpdateEx(sqlDelete, m_trx.getTrxName());
+				log.info("Deleted Match Allocation #" + no);
+				// end @TommyAng
+				
 				if (delete(hdr))
 					count++;
 				else

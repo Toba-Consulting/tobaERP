@@ -33,8 +33,6 @@ import org.compiere.model.MRfQTopicSubscriber;
 @org.adempiere.base.annotation.Process
 public class RfQCreate extends SvrProcess
 {
-	/**	Send RfQ				*/
-	private boolean	p_IsSendRfQ = false;
 	/**	RfQ						*/
 	private int		p_C_RfQ_ID = 0;
 	
@@ -49,8 +47,6 @@ public class RfQCreate extends SvrProcess
 			String name = para[i].getParameterName();
 			if (para[i].getParameter() == null)
 				;
-			else if (name.equals("IsSendRfQ"))
-				p_IsSendRfQ = "Y".equals(para[i].getParameter());
 			else
 				MProcessPara.validateUnknownParameter(getProcessInfo().getAD_Process_ID(), para[i]);
 		}
@@ -65,14 +61,14 @@ public class RfQCreate extends SvrProcess
 	protected String doIt() throws Exception
 	{
 		MRfQ rfq = new MRfQ (getCtx(), p_C_RfQ_ID, get_TrxName());
-		if (log.isLoggable(Level.INFO)) log.info("doIt - " + rfq + ", Send=" + p_IsSendRfQ);
+		if (log.isLoggable(Level.INFO)) log.info("doIt - " + rfq );
+		/*
 		String error = rfq.checkQuoteTotalAmtOnly();
 		if (error != null && error.length() > 0)
 			throw new Exception (error);
+		*/
 
 		int counter = 0;
-		int sent = 0;
-		int notSent = 0;
 		
 		//	Get all existing responses
 		MRfQResponse[] responses = rfq.getResponses (false, false);
@@ -103,18 +99,9 @@ public class RfQCreate extends SvrProcess
 				continue;
 			
 			counter++;
-			if (p_IsSendRfQ)
-			{
-				if (response.sendRfQ())
-					sent++;
-				else
-					notSent++;
-			}
 		}	//	for all subscribers
 
 		StringBuilder retValue = new StringBuilder("@Created@ ").append(counter);
-		if (p_IsSendRfQ)
-			retValue.append(" - @IsSendRfQ@=").append(sent).append(" - @Error@=").append(notSent);
 		return retValue.toString();
 	}	//	doIt
 	

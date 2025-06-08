@@ -518,6 +518,16 @@ public class InvoiceGenerate extends SvrProcess
 		{
 			MOrder order = new MOrder(getCtx(), m_invoice.getC_Order_ID(), get_TrxName());
 			if (order != null) {
+				
+				// TAOWI-1066 add shipment to invoice
+				// @ayonk
+				StringBuilder sql = new StringBuilder();
+				sql.append("SELECT M_InOut_ID FROM M_InOut WHERE C_Order_ID="+order.getC_Order_ID());
+				Integer inoutid=DB.getSQLValue(null, sql.toString());
+				if(inoutid>0)
+				m_invoice.set_ValueOfColumn("M_InOut_ID", inoutid);
+				// @ayonk end
+				
 				m_invoice.setPaymentRule(order.getPaymentRule());
 				m_invoice.setC_PaymentTerm_ID(order.getC_PaymentTerm_ID());
 				m_invoice.saveEx();

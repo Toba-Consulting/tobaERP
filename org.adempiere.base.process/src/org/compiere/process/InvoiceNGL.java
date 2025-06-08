@@ -17,6 +17,7 @@
 package org.compiere.process;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.sql.Timestamp;
 import java.util.List;
 import java.util.logging.Level;
@@ -251,6 +252,8 @@ public class InvoiceNGL extends SvrProcess
 		journal.setC_ConversionType_ID(p_C_ConversionTypeReval_ID);
 		journal.setGL_Category_ID (cat.getGL_Category_ID());
 		journal.setDescription(getName()); // updated below
+		journal.setAD_Org_ID(Env.getAD_Org_ID(getCtx()));
+		
 		if (!journal.save())
 			return " - Could not create Journal";
 		//
@@ -324,10 +327,10 @@ public class InvoiceNGL extends SvrProcess
 					lossTotal = lossTotal.add(dr.negate());
 				}
 			}
-			line.setAmtSourceDr (dr);
-			line.setAmtAcctDr (dr);
-			line.setAmtSourceCr (cr);
-			line.setAmtAcctCr (cr);
+			line.setAmtSourceDr (dr.setScale(journal.getC_Currency().getStdPrecision(), RoundingMode.HALF_UP));
+			line.setAmtAcctDr (dr.setScale(as.getC_Currency().getStdPrecision(), RoundingMode.HALF_UP));
+			line.setAmtSourceCr (cr.setScale(journal.getC_Currency().getStdPrecision(), RoundingMode.HALF_UP));
+			line.setAmtAcctCr (cr.setScale(as.getC_Currency().getStdPrecision(), RoundingMode.HALF_UP));
 			line.saveEx();
 		}
 		createBalancing (asDefaultAccts, journal, gainTotal, lossTotal, AD_Org_ID, (list.size()+1) * 10);
@@ -367,12 +370,17 @@ public class InvoiceNGL extends SvrProcess
 				base.getM_Product_ID(), base.getC_BPartner_ID(), base.getAD_OrgTrx_ID(), 
 				base.getC_LocFrom_ID(), base.getC_LocTo_ID(), base.getC_SalesRegion_ID(), 
 				base.getC_Project_ID(), base.getC_Campaign_ID(), base.getC_Activity_ID(),
-				base.getUser1_ID(), base.getUser2_ID(), base.getUserElement1_ID(), base.getUserElement2_ID(),
+				base.getUser1_ID(), base.getUser2_ID(), base.getUser3_ID(), base.getUser4_ID(), 
+				base.getUser5_ID(), base.getUser6_ID(), base.getUser7_ID(), base.getUser8_ID(), 
+				base.getUser9_ID(), base.getUser10_ID(),base.getUserElement1_ID(), base.getUserElement2_ID(),
+				base.getUserElement3_ID(), base.getUserElement4_ID(), base.getUserElement5_ID(),
+				base.getUserElement6_ID(), base.getUserElement7_ID(), base.getUserElement8_ID(),
+				base.getUserElement9_ID(), base.getUserElement10_ID(), 
 				get_TrxName());
 			line.setDescription(Msg.getElement(getCtx(), "UnrealizedGain_Acct"));
 			line.setC_ValidCombination_ID(acct.getC_ValidCombination_ID());
-			line.setAmtSourceCr (gainTotal);
-			line.setAmtAcctCr (gainTotal);
+			line.setAmtSourceCr (gainTotal.setScale(journal.getC_Currency().getStdPrecision(), RoundingMode.HALF_UP));
+			line.setAmtAcctCr (gainTotal.setScale(asDefaultAccts.getC_AcctSchema().getC_Currency().getStdPrecision(), RoundingMode.HALF_UP));
 			line.saveEx();
 		}
 		//	DR Entry = Loss
@@ -386,12 +394,17 @@ public class InvoiceNGL extends SvrProcess
 				base.getM_Product_ID(), base.getC_BPartner_ID(), base.getAD_OrgTrx_ID(), 
 				base.getC_LocFrom_ID(), base.getC_LocTo_ID(), base.getC_SalesRegion_ID(), 
 				base.getC_Project_ID(), base.getC_Campaign_ID(), base.getC_Activity_ID(),
-				base.getUser1_ID(), base.getUser2_ID(), base.getUserElement1_ID(), base.getUserElement2_ID(),
+				base.getUser1_ID(), base.getUser2_ID(), base.getUser3_ID(), base.getUser4_ID(), 
+				base.getUser5_ID(), base.getUser6_ID(), base.getUser7_ID(), base.getUser8_ID(), 
+				base.getUser9_ID(), base.getUser10_ID(),base.getUserElement1_ID(), 
+				base.getUserElement2_ID(), base.getUserElement3_ID(), base.getUserElement4_ID(),
+				base.getUserElement5_ID(), base.getUserElement6_ID(), base.getUserElement7_ID(),
+				base.getUserElement8_ID(), base.getUserElement9_ID(), base.getUserElement10_ID(),
 				get_TrxName());
 			line.setDescription(Msg.getElement(getCtx(), "UnrealizedLoss_Acct"));
 			line.setC_ValidCombination_ID(acct.getC_ValidCombination_ID());
-			line.setAmtSourceDr (lossTotal);
-			line.setAmtAcctDr (lossTotal);
+			line.setAmtSourceDr (lossTotal.setScale(journal.getC_Currency().getStdPrecision(), RoundingMode.HALF_UP));
+			line.setAmtAcctDr (lossTotal.setScale(asDefaultAccts.getC_AcctSchema().getC_Currency().getStdPrecision(), RoundingMode.HALF_UP));
 			line.saveEx();
 		}
 	}	//	createBalancing

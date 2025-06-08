@@ -18,8 +18,10 @@ package org.compiere.process;
 
 import java.util.logging.Level;
 
+import org.compiere.model.MMailText;
 import org.compiere.model.MProcessPara;
 import org.compiere.model.MRfQResponse;
+import org.compiere.model.MRfQTopic;
 
 
 /**
@@ -59,13 +61,21 @@ public class RfQResponseInvite extends SvrProcess
 	protected String doIt() throws Exception
 	{
 		MRfQResponse response = new MRfQResponse (getCtx(), p_C_RfQResponse_ID, get_TrxName());
+		
+		/*
 		if (log.isLoggable(Level.INFO)) log.info("doIt - " + response);
 		String error = response.getRfQ().checkQuoteTotalAmtOnly();
 		if (error != null && error.length() > 0)
 			throw new Exception (error);
+		*/
+		
 		//	Send it
-		if (response.sendRfQ())
+		MRfQTopic rfQTopic = new MRfQTopic(getCtx(), response.getC_RfQ().getC_RfQ_Topic_ID() , get_TrxName());
+		if (rfQTopic.get_ValueAsInt("R_MailText_ID") > 0) {
+			MMailText mailText = new MMailText(getCtx(),rfQTopic.get_ValueAsInt("R_MailText_ID"), get_TrxName());
+			if (response.sendRfQ(mailText))
 			return "OK";
+		}
 		//
 		return "@Error@";
 	}	//	doIt

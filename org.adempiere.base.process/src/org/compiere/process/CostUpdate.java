@@ -62,6 +62,7 @@ public class CostUpdate extends SvrProcess
 	
 	private int 	p_C_DocType_ID = 0;
 	
+	private int 	p_AD_Org_ID = 0;
 	
 	private static final String	TO_AveragePO = "A";
 	private static final String	TO_AverageInvoiceHistory = "DI";
@@ -105,6 +106,8 @@ public class CostUpdate extends SvrProcess
 				p_M_PriceList_Version_ID = para[i].getParameterAsInt();
 			else if (name.equals("C_DocType_ID"))
 				p_C_DocType_ID = para[i].getParameterAsInt();
+			else if (name.equals("AD_Org_ID"))
+				p_AD_Org_ID = para[i].getParameterAsInt();
 			else
 				MProcessPara.validateUnknownParameter(getProcessInfo().getAD_Process_ID(), para[i]);
 		}
@@ -313,11 +316,13 @@ public class CostUpdate extends SvrProcess
 				inventoryDoc.setC_DocType_ID(p_C_DocType_ID);
 				inventoryDoc.setCostingMethod(MCostElement.COSTINGMETHOD_StandardCosting);
 				inventoryDoc.setDocAction(DocAction.ACTION_Complete);
+				inventoryDoc.setAD_Org_ID(p_AD_Org_ID);
 				inventoryDoc.saveEx();
 				
 				for(MInventoryLine line : lines)
 				{
 					line.setM_Inventory_ID(inventoryDoc.getM_Inventory_ID());
+					inventoryDoc.setAD_Org_ID(p_AD_Org_ID);
 					line.saveEx();
 				}
 				
@@ -380,7 +385,8 @@ public class CostUpdate extends SvrProcess
 			BigDecimal costs = getCosts(cost, p_SetFutureCostTo);
 			if (costs != null && costs.signum() != 0)
 			{
-				cost.setFutureCostPrice(costs);				
+				cost.setFutureCostPrice(costs);
+				cost.setAD_Org_ID(p_AD_Org_ID);
 				updated = true;
 				
 				if (lines != null)
@@ -392,6 +398,7 @@ public class CostUpdate extends SvrProcess
 						line.setCurrentCostPrice(cost.getCurrentCostPrice());
 						line.setNewCostPrice(costs);
 						line.setM_Locator_ID(0);
+						line.setAD_Org_ID(p_AD_Org_ID);
 						lines.add(line);
 					}
 				}
@@ -413,6 +420,7 @@ public class CostUpdate extends SvrProcess
 							line.setCurrentCostPrice(cost.getCurrentCostPrice());
 							line.setNewCostPrice(costs);
 							line.setM_Locator_ID(0);
+							line.setAD_Org_ID(p_AD_Org_ID);
 							lines.add(line);
 							updated = true;
 						}

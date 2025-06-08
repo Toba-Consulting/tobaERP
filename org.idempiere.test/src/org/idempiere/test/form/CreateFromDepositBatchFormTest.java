@@ -108,7 +108,7 @@ public class CreateFromDepositBatchFormTest extends AbstractTestCase {
 		form.setTrxName(getTrxName());
 		Timestamp dateFrom = TimeUtil.addDays(today, -1);
 		Timestamp dateTo = TimeUtil.addDays(today, 1);
-		form.loadPayments(C_BankAccount_ID, null, null, dateFrom, dateTo, null, null, payment.getC_DocType_ID(), null, null);
+		form.loadPayments(C_BankAccount_ID, null, null, null, null, dateFrom, dateTo, null, null, payment.getC_DocType_ID(), null, null);
 		assertTrue(form.minitable.getRowCount() > 0, "Failed to load data from DB");
 		
 		form.minitable.setSelectedRow(-1);
@@ -162,9 +162,9 @@ public class CreateFromDepositBatchFormTest extends AbstractTestCase {
 		}
 
 		public void loadPayments(Integer BankAccount, Integer BPartner, String DocumentNo,
-				Timestamp DateFrom, Timestamp DateTo, BigDecimal AmtFrom, BigDecimal AmtTo, Integer DocType,
+				Timestamp PeriodDateFrom, Timestamp PeriodDateTo, Timestamp DateFrom, Timestamp DateTo, BigDecimal AmtFrom, BigDecimal AmtTo, Integer DocType,
 				String TenderType, String AuthCode) {
-			Vector<Vector<Object>> datas = super.getBankAccountData(BankAccount, BPartner, DocumentNo, DateFrom, DateTo, AmtFrom, AmtTo, DocType,
+			Vector<Vector<Object>> datas = super.getBankAccountData(BankAccount, BPartner, DocumentNo, PeriodDateFrom, PeriodDateTo, DateFrom, DateTo, AmtFrom, AmtTo, DocType,
 					TenderType, AuthCode);
 			
 			for(int i = 0; i < datas.size(); i++) {

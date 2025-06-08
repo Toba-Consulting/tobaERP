@@ -18,7 +18,9 @@
 package org.compiere.model;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.Properties;
+import java.util.logging.Level;
 
 import org.compiere.util.Env;
 
@@ -56,6 +58,13 @@ public class CalloutMovement extends CalloutEngine
 		else
 			mTab.setValue("M_AttributeSetInstance_ID", 0);
 		 
+		//	@win add support multiUOM
+		MProduct product = MProduct.get(ctx, M_Product_ID);
+		mTab.setValue("C_UOM_ID", Integer.valueOf(product.getC_UOM_ID()));
+		BigDecimal QtyEntered = (BigDecimal)mTab.getValue("QtyEntered");
+		mTab.setValue("MovementQty", QtyEntered);
+		//	end	@win add support multiUOM
+		
 		checkQtyAvailable(ctx, mTab, WindowNo, M_Product_ID, null);
 		return "";
 	}   //  product
@@ -77,7 +86,104 @@ public class CalloutMovement extends CalloutEngine
 			return "";
 
 		int M_Product_ID = Env.getContextAsInt(ctx, WindowNo, mTab.getTabNo(), "M_Product_ID");
-		checkQtyAvailable(ctx, mTab, WindowNo, M_Product_ID, (BigDecimal)value);
+		//	@win add support multiUOM
+		BigDecimal MovementQty = Env.ZERO;
+		BigDecimal QtyEntered = Env.ZERO;
+
+		//	No Product
+		if (M_Product_ID == 0)
+		{
+			QtyEntered = (BigDecimal)mTab.getValue("QtyEntered");
+			mTab.setValue("MovementQty", QtyEntered);
+			MovementQty = QtyEntered;
+		}
+		//	UOM Changed - convert from Entered -> Product
+		else if (mField.getColumnName().equals("C_UOM_ID"))
+		{
+			int C_UOM_To_ID = ((Integer)value).intValue();
+			QtyEntered = (BigDecimal)mTab.getValue("QtyEntered");
+			BigDecimal QtyEntered1 = QtyEntered.setScale(MUOM.getPrecision(ctx, C_UOM_To_ID), RoundingMode.HALF_UP);
+			if (QtyEntered.compareTo(QtyEntered1) != 0)
+			{
+				if (log.isLoggable(Level.FINE)) log.fine("Corrected QtyEntered Scale UOM=" + C_UOM_To_ID
+					+ "; QtyEntered=" + QtyEntered + "->" + QtyEntered1);
+				QtyEntered = QtyEntered1;
+				mTab.setValue("QtyEntered", QtyEntered);
+			}
+			MovementQty = MUOMConversion.convertProductFrom (ctx, M_Product_ID,
+				C_UOM_To_ID, QtyEntered);
+			if (MovementQty == null)
+				MovementQty = QtyEntered;
+			boolean conversion = QtyEntered.compareTo(MovementQty) != 0;
+			if (log.isLoggable(Level.FINE)) log.fine("UOM=" + C_UOM_To_ID
+				+ ", QtyEntered=" + QtyEntered
+				+ " -> " + conversion
+				+ " MovementQty=" + MovementQty);
+			Env.setContext(ctx, WindowNo, "UOMConversion", conversion ? "Y" : "N");
+			mTab.setValue("MovementQty", MovementQty);
+		}
+		//	No UOM defined
+		else if (Env.getContextAsInt(ctx, WindowNo, mTab.getTabNo(), "C_UOM_ID") == 0)
+		{
+			QtyEntered = (BigDecimal)mTab.getValue("QtyEntered");
+			mTab.setValue("MovementQty", QtyEntered);
+			MovementQty = QtyEntered;
+		}
+		//	QtyEntered changed - calculate MovementQty
+		else if (mField.getColumnName().equals("QtyEntered"))
+		{
+			int C_UOM_To_ID = Env.getContextAsInt(ctx, WindowNo, mTab.getTabNo(), "C_UOM_ID");
+			QtyEntered = (BigDecimal)value;
+			BigDecimal QtyEntered1 = QtyEntered.setScale(MUOM.getPrecision(ctx, C_UOM_To_ID), RoundingMode.HALF_UP);
+			if (QtyEntered.compareTo(QtyEntered1) != 0)
+			{
+				if (log.isLoggable(Level.FINE)) log.fine("Corrected QtyEntered Scale UOM=" + C_UOM_To_ID
+					+ "; QtyEntered=" + QtyEntered + "->" + QtyEntered1);
+				QtyEntered = QtyEntered1;
+				mTab.setValue("QtyEntered", QtyEntered);
+			}
+			MovementQty = MUOMConversion.convertProductFrom (ctx, M_Product_ID,
+				C_UOM_To_ID, QtyEntered);
+			if (MovementQty == null)
+				MovementQty = QtyEntered;
+			boolean conversion = QtyEntered.compareTo(MovementQty) != 0;
+			if (log.isLoggable(Level.FINE)) log.fine("UOM=" + C_UOM_To_ID
+				+ ", QtyEntered=" + QtyEntered
+				+ " -> " + conversion
+				+ " MovementQty=" + MovementQty);
+			Env.setContext(ctx, WindowNo, "UOMConversion", conversion ? "Y" : "N");
+			mTab.setValue("MovementQty", MovementQty);
+		}
+		//	MovementQty changed - calculate QtyEntered (should not happen)
+		else if (mField.getColumnName().equals("MovementQty"))
+		{
+			int C_UOM_To_ID = Env.getContextAsInt(ctx, WindowNo, mTab.getTabNo(), "C_UOM_ID");
+			MovementQty = (BigDecimal)value;
+			int precision = MProduct.get(ctx, M_Product_ID).getUOMPrecision();
+			BigDecimal MovementQty1 = MovementQty.setScale(precision, RoundingMode.HALF_UP);
+			if (MovementQty.compareTo(MovementQty1) != 0)
+			{
+				if (log.isLoggable(Level.FINE)) log.fine("Corrected MovementQty "
+					+ MovementQty + "->" + MovementQty1);
+				MovementQty = MovementQty1;
+				mTab.setValue("MovementQty", MovementQty);
+			}
+			QtyEntered = MUOMConversion.convertProductTo (ctx, M_Product_ID,
+				C_UOM_To_ID, MovementQty);
+			if (QtyEntered == null)
+				QtyEntered = MovementQty;
+			boolean conversion = MovementQty.compareTo(QtyEntered) != 0;
+			if (log.isLoggable(Level.FINE)) log.fine("UOM=" + C_UOM_To_ID
+				+ ", MovementQty=" + MovementQty
+				+ " -> " + conversion
+				+ " QtyEntered=" + QtyEntered);
+			Env.setContext(ctx, WindowNo, "UOMConversion", conversion ? "Y" : "N");
+			mTab.setValue("QtyEntered", QtyEntered);
+		}
+		//	end	@win add support multiUOM
+		if (MovementQty != null) {
+			checkQtyAvailable(ctx, mTab, WindowNo, M_Product_ID, MovementQty);
+		}
 		//
 		return "";
 	} //  qty

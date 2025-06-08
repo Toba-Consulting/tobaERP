@@ -17,6 +17,7 @@
 package org.compiere.model;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -111,6 +112,13 @@ public class CalloutInventory extends CalloutEngine
 			}
 		}
 		
+//		@win add support multiUOM
+		MProduct product = MProduct.get(ctx, M_Product_ID);
+		mTab.setValue("C_UOM_ID", Integer.valueOf(product.getC_UOM_ID()));
+		BigDecimal QtyEntered = (BigDecimal)mTab.getValue("QtyEntered");
+		mTab.setValue("MovementQty", QtyEntered);
+		// end @win add support multiUOM
+		
 		//
 		if (log.isLoggable(Level.INFO)) log.info("M_Product_ID=" + M_Product_ID 
 			+ ", M_Locator_ID=" + M_Locator_ID
@@ -173,5 +181,191 @@ public class CalloutInventory extends CalloutEngine
 		return Env.ZERO;
 	}
 	
+	/**
+	 *
+	 *  @param ctx      Context
+	 *  @param WindowNo current Window No
+	 *  @param GridTab     Model Tab
+	 *  @param GridField   Model Field
+	 *  @param value    The new value
+	 *  @return Error message or ""
+	 */
+	public String qty(Properties ctx, int WindowNo, GridTab mTab, GridField mField, Object value) {
+		if (isCalloutActive() || value == null)
+			return "";
+
+		int M_Product_ID = Env.getContextAsInt(ctx, WindowNo, mTab.getTabNo(), "M_Product_ID");
+		
+		//	@win add support multiUOM
+		int C_DocType_ID = Env.getContextAsInt(ctx, WindowNo, "C_DocType_ID");
+		boolean isInternalUse = false;
+		MDocType docType = MDocType.get(ctx, C_DocType_ID);
+		
+		if (docType.getDocSubTypeInv().equals(MDocType.DOCSUBTYPEINV_InternalUseInventory)) {
+			isInternalUse = true;
+		}
+		
+		BigDecimal MovementQty = Env.ZERO;
+		BigDecimal QtyEntered = Env.ZERO;
+
+		//	No Product
+		if (M_Product_ID == 0)
+		{
+			QtyEntered = (BigDecimal)mTab.getValue("QtyEntered");
+			mTab.setValue(MInventoryLine.COLUMNNAME_QtyInternalUse, QtyEntered);
+		}
+		
+		//	UOM Changed - convert from Entered -> Product
+		else if (mField.getColumnName().equals("C_UOM_ID") && isInternalUse)
+		{
+			int C_UOM_To_ID = ((Integer)value).intValue();
+			QtyEntered = (BigDecimal)mTab.getValue("QtyEntered");
+			BigDecimal QtyEntered1 = QtyEntered.setScale(MUOM.getPrecision(ctx, C_UOM_To_ID), RoundingMode.HALF_UP);
+			if (QtyEntered.compareTo(QtyEntered1) != 0)
+			{
+				if (log.isLoggable(Level.FINE)) log.fine("Corrected QtyEntered Scale UOM=" + C_UOM_To_ID
+					+ "; QtyEntered=" + QtyEntered + "->" + QtyEntered1);
+				QtyEntered = QtyEntered1;
+				mTab.setValue("QtyEntered", QtyEntered);
+			}
+			
+			MovementQty = MUOMConversion.convertProductFrom (ctx, M_Product_ID,
+				C_UOM_To_ID, QtyEntered);
+			if (MovementQty == null)
+				MovementQty = QtyEntered;
+			
+			boolean conversion = QtyEntered.compareTo(MovementQty) != 0;
+			if (log.isLoggable(Level.FINE)) log.fine("UOM=" + C_UOM_To_ID
+				+ ", QtyEntered=" + QtyEntered
+				+ " -> " + conversion
+				+ " QtyInternalUse=" + MovementQty);
+			Env.setContext(ctx, WindowNo, "UOMConversion", conversion ? "Y" : "N");
+			mTab.setValue(MInventoryLine.COLUMNNAME_QtyInternalUse, MovementQty);
+		}
+		//	No UOM defined
+		else if (Env.getContextAsInt(ctx, WindowNo, mTab.getTabNo(), "C_UOM_ID") == 0)
+		{
+			QtyEntered = (BigDecimal)mTab.getValue("QtyEntered");
+			mTab.setValue(MInventoryLine.COLUMNNAME_QtyInternalUse, QtyEntered);
+		}
+		//	QtyEntered changed - calculate MovementQty
+		else if (mField.getColumnName().equals("QtyEntered"))
+		{
+			int C_UOM_To_ID = Env.getContextAsInt(ctx, WindowNo, mTab.getTabNo(), "C_UOM_ID");
+			QtyEntered = (BigDecimal)value;
+			BigDecimal QtyEntered1 = QtyEntered.setScale(MUOM.getPrecision(ctx, C_UOM_To_ID), RoundingMode.HALF_UP);
+			if (QtyEntered.compareTo(QtyEntered1) != 0)
+			{
+				if (log.isLoggable(Level.FINE)) log.fine("Corrected QtyEntered Scale UOM=" + C_UOM_To_ID
+					+ "; QtyEntered=" + QtyEntered + "->" + QtyEntered1);
+				QtyEntered = QtyEntered1;
+				mTab.setValue("QtyEntered", QtyEntered);
+			}
+			MovementQty = MUOMConversion.convertProductFrom (ctx, M_Product_ID,
+				C_UOM_To_ID, QtyEntered);
+			if (MovementQty == null)
+				MovementQty = QtyEntered;
+			boolean conversion = QtyEntered.compareTo(MovementQty) != 0;
+			if (log.isLoggable(Level.FINE)) log.fine("UOM=" + C_UOM_To_ID
+				+ ", QtyEntered=" + QtyEntered
+				+ " -> " + conversion
+				+ " QtyInternalUse=" + MovementQty);
+			Env.setContext(ctx, WindowNo, "UOMConversion", conversion ? "Y" : "N");
+			mTab.setValue(MInventoryLine.COLUMNNAME_QtyInternalUse, MovementQty);
+		}
+		
+		//	end	@win add support multiUOM
+		//mTab.setValue("QtyMiscReceipt", QtyEntered.negate());
+		
+		return "";
+	} //  qty
+
+	public String qtyMiscReceipt(Properties ctx, int WindowNo, GridTab mTab, GridField mField, Object value) {
+		if (isCalloutActive() || value == null)
+			return "";
+
+		int M_Product_ID = Env.getContextAsInt(ctx, WindowNo, mTab.getTabNo(), "M_Product_ID");
+		
+		//	@win add support multiUOM
+		BigDecimal MovementQty = Env.ZERO;
+		BigDecimal QtyMiscReceipt = Env.ZERO;
+		
+		int C_DocType_ID = Env.getContextAsInt(ctx, WindowNo, "C_DocType_ID");
+		boolean isMiscReceipt = false;
+		MDocType docType = MDocType.get(ctx, C_DocType_ID);
+		
+		if (docType.getDocSubTypeInv().equals(MDocType.DOCSUBTYPEINV_MiscReceipt)) {
+			isMiscReceipt = true;
+		}
+		
+		//	No Product
+		if (M_Product_ID == 0)
+		{
+			QtyMiscReceipt = (BigDecimal)mTab.getValue("QtyMiscReceipt");
+			mTab.setValue(MInventoryLine.COLUMNNAME_QtyInternalUse, QtyMiscReceipt.negate());
+		}
+		
+		//	UOM Changed - convert from Entered -> Product
+		else if (mField.getColumnName().equals("C_UOM_ID") && isMiscReceipt)
+		{
+			int C_UOM_To_ID = ((Integer)value).intValue();
+			QtyMiscReceipt = (BigDecimal)mTab.getValue("QtyMiscReceipt");
+			BigDecimal QtyMiscReceipt1 = QtyMiscReceipt.setScale(MUOM.getPrecision(ctx, C_UOM_To_ID), RoundingMode.HALF_UP);
+			if (QtyMiscReceipt.compareTo(QtyMiscReceipt1) != 0)
+			{
+				if (log.isLoggable(Level.FINE)) log.fine("Corrected QtyEntered Scale UOM=" + C_UOM_To_ID
+					+ "; QtyEntered=" + QtyMiscReceipt + "->" + QtyMiscReceipt1);
+				QtyMiscReceipt = QtyMiscReceipt1;
+				mTab.setValue("QtyMiscReceipt", QtyMiscReceipt);
+			}
+			
+			MovementQty = MUOMConversion.convertProductFrom (ctx, M_Product_ID,
+				C_UOM_To_ID, QtyMiscReceipt);
+			if (MovementQty == null)
+				MovementQty = QtyMiscReceipt;
+			
+			boolean conversion = QtyMiscReceipt.compareTo(MovementQty) != 0;
+			if (log.isLoggable(Level.FINE)) log.fine("UOM=" + C_UOM_To_ID
+				+ ", QtyEntered=" + QtyMiscReceipt
+				+ " -> " + conversion
+				+ " QtyInternalUse=" + MovementQty);
+			Env.setContext(ctx, WindowNo, "UOMConversion", conversion ? "Y" : "N");
+			mTab.setValue(MInventoryLine.COLUMNNAME_QtyInternalUse, MovementQty.negate());
+		}
+		//	No UOM defined
+		else if (Env.getContextAsInt(ctx, WindowNo, mTab.getTabNo(), "C_UOM_ID") == 0)
+		{
+			QtyMiscReceipt = (BigDecimal)mTab.getValue("QtyMiscReceipt");
+			mTab.setValue(MInventoryLine.COLUMNNAME_QtyInternalUse, QtyMiscReceipt.negate());
+		}
+		//	QtyEntered changed - calculate MovementQty
+		else if (mField.getColumnName().equals("QtyMiscReceipt"))
+		{
+			int C_UOM_To_ID = Env.getContextAsInt(ctx, WindowNo, mTab.getTabNo(), "C_UOM_ID");
+			QtyMiscReceipt = (BigDecimal)value;
+			BigDecimal QtyMiscReceipt1 = QtyMiscReceipt.setScale(MUOM.getPrecision(ctx, C_UOM_To_ID), RoundingMode.HALF_UP);
+			if (QtyMiscReceipt.compareTo(QtyMiscReceipt1) != 0)
+			{
+				if (log.isLoggable(Level.FINE)) log.fine("Corrected QtyEntered Scale UOM=" + C_UOM_To_ID
+					+ "; QtyEntered=" + QtyMiscReceipt + "->" + QtyMiscReceipt1);
+				QtyMiscReceipt = QtyMiscReceipt1;
+				mTab.setValue("QtyMiscReceipt", QtyMiscReceipt);
+			}
+			MovementQty = MUOMConversion.convertProductFrom (ctx, M_Product_ID,
+				C_UOM_To_ID, QtyMiscReceipt);
+			if (MovementQty == null)
+				MovementQty = QtyMiscReceipt;
+			boolean conversion = QtyMiscReceipt.compareTo(MovementQty) != 0;
+			if (log.isLoggable(Level.FINE)) log.fine("UOM=" + C_UOM_To_ID
+				+ ", QtyEntered=" + QtyMiscReceipt
+				+ " -> " + conversion
+				+ " QtyInternalUse=" + MovementQty);
+			Env.setContext(ctx, WindowNo, "UOMConversion", conversion ? "Y" : "N");
+			mTab.setValue(MInventoryLine.COLUMNNAME_QtyInternalUse, MovementQty.negate());
+		}
+		//	end	@win add support multiUOM
+	//	mTab.setValue(MInventoryLine.COLUMNNAME_QtyEntered, QtyMiscReceipt.negate());
+		return "";
+	}
 
 }	//	CalloutInventory

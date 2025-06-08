@@ -81,7 +81,7 @@ public class CalloutPayment extends CalloutEngine
 		//
 		String sql = "SELECT C_BPartner_ID,C_Currency_ID," // 1..2
 			+ " invoiceOpen(C_Invoice_ID, ?)," // 3 #1
-			+ " invoiceDiscount(C_Invoice_ID,?,?), IsSOTrx " // 4..5 #2/3
+			+ " invoiceDiscount(C_Invoice_ID,?,?), IsSOTrx, AD_Org_ID "	//	4..5	#2/3
 			+ "FROM C_Invoice WHERE C_Invoice_ID=?"; // #4
 		PreparedStatement pstmt = null;
 		ResultSet rs = null;
@@ -113,6 +113,9 @@ public class CalloutPayment extends CalloutEngine
 				Env.setContext (ctx, WindowNo, "C_Invoice_ID", C_Invoice_ID
 					.toString ());
 				mTab.setValue ("C_Invoice_ID", C_Invoice_ID);
+				
+				int AD_Org_ID = rs.getInt(6);
+				mTab.setValue("AD_Org_ID", AD_Org_ID);
 			}
 		}
 		catch (SQLException e)

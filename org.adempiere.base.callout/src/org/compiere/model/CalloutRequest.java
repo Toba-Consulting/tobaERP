@@ -22,6 +22,7 @@ import java.sql.SQLException;
 import java.util.Properties;
 import java.util.logging.Level;
 
+import org.adempiere.model.GridTabWrapper;
 import org.compiere.util.DB;
 import org.compiere.util.Env;
 
@@ -139,6 +140,12 @@ public class CalloutRequest extends CalloutEngine
 		int R_Status_ID = rt.getDefaultR_Status_ID();
 		if (R_Status_ID != 0)
 			mTab.setValue("R_Status_ID", Integer.valueOf(R_Status_ID));
+		
+		//@Stephan
+		MRequestType RequestType = new MRequestType(ctx, R_RequestType_ID, null);
+		I_R_Request req = GridTabWrapper.create(mTab, I_R_Request.class); 
+		req.setReqBaseType(RequestType.getReqBaseType());
+		//end
 		
 		return "";
 	}	//	type

@@ -254,6 +254,14 @@ public class CalloutGLJournal extends CalloutEngine
 				|| colName.equals("User2_ID")
 				|| colName.equals("UserElement1_ID")
 				|| colName.equals("UserElement2_ID")
+				|| colName.equals("UserElement3_ID")
+				|| colName.equals("UserElement4_ID")
+				|| colName.equals("UserElement5_ID")
+				|| colName.equals("UserElement6_ID")
+				|| colName.equals("UserElement7_ID")
+				|| colName.equals("UserElement8_ID")
+				|| colName.equals("UserElement9_ID")
+				|| colName.equals("UserElement10_ID")
 			)
 		{
 			mTab.setValue("C_ValidCombination_ID", null);
@@ -295,6 +303,14 @@ public class CalloutGLJournal extends CalloutEngine
 			mTab.setValue("User2_ID", combi.getUser2_ID()!= 0 ? combi.getUser2_ID() : null);
 			mTab.setValue("UserElement1_ID", combi.getUserElement1_ID() != 0 ? combi.getUserElement1_ID() : null);
 			mTab.setValue("UserElement2_ID", combi.getUserElement2_ID() != 0 ? combi.getUserElement2_ID() : null);
+			mTab.setValue("UserElement3_ID", combi.getUserElement3_ID() != 0 ? combi.getUserElement3_ID() : null);
+			mTab.setValue("UserElement4_ID", combi.getUserElement4_ID() != 0 ? combi.getUserElement4_ID() : null);
+			mTab.setValue("UserElement5_ID", combi.getUserElement5_ID() != 0 ? combi.getUserElement5_ID() : null);
+			mTab.setValue("UserElement6_ID", combi.getUserElement6_ID() != 0 ? combi.getUserElement6_ID() : null);
+			mTab.setValue("UserElement7_ID", combi.getUserElement7_ID() != 0 ? combi.getUserElement7_ID() : null);
+			mTab.setValue("UserElement8_ID", combi.getUserElement8_ID() != 0 ? combi.getUserElement8_ID() : null);
+			mTab.setValue("UserElement9_ID", combi.getUserElement9_ID() != 0 ? combi.getUserElement9_ID() : null);
+			mTab.setValue("UserElement10_ID", combi.getUserElement10_ID() != 0 ? combi.getUserElement10_ID() : null);
 		}
 		return "";
 	}

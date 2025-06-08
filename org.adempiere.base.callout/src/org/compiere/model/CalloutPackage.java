@@ -102,4 +102,20 @@ public class CalloutPackage extends CalloutEngine
         return "";
     }
     
+    public String ShipReceipt(Properties ctx, int windowNo, GridTab mTab, GridField mField, Object value, Object oldValue){
+    	Integer M_InOutLine_ID = (Integer)value;
+		
+		MPackageLine packageLine = new MPackageLine(ctx, 0, null);
+		if (M_InOutLine_ID == null || M_InOutLine_ID.intValue() == 0)
+			return "";
+		
+		if (M_InOutLine_ID >0){
+		X_M_InOutLine inOutLine = new X_M_InOutLine(ctx, M_InOutLine_ID, null);
+		
+		mTab.setValue(packageLine.COLUMNNAME_M_Product_ID, inOutLine.getM_Product_ID());
+		mTab.setValue(packageLine.COLUMNNAME_Qty, inOutLine.getQtyEntered());
+		}
+		return "";
+	}
+    
 }

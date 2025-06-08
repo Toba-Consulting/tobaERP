@@ -88,7 +88,7 @@ public class CalloutOrder extends CalloutEngine
 			int oldAD_Sequence_ID = 0;
 
 			//	Get old AD_SeqNo for comparison
-			if (!newDocNo && oldC_DocType_ID != null && oldC_DocType_ID.intValue() != 0)
+			if (!newDocNo && oldC_DocType_ID.intValue() != 0)
 			{
 				pstmt = DB.prepareStatement(sql, null);
 				pstmt.setInt(1, oldC_DocType_ID.intValue());
@@ -185,7 +185,13 @@ public class CalloutOrder extends CalloutEngine
 					//	PaymentRule
 					String s = rs.getString(IsSOTrx ? "PaymentRule" : "PaymentRulePO");
 					if (s != null && s.length() != 0)
+					{
+						if (IsSOTrx && (s.equals("B") || s.equals("S") || s.equals("U")))	//	No Cash/Check/Transfer for SO_Trx
+							s = "P";										//  Payment Term
+						if (!IsSOTrx && (s.equals("B")))					//	No Cash for PO_Trx
+							s = "P";										//  Payment Term
 						mTab.setValue("PaymentRule", s);
+					}
 					//	Payment Term
 					Integer ii =Integer.valueOf(rs.getInt(IsSOTrx ? "C_PaymentTerm_ID" : "PO_PaymentTerm_ID"));
 					if (!rs.wasNull())
@@ -250,17 +256,19 @@ public class CalloutOrder extends CalloutEngine
 			+ " COALESCE(p.M_PriceList_ID,g.M_PriceList_ID) AS M_PriceList_ID, p.PaymentRule,p.POReference,"
 			+ " p.SO_Description,p.IsDiscountPrinted,"
 			+ " p.InvoiceRule,p.DeliveryRule,p.FreightCostRule,DeliveryViaRule,"
-			+ " p.SO_CreditLimit, p.SO_CreditLimit-p.SO_CreditUsed AS CreditAvailable,"
-			+ " (select max(lship.C_BPartner_Location_ID) from C_BPartner_Location lship where p.C_BPartner_ID=lship.C_BPartner_ID AND lship.IsShipTo='Y' AND lship.IsActive='Y') as C_BPartner_Location_ID,"
-			+ " (select max(c.AD_User_ID) from AD_User c where p.C_BPartner_ID=c.C_BPartner_ID AND c.IsActive='Y') as AD_User_ID,"
-			+ " (select max(c.AD_User_ID) from AD_User c where p.C_BPartner_ID=c.C_BPartner_ID AND c.IsActive='Y' AND IsBillTo='Y') as BillTo_User_ID,"
-			+ " (select max(c.AD_User_ID) from AD_User c where p.C_BPartner_ID=c.C_BPartner_ID AND c.IsActive='Y' AND IsShipTo='Y') as ShipTo_User_ID,"
+			+ " lship.C_BPartner_Location_ID,c.AD_User_ID, "
+			+ " aubill.AD_User_ID as BillTo_User_ID, auship.AD_User_ID as ShipTo_User_ID, "
 			+ " COALESCE(p.PO_PriceList_ID,g.PO_PriceList_ID) AS PO_PriceList_ID, p.PaymentRulePO,p.PO_PaymentTerm_ID,"
-			+ " (select max(lbill.C_BPartner_Location_ID) from C_BPartner_Location lbill where p.C_BPartner_ID=lbill.C_BPartner_ID AND lbill.IsBillTo='Y' AND lbill.IsActive='Y') AS Bill_Location_ID, "
+			+ " lbill.C_BPartner_Location_ID as Bill_Location_ID, "
 			+ " p.SOCreditStatus, "
 			+ " p.SalesRep_ID "
 			+ "FROM C_BPartner p"
 			+ " INNER JOIN C_BP_Group g ON (p.C_BP_Group_ID=g.C_BP_Group_ID)"
+			+ " LEFT OUTER JOIN C_BPartner_Location lbill ON (p.C_BPartner_ID=lbill.C_BPartner_ID AND lbill.IsBillTo='Y' AND lbill.IsActive='Y') "
+			+ " LEFT OUTER JOIN C_BPartner_Location lship ON (p.C_BPartner_ID=lship.C_BPartner_ID AND lship.IsShipTo='Y' AND lship.IsActive='Y') "
+			+ " LEFT OUTER JOIN AD_User c ON (p.C_BPartner_ID=c.C_BPartner_ID AND c.IsActive='Y') "
+			+ " LEFT OUTER JOIN AD_User aubill ON (p.C_BPartner_ID=aubill.C_BPartner_ID AND aubill.IsActive='Y' and aubill.IsBillTo='Y') "
+			+ " LEFT OUTER JOIN AD_User auship ON (p.C_BPartner_ID=auship.C_BPartner_ID AND auship.IsActive='Y' and auship.IsShipTo='Y') "
 			+ "WHERE p.C_BPartner_ID=? AND p.IsActive='Y'";		//	#1
 
 		boolean IsSOTrx = "Y".equals(Env.getContext(ctx, WindowNo, "IsSOTrx"));
@@ -377,6 +385,8 @@ public class CalloutOrder extends CalloutEngine
 				String s = rs.getString("POReference");
 				if (s != null && s.length() != 0)
 					mTab.setValue("POReference", s);
+				else
+					mTab.setValue("POReference", null);
 				//	SO Description
 				s = rs.getString("SO_Description");
 				if (s != null && s.trim().length() != 0)
@@ -405,7 +415,13 @@ public class CalloutOrder extends CalloutEngine
 					//	PaymentRule
 					s = rs.getString(IsSOTrx ? "PaymentRule" : "PaymentRulePO");
 					if (s != null && s.length() != 0)
+					{
+						if (s.equals("B"))				//	No Cache in Non POS
+							s = "P";
+						if (IsSOTrx && (s.equals("S") || s.equals("U")))	//	No Check/Transfer for SO_Trx
+							s = "P";										//  Payment Term
 						mTab.setValue("PaymentRule", s);
+					}
 					//	Payment Term
 					ii = Integer.valueOf(rs.getInt(IsSOTrx ? "C_PaymentTerm_ID" : "PO_PaymentTerm_ID"));
 					if (!rs.wasNull())
@@ -461,21 +477,28 @@ public class CalloutOrder extends CalloutEngine
 	 */
 	public String bPartnerBill (Properties ctx, int WindowNo, GridTab mTab, GridField mField, Object value)
 	{
+		
+		if (isCalloutActive())
+			return "";
+		
 		Integer bill_BPartner_ID = (Integer)value;
 		if (bill_BPartner_ID == null || bill_BPartner_ID.intValue() == 0)
 			return "";
 
-		String sql = "SELECT p.AD_Language,p.C_PaymentTerm_ID,"
-			+ "p.M_PriceList_ID,p.PaymentRule,p.POReference,"
-			+ "p.SO_Description,p.IsDiscountPrinted,"
-			+ "p.InvoiceRule,p.DeliveryRule,p.FreightCostRule,DeliveryViaRule,"
-			+ "p.SO_CreditLimit, p.SO_CreditLimit-p.SO_CreditUsed AS CreditAvailable,"
-			+ "(select max(c.AD_User_ID) from AD_User c where p.C_BPartner_ID=c.C_BPartner_ID AND c.IsActive='Y') as AD_User_ID,"
-			+ "(select max(c.AD_User_ID) from AD_User c where p.C_BPartner_ID=c.C_BPartner_ID AND c.IsActive='Y' AND IsBillTo='Y') as BillTo_User_ID,"
-			+ "p.PO_PriceList_ID, p.PaymentRulePO, p.PO_PaymentTerm_ID,"
-			+ "(select max(lbill.C_BPartner_Location_ID) from C_BPartner_Location lbill where p.C_BPartner_ID=lbill.C_BPartner_ID AND lbill.IsBillTo='Y' AND lbill.IsActive='Y') AS Bill_Location_ID "
-			+ "FROM C_BPartner p "
-			+ "WHERE p.C_BPartner_ID=? AND p.IsActive='Y'";		//	#1
+		String sql = "SELECT p.AD_Language,p.C_PaymentTerm_ID, "
+				+ " p.M_PriceList_ID,p.PaymentRule,p.POReference, "
+				+ " p.SO_Description,p.IsDiscountPrinted, "
+				+ " p.InvoiceRule,p.DeliveryRule,p.FreightCostRule,DeliveryViaRule, "
+				+ " p.SO_CreditLimit, p.SO_CreditLimit-p.SO_CreditUsed AS CreditAvailable, "
+				+ " c.AD_User_ID, "
+				+ " au.AD_User_ID AS BillTo_User_ID, "
+				+ " p.PO_PriceList_ID, p.PaymentRulePO, p.PO_PaymentTerm_ID, "
+				+ " lbill.C_BPartner_Location_ID AS Bill_Location_ID "
+				+ " FROM C_BPartner p "
+				+ " LEFT OUTER JOIN C_BPartner_Location lbill ON (p.C_BPartner_ID=lbill.C_BPartner_ID AND lbill.IsBillTo='Y' AND lbill.IsActive='Y') "
+				+ " LEFT OUTER JOIN AD_User c ON (p.C_BPartner_ID=c.C_BPartner_ID AND c.IsActive='Y') "
+				+ " LEFT OUTER JOIN AD_User au ON (p.C_BPartner_ID=au.C_BPartner_ID AND au.IsActive='Y' AND au.IsBillTo='Y') "
+				+ " WHERE p.C_BPartner_ID=? AND p.IsActive='Y'";		//	#1
 
 		boolean IsSOTrx = "Y".equals(Env.getContext(ctx, WindowNo, "IsSOTrx"));
 		PreparedStatement pstmt = null;
@@ -562,7 +585,13 @@ public class CalloutOrder extends CalloutEngine
 				//	PO Reference
 				String s = rs.getString("POReference");
 				if (s != null && s.length() != 0)
-					mTab.setValue("POReference", s);
+				{
+					if (s.equals("B"))				//	No Cache in Non POS
+						s = "P";
+					if (IsSOTrx && (s.equals("S") || s.equals("U")))	//	No Check/Transfer for SO_Trx
+						s = "P";										//  Payment Term
+					mTab.setValue("PaymentRule", s);
+				}
 				//	SO Description
 				s = rs.getString("SO_Description");
 				if (s != null && s.trim().length() != 0)
@@ -656,51 +685,64 @@ public class CalloutOrder extends CalloutEngine
 	 *  @param readonly Read Only - do not set tab fields, just context
 	 *  @return null or error message
 	 */
-	public String priceListFill (Properties ctx, int WindowNo, GridTab mTab, GridField mField, Object value, boolean readonly)
+	public String priceList (Properties ctx, int WindowNo, GridTab mTab, GridField mField, Object value)
 	{
 		Integer M_PriceList_ID = (Integer) mTab.getValue("M_PriceList_ID");
 		if (M_PriceList_ID == null || M_PriceList_ID.intValue()== 0)
 			return "";
 
-		MPriceList pl = MPriceList.get(ctx, M_PriceList_ID, null);
-		if (pl != null && pl.getM_PriceList_ID() == M_PriceList_ID) {
-			if (!readonly) {
-				//	Tax Included
-				mTab.setValue("IsTaxIncluded", pl.isTaxIncluded());
-				//	Currency
-				mTab.setValue("C_Currency_ID", pl.getC_Currency_ID());
-			}
-			//	Price Limit Enforce
-			Env.setContext(ctx, WindowNo, "EnforcePriceLimit", pl.isEnforcePriceLimit());
-
-			//	PriceList Version
-			Timestamp date = null;
+		if (steps) log.warning("init");
+		PreparedStatement pstmt = null;
+		ResultSet rs = null;
+		String sql = "SELECT pl.IsTaxIncluded,pl.EnforcePriceLimit,pl.C_Currency_ID,c.StdPrecision,"
+			+ "plv.M_PriceList_Version_ID,plv.ValidFrom "
+			+ "FROM M_PriceList pl,C_Currency c,M_PriceList_Version plv "
+			+ "WHERE pl.C_Currency_ID=c.C_Currency_ID"
+			+ " AND pl.M_PriceList_ID=plv.M_PriceList_ID"
+			+ " AND pl.M_PriceList_ID=? "						//	1
+			+ " AND plv.ValidFrom <= ? "
+			+ "ORDER BY plv.ValidFrom DESC";
+		//	Use newest price list - may not be future
+		try
+		{
+			pstmt = DB.prepareStatement(sql, null);
+			pstmt.setInt(1, M_PriceList_ID.intValue());
+			Timestamp date = new Timestamp(System.currentTimeMillis());
 			if (mTab.getAD_Table_ID() == I_C_Order.Table_ID)
 				date = Env.getContextAsDate(ctx, WindowNo, "DateOrdered");
 			else if (mTab.getAD_Table_ID() == I_C_Invoice.Table_ID)
 				date = Env.getContextAsDate(ctx, WindowNo, "DateInvoiced");
-			MPriceListVersion plv = pl.getPriceListVersion(date);
-			if (plv != null && plv.getM_PriceList_Version_ID() > 0) {
-				Env.setContext(ctx, WindowNo, "M_PriceList_Version_ID", plv.getM_PriceList_Version_ID());
-			} else {
-				Env.setContext(ctx, WindowNo, "M_PriceList_Version_ID", (String) null);
+			pstmt.setTimestamp(2, date);
+
+			rs = pstmt.executeQuery();
+			if (rs.next())
+			{
+				//	Tax Included
+				mTab.setValue("IsTaxIncluded", Boolean.valueOf("Y".equals(rs.getString(1))));
+				//	Price Limit Enforce
+				Env.setContext(ctx, WindowNo, "EnforcePriceLimit", rs.getString(2));
+				//	Currency
+				Integer ii = Integer.valueOf(rs.getInt(3));
+				mTab.setValue("C_Currency_ID", ii);
+				//	PriceList Version
+				Env.setContext(ctx, WindowNo, "M_PriceList_Version_ID", rs.getInt(5));
 			}
 		}
+		catch (SQLException e)
+		{
+			log.log(Level.SEVERE, sql, e);
+			return e.getLocalizedMessage();
+		}
+		finally
+		{
+			DB.close(rs, pstmt);
+			rs = null; pstmt = null;
+		}
+		if (steps) log.warning("fini");
 
 		return "";
 	}	//	priceListFill
 
-	public String priceList (Properties ctx, int WindowNo, GridTab mTab, GridField mField, Object value)
-	{
-		return priceListFill (ctx, WindowNo, mTab, mField, value, false);
-	}	//	priceList
-
-	/* IDEMPIERE-2676 - this is same callout priceList but not setting any variable, just reading and setting context, called on navigate */
-	public String priceListReadOnly (Properties ctx, int WindowNo, GridTab mTab, GridField mField, Object value)
-	{
-		return priceListFill (ctx, WindowNo, mTab, mField, value, true);
-	}	//	priceListReadOnly
-	
 	/**
 	 *	Set Payment Term.
 	 *	Payment Term has changed 
@@ -760,20 +802,23 @@ public class CalloutOrder extends CalloutEngine
 			mTab.setValue("M_AttributeSetInstance_ID", Env.getContextAsInt(ctx, WindowNo, Env.TAB_INFO, "M_AttributeSetInstance_ID"));
 		else
 			mTab.setValue("M_AttributeSetInstance_ID", 0);
+		
+		//@Stephan TAOWI-2175
+		int C_Order_ID = Env.getContextAsInt(ctx, WindowNo, "C_Order_ID");
+		MOrder order = new MOrder(ctx, C_Order_ID, null);
+		if(!order.isSOTrx() && order.get_ValueAsBoolean("IsNoPriceList"))
+			return "";
+		//@Stephan end
 
 		/*****	Price Calculation see also qty	****/
 		int C_BPartner_ID = Env.getContextAsInt(ctx, WindowNo, "C_BPartner_ID");
 		BigDecimal Qty = (BigDecimal)mTab.getValue("QtyOrdered");
 		boolean IsSOTrx = Env.getContext(ctx, WindowNo, "IsSOTrx").equals("Y");
-		IProductPricing pp = Core.getProductPricing();
-		pp.setInitialValues(M_Product_ID.intValue(), C_BPartner_ID, Qty, IsSOTrx, null);
-		Timestamp orderDate = (Timestamp)mTab.getValue("DateOrdered");
-		pp.setPriceDate(orderDate);
-		I_C_OrderLine orderLine = GridTabWrapper.create(mTab, I_C_OrderLine.class);
-		pp.setOrderLine(orderLine, null);
+		MProductPricing pp = new MProductPricing (M_Product_ID.intValue(), C_BPartner_ID, Qty, IsSOTrx, null);
 		//
 		int M_PriceList_ID = Env.getContextAsInt(ctx, WindowNo, "M_PriceList_ID");
 		pp.setM_PriceList_ID(M_PriceList_ID);
+		Timestamp orderDate = (Timestamp)mTab.getValue("DateOrdered");
 		/** PLV is only accurate if PL selected in header */
 		int M_PriceList_Version_ID = Env.getContextAsInt(ctx, WindowNo, "M_PriceList_Version_ID");
 		if ( M_PriceList_Version_ID == 0 && M_PriceList_ID > 0)
@@ -802,6 +847,7 @@ public class CalloutOrder extends CalloutEngine
 		Env.setContext(ctx, WindowNo, "EnforcePriceLimit", pp.isEnforcePriceLimit() ? "Y" : "N");
 		Env.setContext(ctx, WindowNo, "DiscountSchema", pp.isDiscountSchema() ? "Y" : "N");
 
+		/*	@Stephan comment out related with qty reserved
 		if (Env.isSOTrx(ctx, WindowNo))
 		{
 			MProduct product = MProduct.get (ctx, M_Product_ID.intValue());
@@ -842,6 +888,7 @@ public class CalloutOrder extends CalloutEngine
 				}
 			}
 		}
+		*/
 		//
 		if (steps) log.warning("fini");
 		return tax (ctx, WindowNo, mTab, mField, value);
@@ -971,6 +1018,7 @@ public class CalloutOrder extends CalloutEngine
 		if (log.isLoggable(Level.FINE)) log.fine("Bill BP_Location=" + billC_BPartner_Location_ID);
 
 		//
+		/*	@stephan TAOWI-897
 		String deliveryViaRule = Env.getContext(ctx, WindowNo, I_C_Order.COLUMNNAME_DeliveryViaRule, true);
 		int dropshipLocationId = Env.getContextAsInt(ctx, WindowNo, I_C_Order.COLUMNNAME_DropShip_Location_ID, true);
 		int C_Tax_ID = Core.getTaxLookup().get(ctx, M_Product_ID, C_Charge_ID, billDate, shipDate,
@@ -983,6 +1031,21 @@ public class CalloutOrder extends CalloutEngine
 		else
 			mTab.setValue("C_Tax_ID", Integer.valueOf(C_Tax_ID));
 		//
+		 */
+		
+		int C_Order_ID = Env.getContextAsInt(ctx, WindowNo, "C_Order_ID");
+		if(C_Order_ID > 0){
+			MOrder order = new MOrder(Env.getCtx(), C_Order_ID, null);
+			if(order.getC_Tax_ID() == 0){
+				MProduct product = new MProduct(Env.getCtx(), M_Product_ID, null);
+				StringBuilder sql = new StringBuilder();
+				sql.append("SELECT C_Tax_ID FROM C_Tax WHERE IsDefault='Y' AND C_TaxCategory_ID=?");
+				int C_Tax_ID = DB.getSQLValue(null, sql.toString(), product.getC_TaxCategory_ID());
+				mTab.setValue("C_Tax_ID", Integer.valueOf(C_Tax_ID));
+			}
+		}
+		//	end
+		
 		if (steps) log.warning("fini");
 		return amt(ctx, WindowNo, mTab, mField, value);
 	}	//	tax
@@ -1006,6 +1069,9 @@ public class CalloutOrder extends CalloutEngine
 		if (isCalloutActive() || value == null)
 			return "";
 
+		int C_Order_ID = Env.getContextAsInt(ctx, WindowNo, "C_Order_ID");
+		MOrder order = new MOrder(ctx, C_Order_ID, null);
+		
 		if (steps) log.warning("init");
 		int C_UOM_To_ID = Env.getContextAsInt(ctx, WindowNo, mTab.getTabNo(), "C_UOM_ID");
 		int M_Product_ID = Env.getContextAsInt(ctx, WindowNo, mTab.getTabNo(), "M_Product_ID");
@@ -1016,11 +1082,7 @@ public class CalloutOrder extends CalloutEngine
 		BigDecimal QtyEntered, QtyOrdered, PriceEntered, PriceActual, PriceLimit, Discount, PriceList;
 		//	get values
 		QtyEntered = (BigDecimal)mTab.getValue("QtyEntered");
-		if (QtyEntered == null)
-			QtyEntered = Env.ZERO;
 		QtyOrdered = (BigDecimal)mTab.getValue("QtyOrdered");
-		if (QtyOrdered == null)
-			QtyOrdered = Env.ZERO;
 		if (log.isLoggable(Level.FINE)) log.fine("QtyEntered=" + QtyEntered + ", Ordered=" + QtyOrdered + ", UOM=" + C_UOM_To_ID);
 		//
 		PriceEntered = (BigDecimal)mTab.getValue("PriceEntered");
@@ -1062,16 +1124,19 @@ public class CalloutOrder extends CalloutEngine
 					C_UOM_To_ID, QtyEntered);
 			if (QtyOrdered == null)
 				QtyOrdered = QtyEntered;
+			
+			//@Stephan TAOWI-2175
+			if(!order.isSOTrx() && order.get_ValueAsBoolean("IsNoPriceList"))
+				return "";
+			//@Stephan end
+			
 			boolean IsSOTrx = Env.getContext(ctx, WindowNo, "IsSOTrx").equals("Y");
-			IProductPricing pp = Core.getProductPricing();
-			pp.setInitialValues(M_Product_ID, C_BPartner_ID, QtyOrdered, IsSOTrx, null);
-			Timestamp date = (Timestamp)mTab.getValue("DateOrdered");
-			pp.setPriceDate(date);
-			I_C_OrderLine orderLine = GridTabWrapper.create(mTab, I_C_OrderLine.class);
-			pp.setOrderLine(orderLine, null);
+			MProductPricing pp = new MProductPricing (M_Product_ID, C_BPartner_ID, QtyOrdered, IsSOTrx, null);
 			pp.setM_PriceList_ID(M_PriceList_ID);
 			int M_PriceList_Version_ID = Env.getContextAsInt(ctx, WindowNo, "M_PriceList_Version_ID");
 			pp.setM_PriceList_Version_ID(M_PriceList_Version_ID);
+			Timestamp date = (Timestamp)mTab.getValue("DateOrdered");
+			pp.setPriceDate(date);
 			//
 			PriceEntered = MUOMConversion.convertProductFrom (ctx, M_Product_ID,
 				C_UOM_To_ID, pp.getPriceStd(), 12);
@@ -1108,7 +1173,7 @@ public class CalloutOrder extends CalloutEngine
 			PriceEntered = (BigDecimal)value;
 			PriceActual = MUOMConversion.convertProductTo (ctx, M_Product_ID,
 				C_UOM_To_ID, PriceEntered, 12);
-			if (PriceActual == null)
+			if (PriceActual == null || order.get_ValueAsBoolean("IsNoPriceList"))
 				PriceActual = PriceEntered;
 			//
 			if (log.isLoggable(Level.FINE)) log.fine("PriceEntered=" + PriceEntered
@@ -1119,6 +1184,8 @@ public class CalloutOrder extends CalloutEngine
 		//  Discount entered - Calculate Actual/Entered
 		if (mField.getColumnName().equals("Discount"))
 		{
+			//@kevinf TAOWI-2800
+			/*
 			if ( PriceList.doubleValue() != 0 )
 				PriceActual = BigDecimal.valueOf((100.0 - Discount.doubleValue()) / 100.0 * PriceList.doubleValue());
 			if (PriceActual.scale() > StdPrecision)
@@ -1127,6 +1194,22 @@ public class CalloutOrder extends CalloutEngine
 				C_UOM_To_ID, PriceActual, 12);
 			if (PriceEntered == null)
 				PriceEntered = PriceActual;
+			*/
+			
+			if ( PriceList.doubleValue() != 0 )
+				PriceEntered = BigDecimal.valueOf((100.0 - Discount.doubleValue()) / 100.0 * PriceList.doubleValue());
+			if (PriceEntered.scale() > StdPrecision)
+				PriceEntered = PriceEntered.setScale(StdPrecision, RoundingMode.HALF_UP);
+			PriceActual = MUOMConversion.convertProductTo (ctx, M_Product_ID,
+				C_UOM_To_ID, PriceEntered);
+			
+			if (PriceEntered == null)
+			{
+				PriceEntered = Env.ZERO;
+				PriceActual = Env.ZERO;
+			}
+			//@kevinf end
+			
 			mTab.setValue("PriceActual", PriceActual);
 			mTab.setValue("PriceEntered", PriceEntered);
 		}
@@ -1135,8 +1218,11 @@ public class CalloutOrder extends CalloutEngine
 		{
 			if (PriceList.compareTo(Env.ZERO) == 0)
 				Discount = Env.ZERO;
+			//@TommyAng
 			else
-				Discount = BigDecimal.valueOf((PriceList.doubleValue() - PriceActual.doubleValue()) / PriceList.doubleValue() * 100.0);
+				Discount = BigDecimal.valueOf((PriceList.doubleValue() - PriceEntered.doubleValue()) / PriceList.doubleValue() * 100.0);
+				//Discount = BigDecimal.valueOf((PriceList.doubleValue() - PriceActual.doubleValue()) / PriceList.doubleValue() * 100.0);
+			//end @TommyAng
 			if (Discount.scale() > 2)
 				Discount = Discount.setScale(2, RoundingMode.HALF_UP);
 			mTab.setValue("Discount", Discount);
@@ -1172,7 +1258,9 @@ public class CalloutOrder extends CalloutEngine
 		}
 
 		//	Line Net Amt
-		BigDecimal LineNetAmt = QtyEntered.multiply(PriceEntered);
+		//  @Stephan - change price multiply with qty entered related with uom conversion
+		BigDecimal LineNetAmt = QtyOrdered.multiply(PriceActual);
+		//	BigDecimal LineNetAmt = QtyEntered.multiply(PriceEntered);
 		if (LineNetAmt.scale() > StdPrecision)
 			LineNetAmt = LineNetAmt.setScale(StdPrecision, RoundingMode.HALF_UP);
 		if (log.isLoggable(Level.INFO)) log.info("LineNetAmt=" + LineNetAmt);
@@ -1236,6 +1324,11 @@ public class CalloutOrder extends CalloutEngine
 				+ " -> " + conversion
 				+ " QtyOrdered/PriceEntered=" + QtyOrdered + "/" + PriceEntered);
 			Env.setContext(ctx, WindowNo, "UOMConversion", conversion ? "Y" : "N");
+			// @TommyAng
+			//PriceActual = PriceEntered;
+			mTab.setValue("PriceList", PriceEntered);
+			//mTab.setValue("PriceActual", PriceActual);
+			// end @TommyAng
 			mTab.setValue("QtyOrdered", QtyOrdered);
 			mTab.setValue("PriceEntered", PriceEntered);
 		}
@@ -1385,45 +1478,65 @@ public class CalloutOrder extends CalloutEngine
 	}
 
 	public String navigateOrderLine(Properties ctx, int WindowNo, GridTab mTab, GridField mField, Object value) {
-		Integer M_Product_ID = Env.getContextAsInt(ctx, WindowNo, mTab.getTabNo(), "M_Product_ID");
-		if (M_Product_ID == null || M_Product_ID.intValue() == 0) {
-			Env.setContext(ctx, WindowNo, "DiscountSchema", "N");
+		
+//		Integer M_Product_ID = Env.getContextAsInt(ctx, WindowNo, mTab.getTabNo(), "M_Product_ID");
+//		if (M_Product_ID == null || M_Product_ID.intValue() == 0) {
+//			Env.setContext(ctx, WindowNo, "DiscountSchema", "N");
+//			return "";
+//		}
+//
+//		/*****	Price Calculation see also qty	****/
+//		int C_BPartner_ID = Env.getContextAsInt(ctx, WindowNo, "C_BPartner_ID");
+//		BigDecimal Qty = (BigDecimal)mTab.getValue("QtyOrdered");
+//		boolean IsSOTrx = Env.getContext(ctx, WindowNo, "IsSOTrx").equals("Y");
+//		IProductPricing pp = Core.getProductPricing();
+//		pp.setInitialValues(M_Product_ID.intValue(), C_BPartner_ID, Qty, IsSOTrx, null);
+//		Timestamp orderDate = (Timestamp)mTab.getValue("DateOrdered");
+//		pp.setPriceDate(orderDate);
+//		I_C_OrderLine orderLine = GridTabWrapper.create(mTab, I_C_OrderLine.class);
+//		pp.setOrderLine(orderLine, null);
+//		//
+//		int M_PriceList_ID = Env.getContextAsInt(ctx, WindowNo, "M_PriceList_ID");
+//		pp.setM_PriceList_ID(M_PriceList_ID);
+//		/** PLV is only accurate if PL selected in header */
+//		int M_PriceList_Version_ID = Env.getContextAsInt(ctx, WindowNo, "M_PriceList_Version_ID");
+//		if ( M_PriceList_Version_ID == 0 && M_PriceList_ID > 0)
+//		{
+//			String sql = "SELECT plv.M_PriceList_Version_ID "
+//				+ "FROM M_PriceList_Version plv "
+//				+ "WHERE plv.M_PriceList_ID=? "						//	1
+//				+ " AND plv.ValidFrom <= ? "
+//				+ "ORDER BY plv.ValidFrom DESC";
+//			//	Use newest price list - may not be future
+//
+//			M_PriceList_Version_ID = DB.getSQLValueEx(null, sql, M_PriceList_ID, orderDate);
+//			if ( M_PriceList_Version_ID > 0 )
+//				Env.setContext(ctx, WindowNo, "M_PriceList_Version_ID", M_PriceList_Version_ID );
+//		}
+//		pp.setM_PriceList_Version_ID(M_PriceList_Version_ID);
+//		//
+//		Env.setContext(ctx, WindowNo, "EnforcePriceLimit", pp.isEnforcePriceLimit() ? "Y" : "N");
+//		Env.setContext(ctx, WindowNo, "DiscountSchema", pp.isDiscountSchema() ? "Y" : "N");
+		
+		return "";
+	}
+	
+	/**
+	 * TAOWI-2175
+	 * order header - is no price list
+	 * @param ctx, window, tab, field, value
+	 * @return empty string
+	 */
+	public String IsNoPrice(Properties ctx, int windowNo, GridTab mTab,
+			GridField mField, Object value){
+		
+		if(value == null)
 			return "";
-		}
-
-		/*****	Price Calculation see also qty	****/
-		int C_BPartner_ID = Env.getContextAsInt(ctx, WindowNo, "C_BPartner_ID");
-		BigDecimal Qty = (BigDecimal)mTab.getValue("QtyOrdered");
-		boolean IsSOTrx = Env.getContext(ctx, WindowNo, "IsSOTrx").equals("Y");
-		IProductPricing pp = Core.getProductPricing();
-		pp.setInitialValues(M_Product_ID.intValue(), C_BPartner_ID, Qty, IsSOTrx, null);
-		Timestamp orderDate = (Timestamp)mTab.getValue("DateOrdered");
-		pp.setPriceDate(orderDate);
-		I_C_OrderLine orderLine = GridTabWrapper.create(mTab, I_C_OrderLine.class);
-		pp.setOrderLine(orderLine, null);
-		//
-		int M_PriceList_ID = Env.getContextAsInt(ctx, WindowNo, "M_PriceList_ID");
-		pp.setM_PriceList_ID(M_PriceList_ID);
-		/** PLV is only accurate if PL selected in header */
-		int M_PriceList_Version_ID = Env.getContextAsInt(ctx, WindowNo, "M_PriceList_Version_ID");
-		if ( M_PriceList_Version_ID == 0 && M_PriceList_ID > 0)
-		{
-			String sql = "SELECT plv.M_PriceList_Version_ID "
-				+ "FROM M_PriceList_Version plv "
-				+ "WHERE plv.M_PriceList_ID=? "						//	1
-				+ " AND plv.ValidFrom <= ? "
-				+ "ORDER BY plv.ValidFrom DESC";
-			//	Use newest price list - may not be future
-
-			M_PriceList_Version_ID = DB.getSQLValueEx(null, sql, M_PriceList_ID, orderDate);
-			if ( M_PriceList_Version_ID > 0 )
-				Env.setContext(ctx, WindowNo, "M_PriceList_Version_ID", M_PriceList_Version_ID );
-		}
-		pp.setM_PriceList_Version_ID(M_PriceList_Version_ID);
-		//
-		Env.setContext(ctx, WindowNo, "EnforcePriceLimit", pp.isEnforcePriceLimit() ? "Y" : "N");
-		Env.setContext(ctx, WindowNo, "DiscountSchema", pp.isDiscountSchema() ? "Y" : "N");
-
+		
+		boolean isNoPriceList = (boolean) value;
+		if(isNoPriceList)
+			mTab.setValue("M_PriceList_ID", null);
+		
 		return "";
 	}
 

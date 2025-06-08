@@ -20,6 +20,7 @@ import java.math.BigDecimal;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.util.Properties;
 import java.util.logging.Level;
 
@@ -154,4 +155,23 @@ public class CalloutBankStatement extends CalloutEngine
 		return "";
 	}	//	payment
 
+	/**
+	 * 	Statement Date Changed.
+	 * 	Update Date Acct
+	 *	@param ctx context
+	 *	@param WindowNo window no
+	 *	@param mTab tab
+	 *	@param mField field
+	 *	@param value value
+	 *	@return null or error message
+	 */
+	public String statementDate (Properties ctx, int WindowNo, GridTab mTab, GridField mField, Object value)
+	{
+		if (value == null)
+			return "";
+		
+		Timestamp statementDate = (Timestamp) value;
+		mTab.setValue("DateAcct", statementDate);
+		return "";
+	}	//	statementDate
 }	//	CalloutBankStatement

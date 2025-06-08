@@ -285,6 +285,11 @@ public class CalloutRMA extends CalloutEngine {
 				mTab.setValue("SalesRep_ID", Integer.valueOf(inout.getSalesRep_ID()));
 			else
 				mTab.setValue("SalesRep_ID", null);
+			
+			mTab.setValue(MRMA.COLUMNNAME_AD_Org_ID, inout.getAD_Org_ID());
+			mTab.setValue(MRMA.COLUMNNAME_M_Warehouse_ID, inout.getM_Warehouse_ID());
+			mTab.setValue("C_BPartner_ID", inout.getC_BPartner_ID());
+			mTab.setValue("C_Order_ID", inout.getC_Order_ID());
 		}
 
 		return "";

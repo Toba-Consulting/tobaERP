@@ -88,6 +88,11 @@ public class CalloutInOut extends CalloutEngine
 			else
 				mTab.setValue("AD_User_ID", null);
 
+			//@win add for fixed assets
+			if (order.isTrackAsAsset()) {
+				mTab.setValue(MInOut.COLUMNNAME_IsTrackAsAsset, order.isTrackAsAsset());
+			}
+			
 			if (order.isDropShip()) {
 				mTab.setValue(MInOut.COLUMNNAME_IsDropShip, order.isDropShip());
 				mTab.setValue(MInOut.COLUMNNAME_DropShip_BPartner_ID, order.getDropShip_BPartner_ID());
@@ -260,11 +265,12 @@ public class CalloutInOut extends CalloutEngine
 		String sql = "SELECT p.AD_Language,p.C_PaymentTerm_ID,"
 			+ "p.M_PriceList_ID,p.PaymentRule,p.POReference,"
 			+ "p.SO_Description,p.IsDiscountPrinted,"
-			+ "p.SO_CreditLimit-p.SO_CreditUsed AS CreditAvailable,"
-			+ "(select max(l.C_BPartner_Location_ID) from C_BPartner_Location l where p.C_BPartner_ID=l.C_BPartner_ID AND l.IsActive='Y') as C_BPartner_Location_ID,"
-			+ "(select max(c.AD_User_ID) from AD_User c where p.C_BPartner_ID=c.C_BPartner_ID AND c.IsActive='Y' AND IsShipTo='Y') as ShipTo_User_ID,"
+			+ "p.SO_CreditLimit-p.SO_CreditUsed AS CreditAvailable, p.SOCreditStatus, "
+			+ "l.C_BPartner_Location_ID as C_BPartner_Location_ID, "
 			+ "(select max(c.AD_User_ID) from AD_User c where p.C_BPartner_ID=c.C_BPartner_ID AND c.IsActive='Y') as AD_User_ID "
-			+ "FROM C_BPartner p "
+			+ " FROM C_BPartner p "
+			+ " LEFT OUTER JOIN C_BPartner_Location l ON (p.C_BPartner_ID=l.C_BPartner_ID AND l.IsActive = 'Y') "
+			+ " LEFT OUTER JOIN AD_User c ON (p.C_BPartner_ID=c.C_BPartner_ID AND c.IsActive = 'Y') "
 			+ "WHERE p.C_BPartner_ID=?";		//	1
 
 		PreparedStatement pstmt = null;
@@ -288,24 +294,36 @@ public class CalloutInOut extends CalloutEngine
 						mTab.setValue("C_BPartner_Location_ID", ii);
 					//	Contact
 					ii = Integer.valueOf(rs.getInt("AD_User_ID"));
-					if (rs.wasNull())
-						mTab.setValue("AD_User_ID", null);
-					else {
-						int ShipTo_User_ID = rs.getInt("ShipTo_User_ID");
-						Integer userID = ShipTo_User_ID > 0 ? Integer.valueOf(ShipTo_User_ID) : ii;
-						mTab.setValue("AD_User_ID", userID);
+					//@PhieAlbert
+					if (C_BPartner_ID.toString().equals(Env.getContext(ctx, WindowNo, Env.TAB_INFO, "C_BPartner_ID")))
+					{
+						String cont = Env.getContext(ctx, WindowNo, Env.TAB_INFO, "AD_User_ID");
+						if (cont.length() > 0)
+							ii = Integer.parseInt(cont);
 					}
+					//end @PhieAlbert
+					if (ii==0)
+						mTab.setValue("AD_User_ID", null);
+					else
+						mTab.setValue("AD_User_ID", ii);
 				}
 
 				//Bugs item #1679818: checking for SOTrx only
 				if (IsSOTrx)
 				{
 					//	CreditAvailable
-					double CreditAvailable = rs.getDouble("CreditAvailable");
-					if (!rs.wasNull() && CreditAvailable < 0)
-						mTab.fireDataStatusEEvent("CreditLimitOver",
-								DisplayType.getNumberFormat(DisplayType.Amount).format(CreditAvailable),
-								false);
+					String SOCreditStatus = rs.getString("SOCreditStatus");
+					if (SOCreditStatus.equals(MBPartner.SOCREDITSTATUS_CreditStop)) {
+						mTab.fireDataStatusEEvent("CreditStop","Business Partner Is Credit Stop",
+								true);
+					}
+					else if (!SOCreditStatus.equals(MBPartner.SOCREDITSTATUS_NoCreditCheck)) {
+						double CreditAvailable = rs.getDouble("CreditAvailable");
+						if (!rs.wasNull() && CreditAvailable < 0)
+							mTab.fireDataStatusEEvent("CreditLimitOver",
+									DisplayType.getNumberFormat(DisplayType.Amount).format(CreditAvailable),
+									false);
+					}
 				}//
 			}
 		}
@@ -356,9 +374,12 @@ public class CalloutInOut extends CalloutEngine
 			{
 				//	Org
 				Integer ii = Integer.valueOf(rs.getInt(1));
+				/*//@win comment temporary
 				int AD_Org_ID = Env.getContextAsInt(ctx, WindowNo, "AD_Org_ID");
 				if (AD_Org_ID != ii.intValue())
 					mTab.setValue("AD_Org_ID", ii);
+				*/
+				
 				//	Locator
 				ii = Integer.valueOf(rs.getInt(2));
 				if (rs.wasNull())
@@ -435,7 +456,21 @@ public class CalloutInOut extends CalloutEngine
 				QtyEntered = QtyEntered.multiply(ol.getQtyEntered())
 					.divide(ol.getQtyOrdered(), 12, RoundingMode.HALF_UP);
 			mTab.setValue("QtyEntered", QtyEntered);
+			
+			//@win add for fixed assets
+			if (ol.isTrackAsAsset()) {
+				mTab.setValue(MInOutLine.COLUMNNAME_IsTrackAsAsset, ol.isTrackAsAsset());
+				mTab.setValue(MInOutLine.COLUMNNAME_A_CreateAsset, ol.isA_CreateAsset());
+				mTab.setValue(MInOutLine.COLUMNNAME_A_Asset_Group_ID, ol.getA_Asset_Group_ID());
+				mTab.setValue(MInOutLine.COLUMNNAME_A_Asset_ID, ol.getA_Asset_ID());
+				
+			}
+			mTab.setValue("AD_OrgTrx_ID", Integer.valueOf(ol.getAD_OrgTrx_ID()));
+			mTab.setValue("C_Project_ID", Integer.valueOf(ol.getC_Project_ID()));
+			
+			//@win
 			//
+			/* temporarily commented out by @win
 			mTab.setValue("C_Activity_ID", Integer.valueOf(ol.getC_Activity_ID()));
 			mTab.setValue("C_Campaign_ID", Integer.valueOf(ol.getC_Campaign_ID()));
 			mTab.setValue("C_Project_ID", Integer.valueOf(ol.getC_Project_ID()));
@@ -444,6 +479,7 @@ public class CalloutInOut extends CalloutEngine
 			mTab.setValue("AD_OrgTrx_ID", Integer.valueOf(ol.getAD_OrgTrx_ID()));
 			mTab.setValue("User1_ID", Integer.valueOf(ol.getUser1_ID()));
 			mTab.setValue("User2_ID", Integer.valueOf(ol.getUser2_ID()));
+			*/
 		}
 		return "";
 	}	//	orderLine
@@ -483,7 +519,12 @@ public class CalloutInOut extends CalloutEngine
 			mTab.setValue("MovementQty", MovementQty);
 			BigDecimal QtyEntered = MovementQty;
 			mTab.setValue("QtyEntered", QtyEntered);
+			
+			mTab.setValue("AD_OrgTrx_ID", Integer.valueOf(rl.getAD_OrgTrx_ID()));
+			mTab.setValue("C_Project_ID", Integer.valueOf(rl.getC_Project_ID()));
+			
 			//
+			/* temporarily commented out by @win
 			mTab.setValue("C_Activity_ID", Integer.valueOf(rl.getC_Activity_ID()));
 			mTab.setValue("C_Campaign_ID", Integer.valueOf(rl.getC_Campaign_ID()));
 			mTab.setValue("C_Project_ID", Integer.valueOf(rl.getC_Project_ID()));
@@ -492,6 +533,7 @@ public class CalloutInOut extends CalloutEngine
 			mTab.setValue("AD_OrgTrx_ID", Integer.valueOf(rl.getAD_OrgTrx_ID()));
 			mTab.setValue("User1_ID", Integer.valueOf(rl.getUser1_ID()));
 			mTab.setValue("User2_ID", Integer.valueOf(rl.getUser2_ID()));
+			*/
 		}
 		return "";
 	}	//	rmaLine
@@ -714,6 +756,7 @@ public class CalloutInOut extends CalloutEngine
 
 	public String navigateInOutLine(Properties ctx, int WindowNo, GridTab mTab, GridField mField, Object value)
 	{
+		/*
 		if (isCalloutActive() || value == null)
 			return "";
 
@@ -725,6 +768,7 @@ public class CalloutInOut extends CalloutEngine
 			boolean conversion = (C_UOM_To_ID != product.getC_UOM_ID());
 			Env.setContext(ctx, WindowNo, "UOMConversion", conversion ? "Y" : "N");
 		}
+		*/
 		return "";
 	}	//	navigateInOutLine
 

@@ -216,7 +216,8 @@ public class WSearchEditor extends WEditor implements ContextMenuListener, Value
 	{
 
 		columnName = this.getColumnName();
-
+		setTableOnly();
+		
 		if (Util.isEmpty(m_tableName))
 			setTableAndKeyColumn();
 		
@@ -845,6 +846,34 @@ public class WSearchEditor extends WEditor implements ContextMenuListener, Value
 			Env.setContext(Env.getCtx(), lookup.getWindowNo(), Env.TAB_INFO, "M_Product_ID", "0");
 			Env.setContext(Env.getCtx(), lookup.getWindowNo(), Env.TAB_INFO, "M_AttributeSetInstance_ID", "0");
 			Env.setContext(Env.getCtx(), lookup.getWindowNo(), Env.TAB_INFO, "M_Locator_ID", "0");
+		}
+	}
+	
+	/*
+	 * added by figo - custom method 
+	 * 	to keep context m_product_id, m_attributesetinstance_id, m_locator_id
+	 * 	when open search editor based on m_product_id
+	 */
+	private void setTableOnly() {
+		if (lookup != null && lookup instanceof MLookup) {
+			// foreign table defined in lookup
+			m_keyColumnName = ((MLookup)lookup).getColumnName();
+			if (m_keyColumnName.contains(".")) {
+				m_tableName = m_keyColumnName.substring(0, m_keyColumnName.indexOf("."));
+				m_keyColumnName = m_keyColumnName.substring(m_keyColumnName.indexOf(".")+1);
+			} else {
+				m_tableName = m_keyColumnName.substring(0, m_keyColumnName.length()-3);
+			}
+		} else if (getGridField() != null && getGridField().getGridTab() != null && getGridField().getAD_Column_ID() > 0) {
+			// field - this search editor comes from a window, when it comes from process parameter it doesn't have a gridtab
+			MColumn column = MColumn.get(Env.getCtx(), getGridField().getAD_Column_ID());
+			m_tableName = column.getReferenceTableName();
+			MTable table = MTable.get(Env.getCtx(), m_tableName);
+			m_keyColumnName = table.getKeyColumns()[0];
+		} else {
+			// no field - the search editor is defined programmatically
+			m_keyColumnName = getColumnName();
+			m_tableName = m_keyColumnName.substring(0, m_keyColumnName.length()-3);
 		}
 	}
 

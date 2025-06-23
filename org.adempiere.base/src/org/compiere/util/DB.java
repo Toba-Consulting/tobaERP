@@ -1036,7 +1036,9 @@ public final class DB
 
 		try
 		{
-			setParameters(cs, params);
+			if (params != null)
+				setParameters(cs, params);
+			
 			//set timeout
 			if (timeOut > 0)
 			{
@@ -1055,8 +1057,16 @@ public final class DB
 				String msg = DBException.getDefaultDBExceptionMessage(e);
 				log.saveError (msg != null ? msg : "DBExecuteError", e);
 			}			StringBuffer infoParam = new StringBuffer();
-			for (Object param : params) {
-				infoParam.append(param+", ");
+			
+			/*
+			 * 	added by figo
+			 * 	add validation to check params is not null
+			 */
+			
+			if (params != null) {
+				for (Object param : params) {
+					infoParam.append(param+", ");
+				}
 			}
 			log.log(Level.SEVERE, "Info Param ["+infoParam+"]");
 		}

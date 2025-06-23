@@ -1507,7 +1507,7 @@ public class MInvoiceLine extends X_C_InvoiceLine
 		//	No List Price 
 		if (Env.ZERO.compareTo(list) == 0) 
 			return; 
-		BigDecimal discount = list.subtract(getPriceActual()) 
+		BigDecimal discount = list.subtract(getPriceEntered()) 
 				.multiply(Env.ONEHUNDRED) 
 				.divide(list, getPrecision(), RoundingMode.HALF_UP); 
 		//setDiscount(discount); 

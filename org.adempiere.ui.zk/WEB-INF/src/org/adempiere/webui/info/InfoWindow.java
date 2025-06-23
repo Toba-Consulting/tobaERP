@@ -626,22 +626,50 @@ public class InfoWindow extends InfoPanel implements ValueChangeListener, EventL
 	 * Process query value from input element
 	 */
 	protected void processQueryValue() {
-		isQueryByUser = true;
-		boolean splitValue = false;
 		
-		if (isAutoComplete) {
-			testQueryForAutoComplete();
-		}else {
-			String separator = MSysConfig.getValue(MSysConfig.IDENTIFIER_SEPARATOR, "_", Env.getAD_Client_ID(Env.getCtx()));
-			String[] values = queryValue.split("[" + separator.trim()+"]");
-
-			if (values.length > 1) {
-				splitValue = true;
-				testQueryForSplit(values);
-			} 
-
-			if (m_count <= 0) {
-				testQueryForEachIdentifier();
+		/*
+		 * 	revert by figo
+		 * 	revert back to not directly use identifier separator
+		 */
+		
+		isQueryByUser = true;
+		for (int i = 0; i < identifiers.size(); i++) {
+			WEditor editor = identifiers.get(i);
+			if (isAutoComplete) {
+				if (!Util.isEmpty(autoCompleteSearchColumn)) {
+					if (!editor.getColumnName().equals(autoCompleteSearchColumn))
+						continue;
+				}
+			}
+			try{
+				editor.setValue(queryValue);
+			}catch(Exception ex){
+				log.log(Level.SEVERE, "error", ex.getCause());
+			}
+			
+			testCount(false);
+			if (isAutoComplete)
+				break;
+			if (m_count > 0) {
+				break;
+			} else {
+				editor.setValue(null);
+			}
+		}
+		
+		boolean splitValue = false;
+		if (!isAutoComplete) {
+			if (m_count <= 0) {			
+				String separator = MSysConfig.getValue(MSysConfig.IDENTIFIER_SEPARATOR, "_", Env.getAD_Client_ID(Env.getCtx()));
+				String[] values = queryValue.split("[" + separator.trim()+"]");
+				if (values.length == 2) {
+					splitValue = true;
+					for(int i = 0; i < values.length && i < identifiers.size(); i++) {
+						WEditor editor = identifiers.get(i);
+						editor.setValue(values[i].trim());
+					}
+					testCount(false);
+				} 
 			}
 		}
 		

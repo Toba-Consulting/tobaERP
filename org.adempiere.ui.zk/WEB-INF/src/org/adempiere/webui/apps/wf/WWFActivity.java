@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Vector;
 import java.util.logging.Level;
 
 import org.adempiere.webui.LayoutUtils;
@@ -72,6 +73,8 @@ import org.zkoss.zul.Center;
 import org.zkoss.zul.Div;
 import org.zkoss.zul.Hbox;
 import org.zkoss.zul.Html;
+import org.zkoss.zul.Listhead;
+import org.zkoss.zul.Listheader;
 import org.zkoss.zul.North;
 import org.zkoss.zul.South;
 import org.zkoss.zul.Vlayout;
@@ -311,6 +314,8 @@ public class WWFActivity extends ADForm implements EventListener<Event>
 		ZKUpdateUtil.setHeight(north, "25%");
 		layout.appendChild(north);
 		north.setStyle("background-color: transparent");
+		listbox.setCheckmark(true);
+		listbox.setMultiple(true);
 		listbox.addEventListener(Events.ON_SELECT, this);
 
 		Center center = new Center();
@@ -396,8 +401,6 @@ public class WWFActivity extends ADForm implements EventListener<Event>
 
 		int MAX_ACTIVITIES_IN_LIST = MSysConfig.getIntValue(MSysConfig.MAX_ACTIVITIES_IN_LIST, 200, Env.getAD_Client_ID(Env.getCtx()));
 
-		model = new ListModelTable();
-
 		int AD_User_ID = Env.getAD_User_ID(Env.getCtx());
 		int AD_Client_ID = Env.getAD_Client_ID(Env.getCtx());
 		Iterator<MWFActivity> it = new Query(Env.getCtx(), MWFActivity.Table_Name, MWFActivity.getWhereUserPendingActivities(), null)
@@ -410,11 +413,6 @@ public class WWFActivity extends ADForm implements EventListener<Event>
 		while (it.hasNext()) {
 			MWFActivity activity = it.next();
 			list.add (activity);
-			List<Object> rowData = new ArrayList<Object>();
-			rowData.add(activity.getPriority());
-			rowData.add(activity.getNodeName());
-			rowData.add(activity.getSummary());
-			model.add(rowData);
 			if (list.size() > MAX_ACTIVITIES_IN_LIST && MAX_ACTIVITIES_IN_LIST > 0)
 			{
 				log.warning("More than " + MAX_ACTIVITIES_IN_LIST + " Activities - ignored");
@@ -428,26 +426,48 @@ public class WWFActivity extends ADForm implements EventListener<Event>
 			+ "(" + (System.currentTimeMillis()-start) + "ms)");
 		m_index = 0;
 
-		String[] columns = new String[]{Msg.translate(Env.getCtx(), "Priority"),
-				Msg.translate(Env.getCtx(), "AD_WF_Node_ID"),
-				Msg.translate(Env.getCtx(), "Summary")};
+		// Prepare data for table model
+		List<Vector<Object>> data = new ArrayList<Vector<Object>>();
+		List<String> columnNames = new ArrayList<String>();
 
-		WListItemRenderer renderer = new WListItemRenderer(Arrays.asList(columns));
-		ListHeader header = new ListHeader();
-		ZKUpdateUtil.setWidth(header, "60px");
-		renderer.setListHeader(0, header);
-		header = new ListHeader();
-		ZKUpdateUtil.setWidth(header, null);
-		renderer.setListHeader(1, header);
-		header = new ListHeader();
-		ZKUpdateUtil.setWidth(header, null);
-		renderer.setListHeader(2, header);
-		renderer.addTableValueChangeListener(listbox);
-		model.setNoColumns(columns.length);
-		listbox.setModel(model);
-		listbox.setItemRenderer(renderer);
-		listbox.setSizedByContent(false);
+		// Add column headers - checkbox column (empty header), Priority, Node Name, Summary
+		columnNames.add("");  // Checkbox column
+		columnNames.add(Msg.translate(Env.getCtx(), "Priority"));
+		columnNames.add(Msg.translate(Env.getCtx(), "AD_WF_Node_ID"));
+		columnNames.add(Msg.translate(Env.getCtx(), "Summary"));
+
+		// Add data rows
+		for (int i = 0; i < m_activities.length; i++)
+		{
+			MWFActivity activity = m_activities[i];
+			Vector<Object> row = new Vector<Object>();
+			row.add(Boolean.FALSE);  // Checkbox column
+			row.add(activity.getPriority());
+			row.add(activity.getNodeName());
+			row.add(activity.getSummary());
+			data.add(row);
+		}
+
+		// Create and set table model
+		ListModelTable model = new ListModelTable(data);
+		model.addTableModelListener(listbox);
+		listbox.setData(model, columnNames);
+
+		// Configure checkbox column as editable Boolean
+		listbox.setColumnClass(0, Boolean.class, false);  // Column 0, Boolean type, NOT read-only
+
 		listbox.repaint();
+
+		// Set column widths after repaint
+		Listhead listhead = listbox.getListhead();
+		if (listhead != null && listhead.getChildren().size() == 4)
+		{
+			Listheader header0 = (Listheader) listhead.getChildren().get(0);
+			header0.setWidth("30px");  // Checkbox column
+
+			Listheader header1 = (Listheader) listhead.getChildren().get(1);
+			header1.setWidth("60px");  // Priority column
+		}
 
 		return m_activities.length;
 	}	//	loadActivities
@@ -622,6 +642,50 @@ public class WWFActivity extends ADForm implements EventListener<Event>
 	 */
 	public void onOK()
 	{
+		// Get selected activities by checking which checkboxes are checked
+		List<Integer> selectedList = new ArrayList<Integer>();
+
+		// Get the model and check each row's checkbox column (column 0)
+		ListModelTable model = (ListModelTable) listbox.getModel();
+		if (model != null)
+		{
+			for (int i = 0; i < model.getSize(); i++)
+			{
+				Object row = model.getElementAt(i);
+				if (row instanceof List)
+				{
+					List<?> rowData = (List<?>) row;
+					if (rowData.size() > 0)
+					{
+						Object checkboxValue = rowData.get(0);  // Column 0 is checkbox
+						if (checkboxValue instanceof Boolean && ((Boolean) checkboxValue).booleanValue())
+						{
+							selectedList.add(i);
+						}
+					}
+				}
+			}
+		}
+
+		if (selectedList.isEmpty())
+		{
+			Clients.clearBusy();
+			return;
+		}
+
+		// Convert list to array
+		int[] selectedIndices = new int[selectedList.size()];
+		for (int i = 0; i < selectedList.size(); i++)
+		{
+			selectedIndices[i] = selectedList.get(i);
+		}
+
+		// Both single and multiple selection - use batch processing (runs in background)
+		processBatchActivities(selectedIndices);
+		return;
+
+		/* Old single selection logic - no longer used
+		// Single selection - use existing logic
 		if (log.isLoggable(Level.CONFIG)) log.config("Activity=" + m_activity);
 		if (m_activity == null)
 		{
@@ -688,7 +752,7 @@ public class WWFActivity extends ADForm implements EventListener<Event>
 					m_activity.setUserChoice(AD_User_ID, value, dt, textMsg);
 					MWFProcess wfpr = new MWFProcess(m_activity.getCtx(), m_activity.getAD_WF_Process_ID(), m_activity.get_TrxName());
 					wfpr.checkCloseActivities(m_activity.get_TrxName());
-					
+
 					if (!Util.isEmpty(m_activity.getProcessMsg(), true))
 						Dialog.error(m_WindowNo, m_activity.getProcessMsg());
 				}
@@ -711,7 +775,7 @@ public class WWFActivity extends ADForm implements EventListener<Event>
 					m_activity.setUserConfirmation(AD_User_ID, textMsg);
 					MWFProcess wfpr = new MWFProcess(m_activity.getCtx(), m_activity.getAD_WF_Process_ID(), m_activity.get_TrxName());
 					wfpr.checkCloseActivities(m_activity.get_TrxName());
-					
+
 					if (!Util.isEmpty(m_activity.getProcessMsg(), true))
 						Dialog.error(m_WindowNo, m_activity.getProcessMsg());
 				}
@@ -738,5 +802,176 @@ public class WWFActivity extends ADForm implements EventListener<Event>
 		//	Next
 		loadActivities();
 		display(-1);
+		*/
 	}	//	onOK
+
+	/**
+	 * Process selected activities in batch (single or multiple)
+	 * Runs in background thread to avoid blocking UI
+	 * @param selectedIndices indices of selected activities
+	 */
+	private void processBatchActivities(int[] selectedIndices)
+	{
+		int AD_User_ID = Env.getAD_User_ID(Env.getCtx());
+		String textMsg = fTextMsg.getValue();
+
+		// Get the user's answer choice (YES/NO) from the currently displayed activity
+		String userChoice = null;
+		int displayType = -1;
+
+		if (m_activity != null)
+		{
+			MWFNode node = m_activity.getNode();
+			if (MWFNode.ACTION_UserChoice.equals(node.getAction()))
+			{
+				if (m_column == null)
+					m_column = node.getColumn();
+
+				if (m_column != null)
+				{
+					displayType = m_column.getAD_Reference_ID();
+					if (displayType == DisplayType.YesNo || DisplayType.isList(displayType))
+					{
+						ListItem li = fAnswerList.getSelectedItem();
+						if (li != null)
+							userChoice = li.getValue().toString();
+					}
+					else
+					{
+						userChoice = fAnswerText.getText();
+					}
+				}
+			}
+		}
+
+		// Validate answer is provided
+		if (userChoice == null || userChoice.length() == 0)
+		{
+			Dialog.error(m_WindowNo, "FillMandatory", Msg.getMsg(Env.getCtx(), "Answer"));
+			Clients.clearBusy();
+			return;
+		}
+
+		final String finalUserChoice = userChoice;
+		final int finalDisplayType = displayType;
+		final int totalActivities = selectedIndices.length;
+
+		// Clear busy immediately so UI is not blocked
+		Clients.clearBusy();
+
+		// Show status message
+		statusBar.setStatusLine(Msg.getMsg(Env.getCtx(), "Processing") + " " + totalActivities + " " + Msg.getMsg(Env.getCtx(), "WFActivities") + "...");
+
+		// Run processing in background thread
+		Thread backgroundThread = new Thread(new Runnable() {
+			@Override
+			public void run() {
+				int successCount = 0;
+				int errorCount = 0;
+				StringBuilder errors = new StringBuilder();
+
+				for (int index : selectedIndices)
+				{
+					if (index < 0 || index >= m_activities.length)
+						continue;
+
+					MWFActivity activity = m_activities[index];
+					if (activity == null)
+						continue;
+
+					Trx trx = null;
+					try {
+						trx = Trx.get(Trx.createTrxName("BWFA_" + index), true);
+						trx.setDisplayName(getClass().getName()+"_processBatch");
+						activity.set_TrxName(trx.getTrxName());
+
+						MWFNode node = activity.getNode();
+						if (MWFNode.ACTION_UserChoice.equals(node.getAction()))
+						{
+							activity.setUserChoice(AD_User_ID, finalUserChoice, finalDisplayType, textMsg);
+							MWFProcess wfpr = new MWFProcess(activity.getCtx(), activity.getAD_WF_Process_ID(), activity.get_TrxName());
+							wfpr.checkCloseActivities(activity.get_TrxName());
+
+							if (!Util.isEmpty(activity.getProcessMsg(), true))
+							{
+								errors.append(activity.getNodeName()).append(": ").append(activity.getProcessMsg()).append("\n");
+								errorCount++;
+							}
+							else
+							{
+								successCount++;
+							}
+						}
+						else
+						{
+							activity.setUserConfirmation(AD_User_ID, textMsg);
+							MWFProcess wfpr = new MWFProcess(activity.getCtx(), activity.getAD_WF_Process_ID(), activity.get_TrxName());
+							wfpr.checkCloseActivities(activity.get_TrxName());
+
+							if (!Util.isEmpty(activity.getProcessMsg(), true))
+							{
+								errors.append(activity.getNodeName()).append(": ").append(activity.getProcessMsg()).append("\n");
+								errorCount++;
+							}
+							else
+							{
+								successCount++;
+							}
+						}
+
+						trx.commit();
+					}
+					catch (Exception e)
+					{
+						log.log(Level.SEVERE, "Error processing activity: " + activity.getNodeName(), e);
+						errors.append(activity.getNodeName()).append(": ").append(e.getMessage()).append("\n");
+						errorCount++;
+						if (trx != null)
+							trx.rollback();
+					}
+					finally
+					{
+						if (trx != null)
+							trx.close();
+					}
+				}
+
+				// Update UI after processing completes
+				final int finalSuccessCount = successCount;
+				final int finalErrorCount = errorCount;
+				final String finalErrors = errors.toString();
+
+				try {
+					Executions.schedule(getDesktop(), new org.zkoss.zk.ui.event.EventListener<Event>() {
+						@Override
+						public void onEvent(Event event) throws Exception {
+							// Show results
+							String message = String.format(Msg.getMsg(Env.getCtx(), "ProcessedActivities") +
+									": %d/%d " + Msg.getMsg(Env.getCtx(), "Success"),
+									finalSuccessCount, totalActivities);
+
+							if (finalErrorCount > 0)
+							{
+								message += String.format(", %d " + Msg.getMsg(Env.getCtx(), "Errors"), finalErrorCount);
+								if (finalErrors.length() > 0)
+								{
+									Dialog.error(m_WindowNo, "ProcessingErrors", finalErrors);
+								}
+							}
+
+							statusBar.setStatusLine(message);
+
+							// Refresh the list
+							loadActivities();
+							display(-1);
+						}
+					}, new Event("onBatchComplete"));
+				} catch (Exception e) {
+					log.log(Level.SEVERE, "Failed to schedule UI update", e);
+				}
+			}
+		});
+		backgroundThread.setName("WFActivity-BatchProcess");
+		backgroundThread.start();
+	}	//	processBatchActivities
 }

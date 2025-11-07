@@ -1104,10 +1104,22 @@ public class WListbox extends Listbox implements IMiniTable, TableValueChangeLis
 	 */
 	public void repaint()
 	{
+	    // Save checkbox state before invalidate
+	    boolean wasCheckmark = isCheckmark();
+	    boolean wasMultiple = isMultiple();
+
 	    // create header (if needed)
 	    initialiseHeader();
 	    renderCustomHeaderWidth();
 	    invalidate();
+
+	    // Restore checkbox state after invalidate
+	    if (wasCheckmark) {
+	        setCheckmark(true);
+	    }
+	    if (wasMultiple) {
+	        setMultiple(true);
+	    }
 	}
 
     /**

@@ -17,11 +17,14 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 import java.util.Vector;
 import java.util.logging.Level;
 
+import org.adempiere.util.Callback;
 import org.adempiere.webui.LayoutUtils;
 import org.adempiere.webui.apps.AEnv;
+import org.adempiere.webui.apps.form.WArchiveViewerWorkflow;
 import org.adempiere.webui.component.Button;
 import org.adempiere.webui.component.Column;
 import org.adempiere.webui.component.Columns;
@@ -31,6 +34,9 @@ import org.adempiere.webui.component.ListHeader;
 import org.adempiere.webui.component.ListItem;
 import org.adempiere.webui.component.ListModelTable;
 import org.adempiere.webui.component.Listbox;
+import org.zkoss.zul.Listhead;
+import org.zkoss.zul.Listheader;
+import org.zkoss.zul.Listitem;
 import org.adempiere.webui.component.Row;
 import org.adempiere.webui.component.Rows;
 import org.adempiere.webui.component.Textbox;
@@ -44,10 +50,17 @@ import org.adempiere.webui.session.SessionManager;
 import org.adempiere.webui.theme.ThemeManager;
 import org.adempiere.webui.util.ZKUpdateUtil;
 import org.adempiere.webui.window.Dialog;
+import org.compiere.model.MArchive;
+import org.compiere.model.MBPartner;
 import org.compiere.model.MColumn;
 import org.compiere.model.MLookup;
 import org.compiere.model.MLookupFactory;
 import org.compiere.model.MQuery;
+import org.compiere.model.MTable;
+import org.compiere.model.PO;
+import org.compiere.process.ProcessInfo;
+import org.compiere.print.ReportEngine;
+import org.compiere.print.ServerReportCtl;
 import org.compiere.model.MRefList;
 import org.compiere.model.MSysConfig;
 import org.compiere.model.Query;
@@ -127,6 +140,7 @@ public class WWFActivity extends ADForm implements EventListener<Event>
 	private Label lForward = new Label(Msg.getMsg(Env.getCtx(), "Forward") + " (" + Msg.translate(Env.getCtx(), "Optional") + ")");
 	private StatusBarPanel statusBar = new StatusBarPanel();
 	private Button bRefresh = new Button();
+	private Button bPrintReport = new Button();
 
 	private ListModelTable model = null;
 	private WListbox listbox = new WListbox();
@@ -155,14 +169,17 @@ public class WWFActivity extends ADForm implements EventListener<Event>
         	bZoom.setIconSclass("z-icon-Zoom");
         	bOK.setIconSclass("z-icon-Ok");
 			bRefresh.setIconSclass("z-icon-Refresh");
+			bPrintReport.setIconSclass("z-icon-Print");
         } else {
         	bZoom.setImage(ThemeManager.getThemeResource("images/Zoom16.png"));
         	bOK.setImage(ThemeManager.getThemeResource("images/Ok16.png"));
 			bRefresh.setImage(ThemeManager.getThemeResource("images/Refresh16.png"));
+			bPrintReport.setImage(ThemeManager.getThemeResource("images/Print16.png"));
         }
 		setTooltipText(bZoom, "Zoom");
 		setTooltipText(bOK, "Ok");
 		setTooltipText(bRefresh, "Refresh");
+		setTooltipText(bPrintReport, "PrintReport");
 
         MLookup lookup = MLookupFactory.get(Env.getCtx(), m_WindowNo,
                 0, SystemIDs.COLUMN_AD_WF_ACTIVITY_AD_USER_ID, DisplayType.Search);
@@ -288,7 +305,7 @@ public class WWFActivity extends ADForm implements EventListener<Event>
 		row.appendChild(div);
 		row.appendChild(bZoom);
 		bZoom.addEventListener(Events.ON_CLICK, this);
-		
+
 		row = new Row();
 		rows.appendChild(row);
 		div = new Div();
@@ -297,9 +314,11 @@ public class WWFActivity extends ADForm implements EventListener<Event>
 		row.appendChild(div);
 		hbox.appendChild(bOK);
 		hbox.appendChild(bRefresh);
+		hbox.appendChild(bPrintReport);
 		row.appendChild(hbox);
 		bOK.addEventListener(Events.ON_CLICK, this);
 		bRefresh.addEventListener(Events.ON_CLICK, this);
+		bPrintReport.addEventListener(Events.ON_CLICK, this);
 
 		Borderlayout layout = new Borderlayout();
 		ZKUpdateUtil.setWidth(layout, "100%");
@@ -361,14 +380,33 @@ public class WWFActivity extends ADForm implements EventListener<Event>
     			Clients.showBusy(Msg.getMsg(Env.getCtx(), "Processing"));
     			Events.echoEvent("onOK", this, null);
     		}
+    		else if (comp == bPrintReport)
+    		{
+    			cmd_printReport();
+    		}
     		else if (comp == fAnswerButton)
     			cmd_button();
-        } 
+        }
         else if (Events.ON_SELECT.equals(eventName) && comp == listbox)
         {
-        	m_index = listbox.getSelectedIndex();
-        	if (m_index >= 0)
-    			display(m_index);
+        	// In multiple selection mode, we need to handle selection differently
+        	// Get the index from the selected item, not getSelectedIndex()
+        	Set<Listitem> selectedItems = listbox.getSelectedItems();
+        	if (selectedItems != null && !selectedItems.isEmpty())
+        	{
+        		// Get the last selected item (most recently clicked)
+        		Listitem selectedItem = selectedItems.iterator().next();
+        		m_index = listbox.getIndexOfItem(selectedItem);
+        		if (m_index >= 0)
+        			display(m_index);
+        	}
+        	else
+        	{
+        		// No selection - try to get from listbox directly
+        		m_index = listbox.getSelectedIndex();
+        		if (m_index >= 0)
+        			display(m_index);
+        	}
         }
         else
         {
@@ -430,10 +468,13 @@ public class WWFActivity extends ADForm implements EventListener<Event>
 		List<Vector<Object>> data = new ArrayList<Vector<Object>>();
 		List<String> columnNames = new ArrayList<String>();
 
-		// Add column headers - checkbox column (empty header), Priority, Node Name, Summary
+		// Add column headers - checkbox, Priority, Node, DocumentNo, BusinessPartner, Created, Summary
 		columnNames.add("");  // Checkbox column
 		columnNames.add(Msg.translate(Env.getCtx(), "Priority"));
 		columnNames.add(Msg.translate(Env.getCtx(), "AD_WF_Node_ID"));
+		columnNames.add(Msg.translate(Env.getCtx(), "DocumentNo"));
+		columnNames.add(Msg.translate(Env.getCtx(), "C_BPartner_ID"));
+		columnNames.add(Msg.translate(Env.getCtx(), "Created"));
 		columnNames.add(Msg.translate(Env.getCtx(), "Summary"));
 
 		// Add data rows
@@ -444,6 +485,48 @@ public class WWFActivity extends ADForm implements EventListener<Event>
 			row.add(Boolean.FALSE);  // Checkbox column
 			row.add(activity.getPriority());
 			row.add(activity.getNodeName());
+
+			// Get DocumentNo and BPartner from the linked document
+			String documentNo = "";
+			String bPartnerName = "";
+			try
+			{
+				int AD_Table_ID = activity.getAD_Table_ID();
+				int Record_ID = activity.getRecord_ID();
+				if (AD_Table_ID > 0 && Record_ID > 0)
+				{
+					MTable table = MTable.get(Env.getCtx(), AD_Table_ID);
+					PO po = table.getPO(Record_ID, null);
+					if (po != null)
+					{
+						// Try to get DocumentNo
+						int idx = po.get_ColumnIndex("DocumentNo");
+						if (idx >= 0)
+							documentNo = po.get_ValueAsString("DocumentNo");
+
+						// Try to get BPartner
+						idx = po.get_ColumnIndex("C_BPartner_ID");
+						if (idx >= 0)
+						{
+							int bPartnerID = po.get_ValueAsInt("C_BPartner_ID");
+							if (bPartnerID > 0)
+							{
+								MBPartner bp = MBPartner.get(Env.getCtx(), bPartnerID);
+								if (bp != null)
+									bPartnerName = bp.getName();
+							}
+						}
+					}
+				}
+			}
+			catch (Exception e)
+			{
+				log.log(Level.WARNING, "Error getting document info for activity " + activity.getAD_WF_Activity_ID(), e);
+			}
+
+			row.add(documentNo);
+			row.add(bPartnerName);
+			row.add(activity.getCreated());
 			row.add(activity.getSummary());
 			data.add(row);
 		}
@@ -460,13 +543,25 @@ public class WWFActivity extends ADForm implements EventListener<Event>
 
 		// Set column widths after repaint
 		Listhead listhead = listbox.getListhead();
-		if (listhead != null && listhead.getChildren().size() == 4)
+		if (listhead != null && listhead.getChildren().size() == 7)
 		{
 			Listheader header0 = (Listheader) listhead.getChildren().get(0);
 			header0.setWidth("30px");  // Checkbox column
 
 			Listheader header1 = (Listheader) listhead.getChildren().get(1);
 			header1.setWidth("60px");  // Priority column
+
+			Listheader header2 = (Listheader) listhead.getChildren().get(2);
+			header2.setWidth("150px");  // Node column
+
+			Listheader header3 = (Listheader) listhead.getChildren().get(3);
+			header3.setWidth("120px");  // DocumentNo column
+
+			Listheader header4 = (Listheader) listhead.getChildren().get(4);
+			header4.setWidth("200px");  // BusinessPartner column
+
+			Listheader header5 = (Listheader) listhead.getChildren().get(5);
+			header5.setWidth("130px");  // Created column
 		}
 
 		return m_activities.length;
@@ -804,6 +899,256 @@ public class WWFActivity extends ADForm implements EventListener<Event>
 		display(-1);
 		*/
 	}	//	onOK
+
+	/**
+	 * Print default report for selected activities using ProcessInfo
+	 */
+	private void cmd_printReport()
+	{
+		if (log.isLoggable(Level.CONFIG)) log.config("Print Report for selected activities");
+
+		// Get selected activities by checking which checkboxes are checked
+		List<Integer> selectedList = new ArrayList<Integer>();
+
+		// Get the model and check each row's checkbox column (column 0)
+		ListModelTable model = (ListModelTable) listbox.getModel();
+		if (model != null)
+		{
+			for (int i = 0; i < model.getSize(); i++)
+			{
+				Object row = model.getElementAt(i);
+				if (row instanceof List)
+				{
+					List<?> rowData = (List<?>) row;
+					if (rowData.size() > 0)
+					{
+						Object checkboxValue = rowData.get(0);  // Column 0 is checkbox
+						if (checkboxValue instanceof Boolean && ((Boolean) checkboxValue).booleanValue())
+						{
+							selectedList.add(i);
+						}
+					}
+				}
+			}
+		}
+
+		if (selectedList.isEmpty())
+		{
+			Dialog.info(m_WindowNo, "SelectRecord");
+			return;
+		}
+
+		Clients.showBusy(Msg.getMsg(Env.getCtx(), "Processing"));
+
+		// Process each selected activity
+		List<Integer> archiveIDs = new ArrayList<Integer>();
+		StringBuilder errors = new StringBuilder();
+		int successCount = 0;
+
+		for (int index : selectedList)
+		{
+			if (index < 0 || index >= m_activities.length)
+				continue;
+
+			MWFActivity activity = m_activities[index];
+			if (activity == null)
+				continue;
+
+			try
+			{
+				// Get the table and record ID from activity
+				int AD_Table_ID = activity.getAD_Table_ID();
+				int Record_ID = activity.getRecord_ID();
+
+				if (AD_Table_ID <= 0 || Record_ID <= 0)
+				{
+					errors.append(activity.getNodeName()).append(": Invalid table or record\n");
+					continue;
+				}
+
+				// Get the table information
+				MTable table = MTable.get(Env.getCtx(), AD_Table_ID);
+				String tableName = table.getTableName();
+
+				// Determine report type based on table
+				int reportType = getReportTypeForTable(tableName);
+
+				if (reportType == -1)
+				{
+					errors.append(activity.getNodeName()).append(": No report type defined for table ").append(tableName).append("\n");
+					continue;
+				}
+
+				// Create ProcessInfo for report generation
+				ProcessInfo pi = new ProcessInfo(tableName, 0, AD_Table_ID, Record_ID);
+				pi.setTable_ID(AD_Table_ID);
+				pi.setRecord_ID(Record_ID);
+				pi.setPrintPreview(true);  // Enable preview mode to get PDF
+				pi.setIsBatch(true);        // Enable batch mode
+
+				// Generate report using ServerReportCtl
+				boolean success = ServerReportCtl.startDocumentPrint(reportType, null, Record_ID, null, pi);
+
+				if (!success)
+				{
+					errors.append(activity.getNodeName()).append(": Failed to generate report\n");
+					continue;
+				}
+
+				// Get the generated PDF from ProcessInfo
+				java.io.File pdfFile = pi.getPDFReport();
+
+				if (pdfFile == null || !pdfFile.exists())
+				{
+					errors.append(activity.getNodeName()).append(": PDF report not generated\n");
+					continue;
+				}
+
+				// Read PDF data
+				byte[] pdfData = java.nio.file.Files.readAllBytes(pdfFile.toPath());
+
+				if (pdfData == null || pdfData.length == 0)
+				{
+					errors.append(activity.getNodeName()).append(": PDF file is empty\n");
+					continue;
+				}
+
+				// Create archive entry
+				org.compiere.model.PrintInfo printInfo = new org.compiere.model.PrintInfo(
+					tableName + "_" + Record_ID,
+					AD_Table_ID,
+					Record_ID
+				);
+
+				MArchive archive = new MArchive(Env.getCtx(), printInfo, null);
+				archive.setBinaryData(pdfData);
+				archive.setDescription("Generated from workflow activity: " + activity.getNodeName());
+
+				if (archive.save())
+				{
+					archiveIDs.add(archive.getAD_Archive_ID());
+					successCount++;
+				}
+				else
+				{
+					errors.append(activity.getNodeName()).append(": Failed to save archive\n");
+				}
+			}
+			catch (Exception e)
+			{
+				log.log(Level.SEVERE, "Error generating report for activity: " + activity.getNodeName(), e);
+				errors.append(activity.getNodeName()).append(": ").append(e.getMessage()).append("\n");
+			}
+		}
+
+		Clients.clearBusy();
+
+		// Show results
+		if (errors.length() > 0)
+		{
+			Dialog.error(m_WindowNo, "ReportGenerationErrors", errors.toString());
+		}
+
+		// Show success message
+		final String message = String.format("%d reports generated successfully", successCount);
+		statusBar.setStatusLine(message);
+
+		// Ask user if they want to view the generated archives
+		if (!archiveIDs.isEmpty())
+		{
+			final List<Integer> finalArchiveIDs = archiveIDs;
+			Dialog.ask(m_WindowNo, "ViewGeneratedReports",
+				message + "\n\nDo you want to view the generated reports now?",
+				new Callback<Boolean>() {
+					@Override
+					public void onCallback(Boolean result)
+					{
+						if (result)
+						{
+							// User clicked Yes - open Archive Viewer
+							openArchiveViewerWorkflow(finalArchiveIDs);
+						}
+						// User clicked No - do nothing, stay on current form
+					}
+				});
+		}
+	}	//	cmd_printReport
+
+	/**
+	 * Get ReportEngine report type constant for a given table
+	 * @param tableName the table name
+	 * @return ReportEngine type constant or -1 if not found
+	 */
+	private int getReportTypeForTable(String tableName)
+	{
+		if ("C_Order".equals(tableName))
+			return ReportEngine.ORDER;
+		else if ("C_Invoice".equals(tableName))
+			return ReportEngine.INVOICE;
+		else if ("M_InOut".equals(tableName))
+			return ReportEngine.SHIPMENT;
+		else if ("C_Project".equals(tableName))
+			return ReportEngine.PROJECT;
+		else if ("C_RfQResponse".equals(tableName))
+			return ReportEngine.RFQ;
+		else if ("C_Dunning".equals(tableName))
+			return ReportEngine.DUNNING;
+		else if ("M_Inventory".equals(tableName))
+			return ReportEngine.INVENTORY;
+		else if ("M_Movement".equals(tableName))
+			return ReportEngine.MOVEMENT;
+		else if ("PP_Order".equals(tableName))
+			return ReportEngine.MANUFACTURING_ORDER;
+		else if ("DD_Order".equals(tableName))
+			return ReportEngine.DISTRIBUTION_ORDER;
+		else if ("C_Payment".equals(tableName))
+			return ReportEngine.CHECK;
+
+		// Return -1 for unsupported tables
+		return -1;
+	}	//	getReportTypeForTable
+
+	/**
+	 * Open Archive Viewer Workflow form to display generated archives as a desktop tab
+	 * @param archiveIDs list of archive IDs to display
+	 */
+	private void openArchiveViewerWorkflow(List<Integer> archiveIDs)
+	{
+		if (archiveIDs == null || archiveIDs.isEmpty())
+			return;
+
+		try
+		{
+			WArchiveViewerWorkflow archiveViewer = new WArchiveViewerWorkflow();
+			archiveViewer.setShowQuery(false);
+
+			// Convert List<Integer> to int[]
+			int[] archiveIDArray = new int[archiveIDs.size()];
+			for (int i = 0; i < archiveIDs.size(); i++)
+			{
+				archiveIDArray[i] = archiveIDs.get(i);
+			}
+
+			// Get the form window
+			Window formWindow = archiveViewer.getForm();
+
+			// Set window mode to EMBEDDED to open as a tab (like menu items)
+			formWindow.setTitle("Archive Viewer Workflow");		
+			formWindow.setAttribute(Window.MODE_KEY, Mode.EMBEDDED);
+			formWindow.setClosable(true);
+
+			// Load the archives BEFORE opening the tab
+			archiveViewer.loadArchivesByIDs(archiveIDArray);
+
+			// Open as a desktop tab using the standard desktop method
+			SessionManager.getAppDesktop().showWindow(formWindow, "center");
+		}
+		catch (Exception e)
+		{
+			log.log(Level.SEVERE, "Error opening archive viewer", e);
+			Dialog.error(m_WindowNo, "Error", "Failed to open archive viewer: " + e.getMessage());
+		}
+	}	//	openArchiveViewerWorkflow
 
 	/**
 	 * Process selected activities in batch (single or multiple)

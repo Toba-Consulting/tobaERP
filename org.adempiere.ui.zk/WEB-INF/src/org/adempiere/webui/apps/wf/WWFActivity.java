@@ -13,6 +13,8 @@
  *****************************************************************************/
 package org.adempiere.webui.apps.wf;
 
+import java.io.File;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
@@ -55,10 +57,12 @@ import org.compiere.model.MBPartner;
 import org.compiere.model.MColumn;
 import org.compiere.model.MLookup;
 import org.compiere.model.MLookupFactory;
+import org.compiere.model.MPInstance;
 import org.compiere.model.MQuery;
 import org.compiere.model.MTable;
 import org.compiere.model.PO;
 import org.compiere.process.ProcessInfo;
+import org.compiere.print.MPrintFormat;
 import org.compiere.print.ReportEngine;
 import org.compiere.print.ServerReportCtl;
 import org.compiere.model.MRefList;
@@ -970,8 +974,54 @@ public class WWFActivity extends ADForm implements EventListener<Event>
 				MTable table = MTable.get(Env.getCtx(), AD_Table_ID);
 				String tableName = table.getTableName();
 
-				// Determine report type based on table
-				int reportType = getReportTypeForTable(tableName);
+				// Check if record has IsSOTrx flag
+				Boolean isSOTrx = null;
+				try
+				{
+					PO po = table.getPO(Record_ID, null);
+					if (po != null)
+					{
+						int idx = po.get_ColumnIndex("IsSOTrx");
+						if (idx >= 0)
+						{
+							isSOTrx = po.get_ValueAsBoolean("IsSOTrx");
+						}
+					}
+				}
+				catch (Exception e)
+				{
+					log.log(Level.WARNING, "Error checking IsSOTrx for table " + tableName, e);
+				}
+
+				// Get AD_Process_ID for the table
+				int AD_Process_ID = getProcessIDForTable(tableName, isSOTrx);
+
+				if (AD_Process_ID <= 0)
+				{
+					errors.append(activity.getNodeName()).append(": No print process defined for table ").append(tableName).append("\n");
+					continue;
+				}
+
+				// Create ProcessInfo with proper MPInstance
+				ProcessInfo pi = new ProcessInfo(tableName, AD_Process_ID, AD_Table_ID, Record_ID);
+				pi.setAD_Process_ID(AD_Process_ID);
+				pi.setTable_ID(AD_Table_ID);
+				pi.setRecord_ID(Record_ID);
+
+				// Create MPInstance for the process
+				MPInstance pInstance = new MPInstance(Env.getCtx(), AD_Process_ID, Record_ID);
+				if (!pInstance.save())
+				{
+					errors.append(activity.getNodeName()).append(": Failed to create process instance\n");
+					continue;
+				}
+				pi.setAD_PInstance_ID(pInstance.getAD_PInstance_ID());
+
+				pi.setPrintPreview(true);  // Enable preview mode to get PDF
+				pi.setIsBatch(true);        // Enable batch mode
+
+				// Get report type for creating ReportEngine
+				int reportType = getReportEngineTypeForTable(tableName);
 
 				if (reportType == -1)
 				{
@@ -979,15 +1029,29 @@ public class WWFActivity extends ADForm implements EventListener<Event>
 					continue;
 				}
 
-				// Create ProcessInfo for report generation
-				ProcessInfo pi = new ProcessInfo(tableName, 0, AD_Table_ID, Record_ID);
-				pi.setTable_ID(AD_Table_ID);
-				pi.setRecord_ID(Record_ID);
-				pi.setPrintPreview(true);  // Enable preview mode to get PDF
-				pi.setIsBatch(true);        // Enable batch mode
+				// Create ReportEngine
+				ReportEngine re = ReportEngine.get(Env.getCtx(), reportType, Record_ID);
 
-				// Generate report using ServerReportCtl
-				boolean success = ServerReportCtl.startDocumentPrint(reportType, null, Record_ID, null, pi);
+				if (re == null)
+				{
+					errors.append(activity.getNodeName()).append(": Failed to create ReportEngine\n");
+					continue;
+				}
+
+				// Check if this is a Jasper report and run it directly
+				MPrintFormat format = re.getPrintFormat();
+				boolean success = false;
+
+				if (format != null && format.getJasperProcess_ID() > 0)
+				{
+					// Use Jasper process directly
+					success = ServerReportCtl.runJasperProcess(Record_ID, re, false, null, pi);
+				}
+				else
+				{
+					// Use standard report process
+					success = ServerReportCtl.start(pi);
+				}
 
 				if (!success)
 				{
@@ -996,7 +1060,7 @@ public class WWFActivity extends ADForm implements EventListener<Event>
 				}
 
 				// Get the generated PDF from ProcessInfo
-				java.io.File pdfFile = pi.getPDFReport();
+				File pdfFile = pi.getPDFReport();
 
 				if (pdfFile == null || !pdfFile.exists())
 				{
@@ -1005,7 +1069,7 @@ public class WWFActivity extends ADForm implements EventListener<Event>
 				}
 
 				// Read PDF data
-				byte[] pdfData = java.nio.file.Files.readAllBytes(pdfFile.toPath());
+				byte[] pdfData = Files.readAllBytes(pdfFile.toPath());
 
 				if (pdfData == null || pdfData.length == 0)
 				{
@@ -1075,11 +1139,11 @@ public class WWFActivity extends ADForm implements EventListener<Event>
 	}	//	cmd_printReport
 
 	/**
-	 * Get ReportEngine report type constant for a given table
+	 * Get ReportEngine type constant for a given table
 	 * @param tableName the table name
 	 * @return ReportEngine type constant or -1 if not found
 	 */
-	private int getReportTypeForTable(String tableName)
+	private int getReportEngineTypeForTable(String tableName)
 	{
 		if ("C_Order".equals(tableName))
 			return ReportEngine.ORDER;
@@ -1103,10 +1167,65 @@ public class WWFActivity extends ADForm implements EventListener<Event>
 			return ReportEngine.DISTRIBUTION_ORDER;
 		else if ("C_Payment".equals(tableName))
 			return ReportEngine.CHECK;
+		else if ("M_Requisition".equals(tableName))
+			return ReportEngine.REQUISITION;
 
 		// Return -1 for unsupported tables
 		return -1;
-	}	//	getReportTypeForTable
+	}	//	getReportEngineTypeForTable
+
+	/**
+	 * Get AD_Process_ID for printing a given table
+	 * @param tableName the table name
+	 * @param isSOTrx true for Sales Order Trx, false for Purchase Order Trx, null if not applicable
+	 * @return AD_Process_ID or -1 if not found
+	 */
+	private int getProcessIDForTable(String tableName, Boolean isSOTrx)
+	{
+		// TODO: Replace these with actual AD_Process_IDs from your system
+		// You can find the AD_Process_ID by querying: SELECT AD_Process_ID, Name FROM AD_Process WHERE Value LIKE '%Print%'
+
+		if ("C_Order".equals(tableName))
+		{
+			if (isSOTrx != null && isSOTrx)
+				return 110;  // TODO: Replace with actual AD_Process_ID for Sales Order print
+			else
+				return 300058;  // TODO: Replace with actual AD_Process_ID for Purchase Order print
+		}
+		else if ("C_Invoice".equals(tableName))
+		{
+			if (isSOTrx != null && isSOTrx)
+				return 1100574;  // TODO: Replace with actual AD_Process_ID for AR Invoice (Sales) print
+		}
+		else if ("M_InOut".equals(tableName))
+		{
+			if (isSOTrx != null && isSOTrx)
+				return 300081;  // TODO: Replace with actual AD_Process_ID for Customer Shipment print
+			else
+				return 300079;  // TODO: Replace with actual AD_Process_ID for Vendor Receipt print
+		}
+		else if ("C_Project".equals(tableName))
+			return 217;  // TODO: Replace with actual AD_Process_ID for Project print
+		else if ("C_RfQResponse".equals(tableName))
+			return 448;  // TODO: Replace with actual AD_Process_ID for RfQ print
+		else if ("C_Dunning".equals(tableName))
+			return 159;  // TODO: Replace with actual AD_Process_ID for Dunning print
+		else if ("M_Inventory".equals(tableName))
+			return 305;  // TODO: Replace with actual AD_Process_ID for Inventory print
+		else if ("M_Movement".equals(tableName))
+			return 561;  // TODO: Replace with actual AD_Process_ID for Movement print
+		else if ("PP_Order".equals(tableName))
+			return 53009;  // TODO: Replace with actual AD_Process_ID for Manufacturing Order print
+		else if ("DD_Order".equals(tableName))
+			return 53012;  // TODO: Replace with actual AD_Process_ID for Distribution Order print
+		else if ("C_Payment".equals(tableName))
+			return 1100576;  // TODO: Replace with actual AD_Process_ID for Payment/Check print
+		else if ("M_Requisition".equals(tableName))
+			return 1100577;  // TODO: Replace with actual AD_Process_ID for Requisition print
+
+		// Return -1 for unsupported tables
+		return -1;
+	}	//	getProcessIDForTable
 
 	/**
 	 * Open Archive Viewer Workflow form to display generated archives as a desktop tab

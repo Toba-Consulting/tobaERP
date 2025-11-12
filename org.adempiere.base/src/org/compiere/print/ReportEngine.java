@@ -61,6 +61,7 @@ import org.compiere.model.MPaySelectionCheck;
 import org.compiere.model.MProcess;
 import org.compiere.model.MProject;
 import org.compiere.model.MQuery;
+import org.compiere.model.MRequisition;
 import org.compiere.model.MRfQResponse;
 import org.compiere.model.MSysConfig;
 import org.compiere.model.MTable;
@@ -1324,22 +1325,24 @@ queued-job-count = 0  (class javax.print.attribute.standard.QueuedJobCount)
 	public static final int		INVENTORY = 10;
 	/** Inventory Move = 11  */
 	public static final int		MOVEMENT = 11;
-	
+	/** Requisition = 12  */
+	public static final int		REQUISITION = 12;
+
 	private static final String[]	DOC_BASETABLES = new String[] {
 		"C_Order", "M_InOut", "C_Invoice", "C_Project",
 		"C_RfQResponse",
-		"C_PaySelectionCheck", "C_PaySelectionCheck", 
-		"C_DunningRunEntry","PP_Order", "DD_Order", "M_Inventory", "M_Movement"};
+		"C_PaySelectionCheck", "C_PaySelectionCheck",
+		"C_DunningRunEntry","PP_Order", "DD_Order", "M_Inventory", "M_Movement", "M_Requisition"};
 	private static final String[]	DOC_IDS = new String[] {
 		"C_Order_ID", "M_InOut_ID", "C_Invoice_ID", "C_Project_ID",
 		"C_RfQResponse_ID",
-		"C_PaySelectionCheck_ID", "C_PaySelectionCheck_ID", 
-		"C_DunningRunEntry_ID" , "PP_Order_ID" , "DD_Order_ID", "M_Inventory_ID", "M_Movement_ID" };
+		"C_PaySelectionCheck_ID", "C_PaySelectionCheck_ID",
+		"C_DunningRunEntry_ID" , "PP_Order_ID" , "DD_Order_ID", "M_Inventory_ID", "M_Movement_ID", "M_Requisition_ID" };
 	private static final int[]	DOC_TABLE_ID = new int[] {
 		MOrder.Table_ID, MInOut.Table_ID, MInvoice.Table_ID, MProject.Table_ID,
 		MRfQResponse.Table_ID,
-		MPaySelectionCheck.Table_ID, MPaySelectionCheck.Table_ID, 
-		MDunningRunEntry.Table_ID, X_PP_Order.Table_ID, MDDOrder.Table_ID, MInventory.Table_ID, MMovement.Table_ID };
+		MPaySelectionCheck.Table_ID, MPaySelectionCheck.Table_ID,
+		MDunningRunEntry.Table_ID, X_PP_Order.Table_ID, MDDOrder.Table_ID, MInventory.Table_ID, MMovement.Table_ID, MRequisition.Table_ID };
 
 	/**************************************************************************
 	 * 	Get Document Print Engine for Document Type.
@@ -1501,7 +1504,7 @@ queued-job-count = 0  (class javax.print.attribute.standard.QueuedJobCount)
 				.append("WHERE d." + DOC_IDS[type] + "=?")			//	info from PrintForm
 				.append(" AND pf.AD_Org_ID IN (0,d.AD_Org_ID) ")
 				.append("ORDER BY pf.AD_Org_ID DESC");
-		else if (type == INVENTORY || type == MOVEMENT)
+		else if (type == INVENTORY || type == MOVEMENT || type == REQUISITION)
 			sql = new StringBuilder("SELECT COALESCE (dt.AD_PrintFormat_ID, 0), 0,") 			// 1..2
 				.append(" NULL, 0 , d.DocumentNo ")				// 3..5
 				.append("FROM " + DOC_BASETABLES[type] + " d")
@@ -1536,7 +1539,7 @@ queued-job-count = 0  (class javax.print.attribute.standard.QueuedJobCount)
 			{
 				if (type == CHECK || type == DUNNING || type == REMITTANCE 
 					|| type == PROJECT || type == RFQ || type == MANUFACTURING_ORDER || type == DISTRIBUTION_ORDER 
-					|| type == INVENTORY || type == MOVEMENT)
+					|| type == INVENTORY || type == MOVEMENT || type == REQUISITION)
 				{
 					AD_PrintFormat_ID = rs.getInt(1);
 					copies = 1;

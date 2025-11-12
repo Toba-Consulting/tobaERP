@@ -254,6 +254,25 @@ public class ServerReportCtl {
 				return startDocumentPrint(ReportEngine.INVENTORY, null, pi.getRecord_ID(), null, pi);
 			else if (pi.getAD_Process_ID() == PROCESS_RPT_M_MOVEMENT)			//	M_Movement
 				return startDocumentPrint(ReportEngine.MOVEMENT, null, pi.getRecord_ID(), null, pi);
+
+			// Custom hardcoded process IDs
+			else if (pi.getAD_Process_ID() == 110)			//	C_Order (Sales)
+				return startDocumentPrint(ReportEngine.ORDER, null, pi.getRecord_ID(), null, pi);
+			else if (pi.getAD_Process_ID() == 300058)			//	C_Order (Purchase)
+				return startDocumentPrint(ReportEngine.ORDER, null, pi.getRecord_ID(), null, pi);
+			else if (pi.getAD_Process_ID() == 1100574)		//	C_Invoice (AR/Sales)
+				return startDocumentPrint(ReportEngine.INVOICE, null, pi.getRecord_ID(), null, pi);
+			else if (pi.getAD_Process_ID() == 300081)		//	M_InOut (Customer Shipment)
+				return startDocumentPrint(ReportEngine.SHIPMENT, null, pi.getRecord_ID(), null, pi);
+			else if (pi.getAD_Process_ID() == 300079)		//	M_InOut (Vendor Receipt)
+				return startDocumentPrint(ReportEngine.SHIPMENT, null, pi.getRecord_ID(), null, pi);
+			else if (pi.getAD_Process_ID() == 217)		//	C_Project
+				return startDocumentPrint(ReportEngine.PROJECT, null, pi.getRecord_ID(), null, pi);
+			else if (pi.getAD_Process_ID() == 1100576)		//	C_Payment
+				return startDocumentPrint(ReportEngine.CHECK, null, pi.getRecord_ID(), null, pi);
+			else if (pi.getAD_Process_ID() == 1100577)		//	M_Requisition
+				return startDocumentPrint(ReportEngine.REQUISITION, null, pi.getRecord_ID(), null, pi);
+
 			/********************
 			 *	Standard Report
 			 *******************/

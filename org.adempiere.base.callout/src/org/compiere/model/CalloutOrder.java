@@ -260,7 +260,7 @@ public class CalloutOrder extends CalloutEngine
 			+ " aubill.AD_User_ID as BillTo_User_ID, auship.AD_User_ID as ShipTo_User_ID, "
 			+ " COALESCE(p.PO_PriceList_ID,g.PO_PriceList_ID) AS PO_PriceList_ID, p.PaymentRulePO,p.PO_PaymentTerm_ID,"
 			+ " lbill.C_BPartner_Location_ID as Bill_Location_ID, "
-			+ " p.SOCreditStatus, "
+			+ " p.SOCreditStatus, p.SO_CreditLimit, "
 			+ " p.SalesRep_ID "
 			+ "FROM C_BPartner p"
 			+ " INNER JOIN C_BP_Group g ON (p.C_BP_Group_ID=g.C_BP_Group_ID)"

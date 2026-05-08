@@ -467,6 +467,16 @@ public class DocLine
 		}
 		return 0;
 	}	//	getC_Charge_ID
+	
+	/**
+	 * 	@author Stephan
+	 * 	Get Charge
+	 * 	@return C_Charge_ID
+	 */
+	//	TAOWI-1188
+	public int getCharge_ID(){
+		return getC_Charge_ID();
+	}
 
 	/**
 	 *  Get Charge Account

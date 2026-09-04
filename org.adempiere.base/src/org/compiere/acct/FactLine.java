@@ -28,14 +28,20 @@ import java.util.logging.Level;
 import org.compiere.model.MAccount;
 import org.compiere.model.MAcctSchema;
 import org.compiere.model.MAcctSchemaElement;
+import org.compiere.model.MAssetAddition;
+import org.compiere.model.MAssetTransfer;
+import org.compiere.model.MBankStatement;
 import org.compiere.model.MConversionRate;
 import org.compiere.model.MCurrency;
 import org.compiere.model.MFactAcct;
+import org.compiere.model.MMatchInv;
+import org.compiere.model.MMatchPO;
 import org.compiere.model.MMovement;
 import org.compiere.model.MRevenueRecognitionPlan;
 import org.compiere.model.MUOM;
 import org.compiere.model.X_C_AcctSchema_Element;
 import org.compiere.model.X_Fact_Acct;
+import org.compiere.process.DocAction;
 import org.compiere.util.DB;
 import org.compiere.util.Env;
 
@@ -350,6 +356,14 @@ public final class FactLine extends X_Fact_Acct
 	{
 		m_doc = doc;
 		m_docLine = docLine;
+		
+		//@tegar Novian 
+		String DocStatus = null; 
+		DocStatus = getDocStatus(m_doc.get_TableName()); 
+		boolean isReversal = false; 
+		isReversal = isReversal(m_doc.get_TableName()); 
+		//end 
+		
 		//	reset
 		setAD_Org_ID(0);
 		setC_SalesRegion_ID(0);
@@ -371,6 +385,10 @@ public final class FactLine extends X_Fact_Acct
 			setC_Period_ID (m_doc.getC_Period_ID());
 		if (m_docLine != null)
 			setC_Tax_ID (m_docLine.getC_Tax_ID());
+		
+		/* 
+		 * 20260402 - comment out by figo 
+		 *
 		//	Description
 		StringBuilder description = new StringBuilder().append(m_doc.getDocumentNo());
 		if (m_docLine != null)
@@ -384,6 +402,10 @@ public final class FactLine extends X_Fact_Acct
 		else if (m_doc.getDescription() != null && m_doc.getDescription().length() > 0)
 			description.append(" (").append(m_doc.getDescription()).append(")");
 		setDescription(description.toString());
+		*/ 
+		 
+		setFactDescription(DocStatus, isReversal);
+		
 		//	Journal Info
 		setGL_Budget_ID (m_doc.getGL_Budget_ID());
 		setGL_Category_ID (m_doc.getGL_Category_ID());
@@ -1140,6 +1162,14 @@ public final class FactLine extends X_Fact_Acct
 	public boolean updateReverseLine (int AD_Table_ID, int Record_ID, int Line_ID,
 		BigDecimal multiplier, FactLine otherLine)
 	{
+		
+		//@tegar Novian 
+		String DocStatus = null; 
+		DocStatus = getDocStatus(m_doc.get_TableName()); 
+		boolean isReversal = false; 
+		isReversal = isReversal(m_doc.get_TableName()); 
+		//end 
+		
 		boolean success = false;
 
 		StringBuilder sql = new StringBuilder("SELECT * ")
@@ -1231,6 +1261,7 @@ public final class FactLine extends X_Fact_Acct
 				setC_Tax_ID(fact.getC_Tax_ID());
 				//	Org for cross charge
 				setAD_Org_ID (fact.getAD_Org_ID());
+				setFactDescription(DocStatus, isReversal);
 				if (fact.getQty() != null) {
 					if (getC_UOM_ID() != 0)
 					{
@@ -1258,5 +1289,94 @@ public final class FactLine extends X_Fact_Acct
 		}
 		return success;
 	}   //  updateReverseLine
+	
+	//@tegar Novian 
+	private String getDocStatus (String TableName){ 
+		StringBuilder sql = new StringBuilder(); 
+		 
+		String Docstatus = ""; 
+		int Record_ID = 0; 
+		Record_ID = getRecord_ID(); 
+		 
+		if( 
+			!TableName.equalsIgnoreCase(MMatchInv.Table_Name)  
+			&& !TableName.equalsIgnoreCase(MMatchPO.Table_Name)) 
+		{ 
+			 
+			sql.append("SELECT DocStatus "); 
+			sql.append(" FROM " + TableName); 
+			sql.append(" WHERE "+TableName + "_ID = ?"); 
+			 
+			Docstatus = DB.getSQLValueStringEx(get_TrxName(), sql.toString(),Record_ID); 
+		 
+		} 
+		return Docstatus; 
+	} 
+	//end 
+	 
+	//@tegar Novian 
+	private boolean isReversal (String TableName){ 
+		StringBuilder sql = new StringBuilder(); 
+		boolean isReversal = false; 
+		 
+		int Docstatus = 0; 
+		int Record_ID = 0; 
+		Record_ID = getRecord_ID(); 
+		 
+		if ( 
+			!TableName.equalsIgnoreCase(MBankStatement.Table_Name) 
+			&& !TableName.equalsIgnoreCase(MAssetAddition.Table_Name) 
+			&& !TableName.equalsIgnoreCase(MAssetTransfer.Table_Name)) 
+		{ 
+		 
+			sql.append("SELECT Reversal_ID "); 
+			sql.append(" FROM " + TableName); 
+			sql.append(" WHERE "+TableName + "_ID = ?"); 
+			 
+			Docstatus = DB.getSQLValueEx(get_TrxName(), sql.toString(),Record_ID); 
+		} 
+		 
+		if (Docstatus != 0) 
+			isReversal = true; 
+		 
+		return isReversal; 
+	} 
+	//end 
+	 
+	//@tegar Novian 
+	private void setFactDescription(String DocStatus, boolean isReversal){ 
+ 
+		String msgReverse = null; 
+		//StringBuilder description = new StringBuilder().append("[").append(m_doc.getDocumentNo()); 
+		 
+		StringBuilder description = new StringBuilder(); 
+			if (m_docLine != null) 
+			{ 
+				if (m_docLine.getDescription() != null) 
+					description.append(m_docLine.getDescription()); 
+				else if (m_doc.getDescription() != null && m_doc.getDescription().length() > 0) 
+					description.append(m_doc.getDescription());		 
+			} 
+			else { 
+				if (m_doc.getDescription() != null && m_doc.getDescription().length() > 0) 
+					description.append(m_doc.getDescription()); 
+			} 
+ 
+			if (DocStatus.equals(DocAction.STATUS_Reversed)){ 
+				msgReverse = " [REVERSED]"; 
+				description.append(msgReverse); 
+				} 
+			else if(DocStatus.equals(DocAction.STATUS_Completed)&& isReversal){ 
+				msgReverse = " [REVERSED]"; 
+				description.append(msgReverse); 
+			}else if (DocStatus.equals(DocAction.STATUS_Completed)&& !isReversal){ 
+			} 
+		setDescription(description.toString()); 
+		if(m_doc != null) 
+			set_CustomColumn("DocumentNo", m_doc.getDocumentNo()); 
+		if(m_docLine != null) 
+			set_CustomColumn("Line", m_docLine.getLine()); 
+	} 
+	//end 
 
 }	//	FactLine
